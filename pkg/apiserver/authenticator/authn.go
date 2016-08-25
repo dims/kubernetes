@@ -20,6 +20,8 @@ import (
 	"crypto/rsa"
 	"time"
 
+	"github.com/golang/glog"
+
 	"k8s.io/kubernetes/pkg/auth/authenticator"
 	"k8s.io/kubernetes/pkg/auth/authenticator/bearertoken"
 	"k8s.io/kubernetes/pkg/serviceaccount"
@@ -56,6 +58,7 @@ type AuthenticatorConfig struct {
 func New(config AuthenticatorConfig) (authenticator.Request, error) {
 	var authenticators []authenticator.Request
 
+	glog.Infof(">>>>> config.BasicAuthFile : %q", config.BasicAuthFile)
 	if len(config.BasicAuthFile) > 0 {
 		basicAuth, err := newAuthenticatorFromBasicAuthFile(config.BasicAuthFile)
 		if err != nil {
@@ -64,6 +67,7 @@ func New(config AuthenticatorConfig) (authenticator.Request, error) {
 		authenticators = append(authenticators, basicAuth)
 	}
 
+	glog.Infof(">>>>> config.ClientCAFile : %q", config.ClientCAFile)
 	if len(config.ClientCAFile) > 0 {
 		certAuth, err := newAuthenticatorFromClientCAFile(config.ClientCAFile)
 		if err != nil {
@@ -72,6 +76,7 @@ func New(config AuthenticatorConfig) (authenticator.Request, error) {
 		authenticators = append(authenticators, certAuth)
 	}
 
+	glog.Infof(">>>>> config.TokenAuthFile : %q", config.TokenAuthFile)
 	if len(config.TokenAuthFile) > 0 {
 		tokenAuth, err := newAuthenticatorFromTokenFile(config.TokenAuthFile)
 		if err != nil {
@@ -80,6 +85,7 @@ func New(config AuthenticatorConfig) (authenticator.Request, error) {
 		authenticators = append(authenticators, tokenAuth)
 	}
 
+	glog.Infof(">>>>> config.ServiceAccountKeyFile : %q", config.ServiceAccountKeyFile)
 	if len(config.ServiceAccountKeyFile) > 0 {
 		serviceAccountAuth, err := newServiceAccountAuthenticator(config.ServiceAccountKeyFile, config.ServiceAccountLookup, config.ServiceAccountTokenGetter)
 		if err != nil {
@@ -94,6 +100,7 @@ func New(config AuthenticatorConfig) (authenticator.Request, error) {
 	// cache misses for all requests using the other. While the service account plugin
 	// simply returns an error, the OpenID Connect plugin may query the provider to
 	// update the keys, causing performance hits.
+	glog.Infof(">>>>> config.OIDCIssuerURL,OIDCClientID : %q, %q", config.OIDCIssuerURL, config.OIDCClientID)
 	if len(config.OIDCIssuerURL) > 0 && len(config.OIDCClientID) > 0 {
 		oidcAuth, err := newAuthenticatorFromOIDCIssuerURL(config.OIDCIssuerURL, config.OIDCClientID, config.OIDCCAFile, config.OIDCUsernameClaim, config.OIDCGroupsClaim)
 		if err != nil {
@@ -102,6 +109,7 @@ func New(config AuthenticatorConfig) (authenticator.Request, error) {
 		authenticators = append(authenticators, oidcAuth)
 	}
 
+	glog.Infof(">>>>> config.KeystoneURL : %q", config.KeystoneURL)
 	if len(config.KeystoneURL) > 0 {
 		keystoneAuth, err := newAuthenticatorFromKeystoneURL(config.KeystoneURL)
 		if err != nil {
@@ -110,6 +118,7 @@ func New(config AuthenticatorConfig) (authenticator.Request, error) {
 		authenticators = append(authenticators, keystoneAuth)
 	}
 
+	glog.Infof(">>>>> config.WebhookTokenAuthnConfigFile : %q", config.WebhookTokenAuthnConfigFile)
 	if len(config.WebhookTokenAuthnConfigFile) > 0 {
 		webhookTokenAuth, err := newWebhookTokenAuthenticator(config.WebhookTokenAuthnConfigFile, config.WebhookTokenAuthnCacheTTL)
 		if err != nil {
@@ -120,10 +129,13 @@ func New(config AuthenticatorConfig) (authenticator.Request, error) {
 
 	switch len(authenticators) {
 	case 0:
+		glog.Infof(">>>>> authenticators-1: [nil]")
 		return nil, nil
 	case 1:
+		glog.Infof(">>>>> authenticators-2: [%#v]", authenticators[0])
 		return authenticators[0], nil
 	default:
+		glog.Infof(">>>>> authenticators-3: [%#v]", authenticators)
 		return union.New(authenticators...), nil
 	}
 }

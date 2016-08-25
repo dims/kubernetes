@@ -20,6 +20,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golang/glog"
+
 	"k8s.io/kubernetes/pkg/auth/authenticator"
 	"k8s.io/kubernetes/pkg/auth/user"
 )
@@ -35,13 +37,16 @@ func New(auth authenticator.Token) *Authenticator {
 func (a *Authenticator) AuthenticateRequest(req *http.Request) (user.Info, bool, error) {
 	auth := strings.TrimSpace(req.Header.Get("Authorization"))
 	if auth == "" {
+		glog.Infof(">>>> AuthenticateRequest : %#v", req.Header)
 		return nil, false, nil
 	}
 	parts := strings.Split(auth, " ")
 	if len(parts) < 2 || strings.ToLower(parts[0]) != "bearer" {
+		glog.Infof(">>>> AuthenticateRequest : 2")
 		return nil, false, nil
 	}
 
 	token := parts[1]
+	glog.Infof(">>>> AuthenticateRequest : 3")
 	return a.auth.AuthenticateToken(token)
 }

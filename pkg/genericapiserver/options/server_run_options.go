@@ -212,14 +212,27 @@ func mergeGroupVersionIntoMap(gvList string, dest map[string]unversioned.GroupVe
 }
 
 // Returns a clientset which can be used to talk to this apiserver.
-func (s *ServerRunOptions) NewSelfClient() (clientset.Interface, error) {
+func (s *ServerRunOptions) NewSelfClient(ServiceAccountKeyFile string) (clientset.Interface, error) {
+	var host string
+	if s.InsecurePort == 0 {
+		host = "https://" + net.JoinHostPort(s.BindAddress.String(), strconv.Itoa(s.SecurePort))
+	} else {
+		host = net.JoinHostPort(s.InsecureBindAddress.String(), strconv.Itoa(s.InsecurePort))
+	}
+
 	clientConfig := &restclient.Config{
-		Host: net.JoinHostPort(s.InsecureBindAddress.String(), strconv.Itoa(s.InsecurePort)),
+		Host: host,
 		// Increase QPS limits. The client is currently passed to all admission plugins,
 		// and those can be throttled in case of higher load on apiserver - see #22340 and #22422
 		// for more details. Once #22422 is fixed, we may want to remove it.
-		QPS:   50,
-		Burst: 100,
+		QPS:      50,
+		Burst:    100,
+		Insecure: true,
+		TLSClientConfig: restclient.TLSClientConfig{
+			CertFile: s.TLSCertFile,
+			//CAFile: s.ClientCAFile,
+			KeyFile: s.TLSPrivateKeyFile,
+		},
 	}
 	if len(s.DeprecatedStorageVersion) != 0 {
 		gv, err := unversioned.ParseGroupVersion(s.DeprecatedStorageVersion)

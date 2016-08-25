@@ -123,7 +123,7 @@ KUBELET_HOST=${KUBELET_HOST:-"127.0.0.1"}
 # By default only allow CORS for requests on localhost
 API_CORS_ALLOWED_ORIGINS=${API_CORS_ALLOWED_ORIGINS:-"/127.0.0.1(:[0-9]+)?$,/localhost(:[0-9]+)?$"}
 KUBELET_PORT=${KUBELET_PORT:-10250}
-LOG_LEVEL=${LOG_LEVEL:-3}
+LOG_LEVEL=${LOG_LEVEL:-99}
 CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-"docker"}
 RKT_PATH=${RKT_PATH:-""}
 RKT_STAGE1_IMAGE=${RKT_STAGE1_IMAGE:-""}
@@ -264,10 +264,11 @@ function set_service_accounts {
 function start_apiserver {
     # Admission Controllers to invoke prior to persisting objects in cluster
     if [[ -z "${ALLOW_SECURITY_CONTEXT}" ]]; then
-      ADMISSION_CONTROL=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota,DefaultStorageClass
+      ADMISSION_CONTROL=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ResourceQuota,DefaultStorageClass,NamespaceExists
     else
-      ADMISSION_CONTROL=NamespaceLifecycle,LimitRanger,ServiceAccount,ResourceQuota,DefaultStorageClass
+      ADMISSION_CONTROL=NamespaceLifecycle,LimitRanger,ResourceQuota,DefaultStorageClass,NamespaceExists
     fi
+    ADMISSION_CONTROL=NamespaceExists
     # This is the default dir and filename where the apiserver will generate a self-signed cert
     # which should be able to be used as the CA to verify itself
     CERT_DIR=/var/run/kubernetes
@@ -289,13 +290,14 @@ function start_apiserver {
         advertise_address="--advertise_address=${API_HOST}"
     fi
 
+      #--service-account-key-file="${SERVICE_ACCOUNT_KEY}" \
+      #--service-account-lookup="${SERVICE_ACCOUNT_LOOKUP}" \
+
     APISERVER_LOG=/tmp/kube-apiserver.log
     sudo -E "${GO_OUT}/hyperkube" apiserver ${priv_arg} ${runtime_config}\
       ${advertise_address} \
       --v=${LOG_LEVEL} \
       --cert-dir="${CERT_DIR}" \
-      --service-account-key-file="${SERVICE_ACCOUNT_KEY}" \
-      --service-account-lookup="${SERVICE_ACCOUNT_LOOKUP}" \
       --admission-control="${ADMISSION_CONTROL}" \
       --bind-address="${API_BIND_ADDR}" \
       --insecure-bind-address="${API_HOST_IP}" \
@@ -304,12 +306,17 @@ function start_apiserver {
       --service-cluster-ip-range="10.0.0.0/24" \
       --cloud-provider="${CLOUD_PROVIDER}" \
       --cloud-config="${CLOUD_CONFIG}" \
+      --client-ca-file=/home/dims/k8s/ca.crt \
+      --tls-cert-file=/home/dims/k8s/server.cert \
+      --tls-private-key-file=/home/dims/k8s/server.key \
+      --basic-auth-file=/home/dims/k8s/basicauth.csv \
+      --insecure-port=0 \
       --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
     APISERVER_PID=$!
 
     # Wait for kube-apiserver to come up before launching the rest of the components.
     echo "Waiting for apiserver to come up"
-    kube::util::wait_for_url "http://${API_HOST}:${API_PORT}/api/v1/pods" "apiserver: " 1 ${WAIT_FOR_URL_API_SERVER} || exit 1
+    #kube::util::wait_for_url "http://${API_HOST}:${API_PORT}/api/v1/pods" "apiserver: " 1 ${WAIT_FOR_URL_API_SERVER} || exit 1
 }
 
 function start_controller_manager {

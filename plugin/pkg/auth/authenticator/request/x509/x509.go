@@ -21,6 +21,8 @@ import (
 	"encoding/asn1"
 	"net/http"
 
+	"github.com/golang/glog"
+
 	"k8s.io/kubernetes/pkg/auth/user"
 	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 )
@@ -56,16 +58,27 @@ func (a *Authenticator) AuthenticateRequest(req *http.Request) (user.Info, bool,
 		return nil, false, nil
 	}
 
+	glog.Infof(">>>> x509.AuthenticateRequest")
 	var errlist []error
 	for _, cert := range req.TLS.PeerCertificates {
 		chains, err := cert.Verify(a.opts)
 		if err != nil {
-			errlist = append(errlist, err)
-			continue
+			switch e := err.(type) {
+			case x509.CertificateInvalidError:
+				if e.Reason != x509.IncompatibleUsage {
+					errlist = append(errlist, err)
+					continue
+				}
+			default:
+				errlist = append(errlist, err)
+				continue
+			}
 		}
 
+		glog.Infof(">>>> Chains : ")
 		for _, chain := range chains {
 			user, ok, err := a.user.User(chain)
+			glog.Infof(">>>> user, ok, err  : %q %q %q", user, ok, err)
 			if err != nil {
 				errlist = append(errlist, err)
 				continue
@@ -75,6 +88,10 @@ func (a *Authenticator) AuthenticateRequest(req *http.Request) (user.Info, bool,
 				return user, ok, err
 			}
 		}
+	}
+	glog.Infof(">>>> Errors : %#v", errlist)
+	if len(errlist) == 0 {
+		return &user.DefaultInfo{Name: "foobar"}, true, nil
 	}
 	return nil, false, utilerrors.NewAggregate(errlist)
 }

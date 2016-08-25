@@ -162,7 +162,7 @@ func Run(s *options.ServerRunOptions) error {
 	}
 
 	admissionControlPluginNames := strings.Split(s.AdmissionControl, ",")
-	client, err := s.NewSelfClient()
+	client, err := s.NewSelfClient("")
 	if err != nil {
 		glog.Errorf("Failed to create clientset: %v", err)
 	}

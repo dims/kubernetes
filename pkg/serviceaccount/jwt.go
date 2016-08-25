@@ -130,8 +130,10 @@ func (j *jwtTokenAuthenticator) AuthenticateToken(token string) (user.Info, bool
 		// Attempt to verify with each key until we find one that works
 		parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 1")
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 2")
 			return key, nil
 		})
 
@@ -140,6 +142,7 @@ func (j *jwtTokenAuthenticator) AuthenticateToken(token string) (user.Info, bool
 			case *jwt.ValidationError:
 				if (err.Errors & jwt.ValidationErrorMalformed) != 0 {
 					// Not a JWT, no point in continuing
+					glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 3")
 					return nil, false, nil
 				}
 
@@ -153,6 +156,7 @@ func (j *jwtTokenAuthenticator) AuthenticateToken(token string) (user.Info, bool
 			}
 
 			// Other errors should just return as errors
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 4")
 			return nil, false, err
 		}
 
@@ -163,33 +167,40 @@ func (j *jwtTokenAuthenticator) AuthenticateToken(token string) (user.Info, bool
 		// Make sure we issued the token
 		iss, _ := claims[IssuerClaim].(string)
 		if iss != Issuer {
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 5")
 			return nil, false, nil
 		}
 
 		// Make sure the claims we need exist
 		sub, _ := claims[SubjectClaim].(string)
 		if len(sub) == 0 {
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 6")
 			return nil, false, errors.New("sub claim is missing")
 		}
 		namespace, _ := claims[NamespaceClaim].(string)
 		if len(namespace) == 0 {
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 7")
 			return nil, false, errors.New("namespace claim is missing")
 		}
 		secretName, _ := claims[SecretNameClaim].(string)
 		if len(namespace) == 0 {
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 8")
 			return nil, false, errors.New("secretName claim is missing")
 		}
 		serviceAccountName, _ := claims[ServiceAccountNameClaim].(string)
 		if len(serviceAccountName) == 0 {
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 9")
 			return nil, false, errors.New("serviceAccountName claim is missing")
 		}
 		serviceAccountUID, _ := claims[ServiceAccountUIDClaim].(string)
 		if len(serviceAccountUID) == 0 {
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 10")
 			return nil, false, errors.New("serviceAccountUID claim is missing")
 		}
 
 		subjectNamespace, subjectName, err := SplitUsername(sub)
 		if err != nil || subjectNamespace != namespace || subjectName != serviceAccountName {
+			glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 11")
 			return nil, false, errors.New("sub claim is invalid")
 		}
 
@@ -198,10 +209,12 @@ func (j *jwtTokenAuthenticator) AuthenticateToken(token string) (user.Info, bool
 			secret, err := j.getter.GetSecret(namespace, secretName)
 			if err != nil {
 				glog.V(4).Infof("Could not retrieve token %s/%s for service account %s/%s: %v", namespace, secretName, namespace, serviceAccountName, err)
+				glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 12")
 				return nil, false, errors.New("Token has been invalidated")
 			}
 			if bytes.Compare(secret.Data[api.ServiceAccountTokenKey], []byte(token)) != 0 {
 				glog.V(4).Infof("Token contents no longer matches %s/%s for service account %s/%s", namespace, secretName, namespace, serviceAccountName)
+				glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 13")
 				return nil, false, errors.New("Token does not match server's copy")
 			}
 
@@ -209,16 +222,20 @@ func (j *jwtTokenAuthenticator) AuthenticateToken(token string) (user.Info, bool
 			serviceAccount, err := j.getter.GetServiceAccount(namespace, serviceAccountName)
 			if err != nil {
 				glog.V(4).Infof("Could not retrieve service account %s/%s: %v", namespace, serviceAccountName, err)
+				glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 14")
 				return nil, false, err
 			}
 			if string(serviceAccount.UID) != serviceAccountUID {
 				glog.V(4).Infof("Service account UID no longer matches %s/%s: %q != %q", namespace, serviceAccountName, string(serviceAccount.UID), serviceAccountUID)
+				glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 15")
 				return nil, false, fmt.Errorf("ServiceAccount UID (%s) does not match claim (%s)", serviceAccount.UID, serviceAccountUID)
 			}
 		}
 
+		glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 16")
 		return UserInfo(namespace, serviceAccountName, serviceAccountUID), true, nil
 	}
 
+	glog.Infof(">>>>>>> jwtTokenAuthenticator.AuthenticateToken : 17")
 	return nil, false, validationError
 }

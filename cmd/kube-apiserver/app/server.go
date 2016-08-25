@@ -184,6 +184,10 @@ func Run(s *options.APIServer) error {
 		}
 	}
 
+	if s.InsecurePort == 0 && s.ClientCAFile == "" {
+		glog.Fatalf("Need to set --client-ca-file for admission controllers to work")
+	}
+
 	var serviceAccountGetter serviceaccount.ServiceAccountTokenGetter
 	if s.ServiceAccountLookup {
 		// If we need to look up service accounts and tokens,
@@ -256,7 +260,7 @@ func Run(s *options.APIServer) error {
 	}
 
 	admissionControlPluginNames := strings.Split(s.AdmissionControl, ",")
-	client, err := s.NewSelfClient()
+	client, err := s.NewSelfClient(s.ServiceAccountKeyFile)
 	if err != nil {
 		glog.Errorf("Failed to create clientset: %v", err)
 	}
