@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/golang/glog"
 
@@ -4351,10 +4352,24 @@ func ValidateConfigMap(cfg *core.ConfigMap) field.ErrorList {
 		for _, msg := range validation.IsConfigMapKey(key) {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("data").Key(key), key, msg))
 		}
+		// check if the value stored consists entirely of valid UTF-8-encoded runes
+		if !utf8.ValidString(cfg.Data[key]) {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("data").Key(key), key, "invalid byte sequence in UTF-8"))
+		}
+		// check if we have a duplicate key in the other bag
+		if _, isValue := cfg.BinaryData[key]; isValue {
+			allErrs = append(allErrs, field.Duplicate(field.NewPath("data").Key(key), "duplicate of key in binaryData"))
+		}
+		totalSize += len(value)
+	}
+	for key, value := range cfg.BinaryData {
+		for _, msg := range validation.IsConfigMapKey(key) {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("binaryData").Key(key), key, msg))
+		}
 		totalSize += len(value)
 	}
 	if totalSize > core.MaxSecretSize {
-		allErrs = append(allErrs, field.TooLong(field.NewPath("data"), "", core.MaxSecretSize))
+		allErrs = append(allErrs, field.TooLong(field.NewPath(""), cfg, core.MaxSecretSize))
 	}
 
 	return allErrs
