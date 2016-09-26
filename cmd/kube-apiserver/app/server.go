@@ -91,6 +91,7 @@ cluster's shared state through which all other components interact.`,
 func Run(s *options.APIServer) error {
 	genericvalidation.VerifyEtcdServersList(s.ServerRunOptions)
 	genericapiserver.DefaultAndValidateRunOptions(s.ServerRunOptions)
+	genericapiserver.InitializeTLSOptions(s.ServerRunOptions)
 
 	capabilities.Initialize(capabilities.Capabilities{
 		AllowPrivileged: s.AllowPrivileged,

@@ -18,11 +18,15 @@ package genericapiserver
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"time"
@@ -48,6 +52,7 @@ import (
 	genericvalidation "k8s.io/kubernetes/pkg/genericapiserver/validation"
 	ipallocator "k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
 	"k8s.io/kubernetes/pkg/runtime"
+	certutil "k8s.io/kubernetes/pkg/util/cert"
 	utilnet "k8s.io/kubernetes/pkg/util/net"
 )
 
@@ -394,6 +399,69 @@ func (s *GenericAPIServer) installAPI(c *Config) {
 		routes.Version{}.Install(s.Mux, s.HandlerContainer)
 	}
 	s.HandlerContainer.Add(s.DynamicApisDiscovery())
+}
+
+func InitializeTLSOptions(options *options.ServerRunOptions) {
+	glog.Infof(">>>>> Before <<<<<<")
+	glog.Infof(">>>>> options.TLSCertFile : %#v", options.TLSCertFile)
+	glog.Infof(">>>>> options.TLSPrivateKeyFile : %#v", options.TLSPrivateKeyFile)
+	glog.Infof(">>>>> options.TLSCAFile : %#v", options.TLSCAFile)
+	glog.Infof(">>>>> options.CertDirectory : %#v", options.CertDirectory)
+
+	if options.TLSCertFile == "" && options.TLSPrivateKeyFile == "" {
+		options.TLSCertFile = path.Join(options.CertDirectory, "apiserver.crt")
+		options.TLSPrivateKeyFile = path.Join(options.CertDirectory, "apiserver.key")
+
+		host := options.BindAddress.String()
+		alternateIPs := []net.IP{}
+		alternateDNS := []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes"}
+
+		// Add the ip for secure listener to the certificate
+		if ip := net.ParseIP(host); ip != nil {
+			alternateIPs = append(alternateIPs, options.BindAddress)
+		} else {
+			alternateDNS = append(alternateDNS, host)
+		}
+
+		if !certutil.CanReadCertOrKey(options.TLSCertFile, options.TLSPrivateKeyFile) {
+			if err := certutil.GenerateSelfSignedCert(host, options.TLSCertFile, options.TLSPrivateKeyFile, alternateIPs, alternateDNS); err != nil {
+				glog.Errorf(">>>> Unable to generate self signed cert: %v", err)
+			} else {
+				glog.Infof(">>>> Using self-signed cert (%s, %s)", options.TLSCertFile, options.TLSPrivateKeyFile)
+			}
+		}
+	}
+
+	if options.TLSCAFile == "" {
+		glog.Infof(">>>> reading TLCertFile")
+		// Check if the TLSCerFile is a self-signed-certificate
+		pemCerts, err := ioutil.ReadFile(options.TLSCertFile)
+		if err != nil {
+			glog.Fatalf(">>>> Unable to read TLSCertFile: %v", err)
+		}
+		glog.Infof(">>>> decoding")
+		block, _ := pem.Decode(pemCerts)
+		glog.Infof(">>>> parsing")
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			glog.Fatalf(">>>> Unable to parse certificate from TLSCertFile: %v", err)
+		}
+		glog.Infof(">>>> IsCA : %#v", cert.IsCA)
+		glog.Infof(">>>> checking key usage : %b (binary)", cert.KeyUsage)
+		glog.Infof(">>>> cx509.KeyUsageCertSign : %b (binary)", x509.KeyUsageCertSign)
+		if (cert.KeyUsage & x509.KeyUsageCertSign) != 0 {
+			glog.Infof(">>>> KeyUsageCertSign : yes")
+			options.TLSCAFile = options.TLSCertFile
+		} else {
+			glog.Warningf(">>>> Unable to use TLSCertFile as TLSCAFile as TLSCertFile is not a self-signed " +
+				"certificate, please specify a TLSCAFile or a self-signed cerificate in TLSCertFile")
+		}
+	}
+	glog.Infof(">>>>> After <<<<<<")
+	glog.Infof(">>>>> options.TLSCertFile : %#v", options.TLSCertFile)
+	glog.Infof(">>>>> options.TLSPrivateKeyFile : %#v", options.TLSPrivateKeyFile)
+	glog.Infof(">>>>> options.TLSCAFile : %#v", options.TLSCAFile)
+	glog.Infof(">>>>> options.CertDirectory : %#v", options.CertDirectory)
 }
 
 func DefaultAndValidateRunOptions(options *options.ServerRunOptions) {

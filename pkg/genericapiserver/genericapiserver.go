@@ -22,7 +22,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -254,22 +253,6 @@ func (s *GenericAPIServer) Run(options *options.ServerRunOptions) {
 		}
 
 		glog.Infof("Serving securely on %s", secureLocation)
-		if options.TLSCertFile == "" && options.TLSPrivateKeyFile == "" {
-			options.TLSCertFile = path.Join(options.CertDirectory, "apiserver.crt")
-			options.TLSPrivateKeyFile = path.Join(options.CertDirectory, "apiserver.key")
-			// TODO (cjcullen): Is ClusterIP the right address to sign a cert with?
-			alternateIPs := []net.IP{s.ServiceReadWriteIP}
-			alternateDNS := []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes"}
-			// It would be nice to set a fqdn subject alt name, but only the kubelets know, the apiserver is clueless
-			// alternateDNS = append(alternateDNS, "kubernetes.default.svc.CLUSTER.DNS.NAME")
-			if !certutil.CanReadCertOrKey(options.TLSCertFile, options.TLSPrivateKeyFile) {
-				if err := certutil.GenerateSelfSignedCert(s.ClusterIP.String(), options.TLSCertFile, options.TLSPrivateKeyFile, alternateIPs, alternateDNS); err != nil {
-					glog.Errorf("Unable to generate self signed cert: %v", err)
-				} else {
-					glog.Infof("Using self-signed cert (%s, %s)", options.TLSCertFile, options.TLSPrivateKeyFile)
-				}
-			}
-		}
 
 		go func() {
 			defer utilruntime.HandleCrash()

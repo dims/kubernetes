@@ -78,6 +78,7 @@ cluster's shared state through which all other components interact.`,
 func Run(s *options.ServerRunOptions) error {
 	genericvalidation.VerifyEtcdServersList(s.ServerRunOptions)
 	genericapiserver.DefaultAndValidateRunOptions(s.ServerRunOptions)
+	genericapiserver.InitializeTLSOptions(s.ServerRunOptions)
 
 	// TODO: register cluster federation resources here.
 	resourceConfig := genericapiserver.NewResourceConfig()
