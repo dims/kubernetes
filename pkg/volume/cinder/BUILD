@@ -13,8 +13,15 @@ go_library(
     srcs = [
         "attacher.go",
         "cinder.go",
-        "cinder_util.go",
+        "deleter.go",
         "doc.go",
+        "manager.go",
+        "manager_cp.go",
+        "manager_local.go",
+        "mounter.go",
+        "provisioner.go",
+        "unmounter.go",
+        "util.go",
     ],
     tags = ["automanaged"],
     deps = [
@@ -27,11 +34,17 @@ go_library(
         "//pkg/util/mount:go_default_library",
         "//pkg/util/strings:go_default_library",
         "//pkg/volume:go_default_library",
+        "//pkg/volume/cinder/drivers:go_default_library",
         "//pkg/volume/util:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
+        "//vendor/github.com/gophercloud/gophercloud:go_default_library",
+        "//vendor/github.com/gophercloud/gophercloud/openstack:go_default_library",
+        "//vendor/github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions:go_default_library",
+        "//vendor/github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/net:go_default_library",
     ],
 )
 
@@ -64,6 +77,9 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [":package-srcs"],
+    srcs = [
+        ":package-srcs",
+        "//pkg/volume/cinder/drivers:all-srcs",
+    ],
     tags = ["automanaged"],
 )
