@@ -33,7 +33,6 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/aws"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
-	"k8s.io/kubernetes/pkg/cloudprovider/providers/openstack"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/photon"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/vsphere"
 	"k8s.io/kubernetes/pkg/util/io"
@@ -122,14 +121,14 @@ func ProbeControllerVolumePlugins(cloud cloudprovider.Interface, config componen
 	allPlugins = append(allPlugins, portworx.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, scaleio.ProbeVolumePlugins()...)
 
+	allPlugins = append(allPlugins, cinder.ProbeVolumePlugins()...)
+
 	if cloud != nil {
 		switch {
 		case aws.ProviderName == cloud.ProviderName():
 			allPlugins = append(allPlugins, aws_ebs.ProbeVolumePlugins()...)
 		case gce.ProviderName == cloud.ProviderName():
 			allPlugins = append(allPlugins, gce_pd.ProbeVolumePlugins()...)
-		case openstack.ProviderName == cloud.ProviderName():
-			allPlugins = append(allPlugins, cinder.ProbeVolumePlugins()...)
 		case vsphere.ProviderName == cloud.ProviderName():
 			allPlugins = append(allPlugins, vsphere_volume.ProbeVolumePlugins()...)
 		case azure.CloudProviderName == cloud.ProviderName():
