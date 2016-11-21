@@ -372,3 +372,31 @@ filegroup(
     ],
     tags = ["automanaged"],
 )
+
+go_library(
+    name = "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions",
+    srcs = [
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions/doc.go",
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions/requests.go",
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions/results.go",
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions/urls.go",
+    ],
+    tags = ["automanaged"],
+    deps = ["//vendor:github.com/gophercloud/gophercloud"],
+)
+
+go_library(
+    name = "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes",
+    srcs = [
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes/doc.go",
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes/requests.go",
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes/results.go",
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes/urls.go",
+        "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes/util.go",
+    ],
+    tags = ["automanaged"],
+    deps = [
+        "//vendor:github.com/gophercloud/gophercloud",
+        "//vendor:github.com/gophercloud/gophercloud/pagination",
+    ],
+)
