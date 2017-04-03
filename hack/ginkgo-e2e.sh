@@ -26,6 +26,12 @@ source "${KUBE_ROOT}/hack/lib/init.sh"
 ginkgo=$(kube::util::find-binary "ginkgo")
 e2e_test=$(kube::util::find-binary "e2e.test")
 
+if [[ "${ginkgo}" == "" ]]; then
+    echo 'Can not find ginkgo, install with:'
+    echo 'go get github.com/onsi/ginkgo/ginkgo'
+    exit 1
+fi
+
 # --- Setup some env vars.
 
 GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel

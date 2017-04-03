@@ -124,6 +124,11 @@ function verify-prereqs() {
 #   PROJECT_REPORTED
 function detect-project() {
   if [[ -z "${PROJECT-}" ]]; then
+    if [[ $(which gcloud) == "" ]]; then
+      echo "Can't find gcloud in PATH, please fix and retry. The Google Cloud " >&2
+      echo "SDK can be downloaded from https://cloud.google.com/sdk/." >&2
+      exit 1
+    fi
     PROJECT=$(gcloud config list project --format 'value(core.project)')
   fi
 
