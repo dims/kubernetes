@@ -274,13 +274,13 @@ func (r *RemoteRuntimeService) ContainerStatus(containerID string) (*runtimeapi.
 		ContainerId: containerID,
 	})
 	if err != nil {
-		glog.Errorf("ContainerStatus %q from runtime service failed: %v", containerID, err)
+		glog.V(4).Infof("ContainerStatus %q from runtime service failed: %v", containerID, err)
 		return nil, err
 	}
 
 	if resp.Status != nil {
 		if err := verifyContainerStatus(resp.Status); err != nil {
-			glog.Errorf("ContainerStatus of %q failed: %v", containerID, err)
+			glog.V(4).Infof("ContainerStatus of %q failed: %v", containerID, err)
 			return nil, err
 		}
 	}

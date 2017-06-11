@@ -282,7 +282,7 @@ func (ds *dockerService) getIP(sandbox *dockertypes.ContainerJSON) (string, erro
 		return "", nil
 	}
 	if IP, err := ds.getIPFromPlugin(sandbox); err != nil {
-		glog.Warningf("%v", err)
+		glog.V(4).Infof("%v", err)
 	} else if IP != "" {
 		return IP, nil
 	}

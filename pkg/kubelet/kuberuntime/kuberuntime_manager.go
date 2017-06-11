@@ -854,7 +854,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 	// Get statuses of all containers visible in the pod.
 	containerStatuses, err := m.getPodContainerStatuses(uid, name, namespace)
 	if err != nil {
-		glog.Errorf("getPodContainerStatuses for pod %q failed: %v", podFullName, err)
+		glog.V(4).Infof("getPodContainerStatuses for pod %q failed: %v", podFullName, err)
 		return nil, err
 	}
 

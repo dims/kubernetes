@@ -382,7 +382,7 @@ func (m *kubeGenericRuntimeManager) getPodContainerStatuses(uid kubetypes.UID, n
 	for i, c := range containers {
 		status, err := m.runtimeService.ContainerStatus(c.Id)
 		if err != nil {
-			glog.Errorf("ContainerStatus for %s error: %v", c.Id, err)
+			glog.V(4).Infof("ContainerStatus for %s error: %v", c.Id, err)
 			return nil, err
 		}
 		cStatus := toKubeContainerStatus(status, m.runtimeName)
