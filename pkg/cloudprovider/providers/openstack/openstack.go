@@ -124,6 +124,7 @@ type Config struct {
 		DomainName string `gcfg:"domain-name"`
 		Region     string
 		CAFile     string `gcfg:"ca-file"`
+		Insecure   bool `gcfg:"insecure"`
 	}
 	LoadBalancer LoadBalancerOpts
 	BlockStorage BlockStorageOpts
@@ -254,7 +255,12 @@ func newOpenStack(cfg Config) (*OpenStack, error) {
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Global.CAFile != "" {
+
+	if cfg.Global.Insecure {
+		config := &tls.Config{}
+		config.InsecureSkipVerify = true
+		provider.HTTPClient.Transport = netutil.SetOldTransportDefaults(&http.Transport{TLSClientConfig: config})
+	} else if cfg.Global.CAFile != "" {
 		roots, err := certutil.NewPool(cfg.Global.CAFile)
 		if err != nil {
 			return nil, err
@@ -262,7 +268,6 @@ func newOpenStack(cfg Config) (*OpenStack, error) {
 		config := &tls.Config{}
 		config.RootCAs = roots
 		provider.HTTPClient.Transport = netutil.SetOldTransportDefaults(&http.Transport{TLSClientConfig: config})
-
 	}
 	if cfg.Global.TrustId != "" {
 		opts := cfg.toAuth3Options()
