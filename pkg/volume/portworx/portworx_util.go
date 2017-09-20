@@ -60,7 +60,7 @@ func (util *PortworxVolumeUtil) CreateVolume(p *portworxVolumeProvisioner) (stri
 	// doesn't support new parameters, the server-side processing will parse it correctly.
 	// We still need to call SpecFromOpts() here to handle cases where someone is running Portworx 1.2.8 and lower.
 	specHandler := osdspec.NewSpecHandler()
-	spec, _ := specHandler.SpecFromOpts(p.options.Parameters)
+	spec, _, _, _ := specHandler.SpecFromOpts(p.options.Parameters)
 	if spec == nil {
 		spec = specHandler.DefaultSpec()
 	}
@@ -109,7 +109,7 @@ func (util *PortworxVolumeUtil) AttachVolume(m *portworxVolumeMounter) (string, 
 		return "", err
 	}
 
-	devicePath, err := driver.Attach(m.volName)
+	devicePath, err := driver.Attach(m.volName, map[string]string{})
 	if err != nil {
 		glog.Errorf("Error attaching Portworx Volume (%v): %v", m.volName, err)
 		return "", err
@@ -125,7 +125,7 @@ func (util *PortworxVolumeUtil) DetachVolume(u *portworxVolumeUnmounter) error {
 		return err
 	}
 
-	err = driver.Detach(u.volName)
+	err = driver.Detach(u.volName, map[string]string{})
 	if err != nil {
 		glog.Errorf("Error detaching Portworx Volume (%v): %v", u.volName, err)
 		return err
@@ -141,7 +141,7 @@ func (util *PortworxVolumeUtil) MountVolume(m *portworxVolumeMounter, mountPath 
 		return err
 	}
 
-	err = driver.Mount(m.volName, mountPath)
+	err = driver.Mount(m.volName, mountPath, map[string]string{})
 	if err != nil {
 		glog.Errorf("Error mounting Portworx Volume (%v) on Path (%v): %v", m.volName, mountPath, err)
 		return err
@@ -157,7 +157,7 @@ func (util *PortworxVolumeUtil) UnmountVolume(u *portworxVolumeUnmounter, mountP
 		return err
 	}
 
-	err = driver.Unmount(u.volName, mountPath)
+	err = driver.Unmount(u.volName, mountPath, map[string]string{})
 	if err != nil {
 		glog.Errorf("Error unmounting Portworx Volume (%v) on Path (%v): %v", u.volName, mountPath, err)
 		return err
@@ -181,7 +181,7 @@ func isClientValid(client *osdclient.Client) (bool, error) {
 
 func createDriverClient(hostname string) (*osdclient.Client, error) {
 	client, err := volumeclient.NewDriverClient("http://"+hostname+":"+osdMgmtPort,
-		pxdDriverName, osdDriverVersion)
+		pxdDriverName, osdDriverVersion, "kubernetes-volume")
 	if err != nil {
 		return nil, err
 	}
