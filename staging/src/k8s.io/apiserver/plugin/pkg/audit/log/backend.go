@@ -17,11 +17,11 @@ limitations under the License.
 package log
 
 import (
+	stdjson "encoding/json"
 	"fmt"
 	"io"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	auditinternal "k8s.io/apiserver/pkg/apis/audit"
 	"k8s.io/apiserver/pkg/audit"
@@ -67,20 +67,18 @@ func (b *backend) logEvent(ev *auditinternal.Event) {
 	switch b.format {
 	case FormatLegacy:
 		line = audit.EventString(ev) + "\n"
+		if _, err := fmt.Fprint(b.out, line); err != nil {
+			audit.HandlePluginError("log", err, ev)
+		}
 	case FormatJson:
-		bs, err := runtime.Encode(audit.Codecs.LegacyCodec(b.groupVersion), ev)
+		err := stdjson.NewEncoder(b.out).Encode(ev)
 		if err != nil {
 			audit.HandlePluginError("log", err, ev)
-			return
 		}
-		line = string(bs[:])
 	default:
 		audit.HandlePluginError("log", fmt.Errorf("log format %q is not in list of known formats (%s)",
 			b.format, strings.Join(AllowedFormats, ",")), ev)
 		return
-	}
-	if _, err := fmt.Fprint(b.out, line); err != nil {
-		audit.HandlePluginError("log", err, ev)
 	}
 }
 
