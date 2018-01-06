@@ -218,9 +218,10 @@ func (ComponentStatusList) SwaggerDoc() map[string]string {
 }
 
 var map_ConfigMap = map[string]string{
-	"":         "ConfigMap holds configuration data for pods to consume.",
-	"metadata": "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata",
-	"data":     "Data contains the configuration data. Each key must consist of alphanumeric characters, '-', '_' or '.'.",
+	"":           "ConfigMap holds configuration data for pods to consume.",
+	"metadata":   "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata",
+	"data":       "Data contains the configuration data. Each key must consist of alphanumeric characters, '-', '_' or '.'. The value must be a string (UTF-8). If the value has byte sequences not in the UTF-8 range, please use the BinaryData field. The keys stored in Data should not overlap with the keys in the BinaryData field.",
+	"binaryData": "Data contains the binary data. Each key must consist of alphanumeric characters, '-', '_' or '.'. BinaryData can contain byte sequences that are not in the UTF-8 range. The keys stored in BinaryData should not overlap with the ones in the Data field. Since BinaryData is a new field (since 1.10), older clients will not be able to set/update this field. Older servers will not be honor this field as well when you use a newer client.",
 }
 
 func (ConfigMap) SwaggerDoc() map[string]string {
