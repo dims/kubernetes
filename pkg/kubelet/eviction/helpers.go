@@ -609,9 +609,9 @@ func podRequest(pod *v1.Pod, resourceName v1.ResourceName) resource.Quantity {
 	for i := range pod.Spec.InitContainers {
 		switch resourceName {
 		case v1.ResourceMemory:
-			containerValue.Add(*pod.Spec.Containers[i].Resources.Requests.Memory())
+			initValue.Add(*pod.Spec.InitContainers[i].Resources.Requests.Memory())
 		case resourceDisk:
-			containerValue.Add(*pod.Spec.Containers[i].Resources.Requests.StorageEphemeral())
+			initValue.Add(*pod.Spec.InitContainers[i].Resources.Requests.StorageEphemeral())
 		}
 	}
 	if containerValue.Cmp(initValue) > 0 {
