@@ -238,6 +238,12 @@ const (
 	// Mount secret, configMap, downwardAPI and projected volumes ReadOnly. Note: this feature
 	// gate is present only for backward compatability, it will be removed in the 1.11 release.
 	ReadOnlyAPIDataVolumes utilfeature.Feature = "ReadOnlyAPIDataVolumes"
+
+	// owner: @dims
+	// alpha: v1.10
+	//
+	// Implement support for ulimits in containers
+	SupportUlimits utilfeature.Feature = "SupportUlimits"
 )
 
 func init() {

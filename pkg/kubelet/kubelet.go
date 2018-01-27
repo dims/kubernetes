@@ -890,6 +890,11 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			glog.Errorf("Accelerators feature is supported with docker runtime only. Disabling this feature internally.")
 		}
 	}
+	if utilfeature.DefaultFeatureGate.Enabled(features.SupportUlimits) {
+		if containerRuntime != kubetypes.DockerContainerRuntime {
+			glog.Warning("ULimits support is supported with docker runtime only. UFLimits specified will not have any effect when using %v.", containerRuntime)
+		}
+	}
 	// Set GPU manager to a stub implementation if it is not enabled or cannot be supported.
 	if klet.gpuManager == nil {
 		klet.gpuManager = gpu.NewGPUManagerStub()
