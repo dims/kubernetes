@@ -736,6 +736,7 @@ func Convert_core_CephFSVolumeSource_To_v1_CephFSVolumeSource(in *core.CephFSVol
 func autoConvert_v1_CinderVolumeSource_To_core_CinderVolumeSource(in *v1.CinderVolumeSource, out *core.CinderVolumeSource, s conversion.Scope) error {
 	out.VolumeID = in.VolumeID
 	out.FSType = in.FSType
+	out.SecretRef = (*core.SecretReference)(unsafe.Pointer(in.SecretRef))
 	out.ReadOnly = in.ReadOnly
 	return nil
 }
@@ -748,6 +749,7 @@ func Convert_v1_CinderVolumeSource_To_core_CinderVolumeSource(in *v1.CinderVolum
 func autoConvert_core_CinderVolumeSource_To_v1_CinderVolumeSource(in *core.CinderVolumeSource, out *v1.CinderVolumeSource, s conversion.Scope) error {
 	out.VolumeID = in.VolumeID
 	out.FSType = in.FSType
+	out.SecretRef = (*v1.SecretReference)(unsafe.Pointer(in.SecretRef))
 	out.ReadOnly = in.ReadOnly
 	return nil
 }

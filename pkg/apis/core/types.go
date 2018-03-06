@@ -1159,6 +1159,9 @@ type CinderVolumeSource struct {
 	// Ex. "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
 	// +optional
 	FSType string
+	// Optional: SecretRef is reference to the connection information for openstack, default is empty.
+	// +optional
+	SecretRef *SecretReference
 	// Optional: Defaults to false (read/write). ReadOnly here will force
 	// the ReadOnly setting in VolumeMounts.
 	// +optional

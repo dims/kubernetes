@@ -14333,6 +14333,7 @@ func (this *CinderVolumeSource) String() string {
 	s := strings.Join([]string{`&CinderVolumeSource{`,
 		`VolumeID:` + fmt.Sprintf("%v", this.VolumeID) + `,`,
 		`FSType:` + fmt.Sprintf("%v", this.FSType) + `,`,
+		`SecretRef:` + strings.Replace(fmt.Sprintf("%v", this.SecretRef), "LocalObjectReference", "LocalObjectReference", 1) + `,`,
 		`ReadOnly:` + fmt.Sprintf("%v", this.ReadOnly) + `,`,
 		`}`,
 	}, "")
