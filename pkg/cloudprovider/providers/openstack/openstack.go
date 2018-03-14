@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -42,8 +43,11 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	netutil "k8s.io/apimachinery/pkg/util/net"
+	clientset "k8s.io/client-go/kubernetes"
 	certutil "k8s.io/client-go/util/cert"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -55,6 +59,8 @@ const (
 	ProviderName     = "openstack"
 	availabilityZone = "availability_zone"
 	defaultTimeOut   = 60 * time.Second
+	// DefaultCloudConfigPath is the default path for cloud configuration
+	DefaultCloudConfigPath = "/etc/kubernetes/cloud-config"
 )
 
 // ErrNotFound is used to inform that the object is missing
@@ -160,7 +166,7 @@ func init() {
 	registerMetrics()
 
 	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := readConfig(config)
+		cfg, err := readConfig(config, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -198,7 +204,7 @@ func (cfg Config) toAuth3Options() tokens3.AuthOptions {
 
 // configFromEnv allows setting up credentials etc using the
 // standard OS_* OpenStack client environment variables.
-func configFromEnv() (cfg Config, ok bool) {
+func configFromEnv(cfg *Config) {
 	cfg.Global.AuthURL = os.Getenv("OS_AUTH_URL")
 	cfg.Global.Username = os.Getenv("OS_USERNAME")
 	cfg.Global.Password = os.Getenv("OS_PASSWORD")
@@ -224,35 +230,95 @@ func configFromEnv() (cfg Config, ok bool) {
 		cfg.Global.DomainName = os.Getenv("OS_USER_DOMAIN_NAME")
 	}
 
-	ok = cfg.Global.AuthURL != "" &&
+	cfg.Metadata.SearchOrder = fmt.Sprintf("%s,%s", configDriveID, metadataID)
+	cfg.BlockStorage.BSVersion = "auto"
+}
+
+func configFromSecret(cfg *Config, kubeClient clientset.Interface) error {
+	secret, err := kubeClient.CoreV1().Secrets("kube-system").Get("openstack", metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	} else {
+		for name, data := range secret.Data {
+			value := string(data)
+			switch name {
+			case "auth-url":
+				cfg.Global.AuthURL = value
+			case "username":
+				cfg.Global.Username = value
+			case "user-id":
+				cfg.Global.UserID = value
+			case "password":
+				cfg.Global.Password = value
+			case "tenant-id":
+				cfg.Global.TenantID = value
+			case "tenant-name":
+				cfg.Global.TenantName = value
+			case "trust-id":
+				cfg.Global.TrustID = value
+			case "domain-id":
+				cfg.Global.DomainID = value
+			case "domain-name":
+				cfg.Global.DomainName = value
+			case "region":
+				cfg.Global.Region = value
+			case "ca-file":
+				cfg.Global.CAFile = value
+			}
+		}
+	}
+	return err
+}
+
+func readConfig(config io.Reader, kubeClient clientset.Interface) (Config, error) {
+	var cfg Config
+
+	// Load what we can find in the environment variables
+	configFromEnv(&cfg)
+
+	// Set default values for config params
+	cfg.BlockStorage.BSVersion = "auto"
+	cfg.BlockStorage.TrustDevicePath = false
+	cfg.BlockStorage.IgnoreVolumeAZ = true
+	cfg.Metadata.SearchOrder = fmt.Sprintf("%s,%s", configDriveID, metadataID)
+
+	// If there is a configuration file specified, then load the file
+	if config != nil {
+		err := gcfg.ReadInto(&cfg, config)
+		if err != nil {
+			return Config{}, fmt.Errorf("unable to read configuration file : %v", err)
+		}
+	}
+
+	// If we have a kubeclient then try to load connection info
+	// from secret named "openstack" in "kube-system" namespace
+	if kubeClient != nil {
+		err := configFromSecret(&cfg, kubeClient)
+		if err != nil {
+			return Config{}, fmt.Errorf("unable to fetch information from secret : %v", err)
+		}
+	}
+
+	if !checkGlobalInfo(cfg) {
+		const size = 64 << 10
+		buf := make([]byte, size)
+		buf = buf[:runtime.Stack(buf, false)]
+		return Config{}, fmt.Errorf("not enough information to connect to openstack : %v", cfg.Global)
+	}
+	return cfg, nil
+}
+
+func checkGlobalInfo(cfg Config) bool {
+	ok := cfg.Global.AuthURL != "" &&
 		cfg.Global.Username != "" &&
 		cfg.Global.Password != "" &&
 		(cfg.Global.TenantID != "" || cfg.Global.TenantName != "" ||
 			cfg.Global.DomainID != "" || cfg.Global.DomainName != "" ||
 			cfg.Global.Region != "" || cfg.Global.UserID != "" ||
 			cfg.Global.TrustID != "")
-
-	cfg.Metadata.SearchOrder = fmt.Sprintf("%s,%s", configDriveID, metadataID)
-	cfg.BlockStorage.BSVersion = "auto"
-
-	return
-}
-
-func readConfig(config io.Reader) (Config, error) {
-	if config == nil {
-		return Config{}, fmt.Errorf("no OpenStack cloud provider config file given")
-	}
-
-	cfg, _ := configFromEnv()
-
-	// Set default values for config params
-	cfg.BlockStorage.BSVersion = "auto"
-	cfg.BlockStorage.TrustDevicePath = false
-	cfg.BlockStorage.IgnoreVolumeAZ = false
-	cfg.Metadata.SearchOrder = fmt.Sprintf("%s,%s", configDriveID, metadataID)
-
-	err := gcfg.ReadInto(&cfg, config)
-	return cfg, err
+	return ok
 }
 
 // caller is a tiny helper for conditional unwind logic
@@ -308,6 +374,33 @@ func checkOpenStackOpts(openstackOpts *OpenStack) error {
 		}
 	}
 	return checkMetadataSearchOrder(openstackOpts.metadataOpts.SearchOrder)
+}
+
+func NewOpenStack(kubeClient clientset.Interface) (*OpenStack, error) {
+	var err error
+	var cfg Config
+	var config *os.File
+	if _, err = os.Stat(DefaultCloudConfigPath); err == nil {
+		config, err = os.Open(DefaultCloudConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load OpenStack configuration from default path : %v", err)
+		}
+		defer config.Close()
+		cfg, err = readConfig(config, kubeClient)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		cfg, err = readConfig(nil, kubeClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+	cloud, err := newOpenStack(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create OpenStack cloud provider from default path : %v", err)
+	}
+	return cloud, err
 }
 
 func newOpenStack(cfg Config) (*OpenStack, error) {

@@ -17,7 +17,6 @@ limitations under the License.
 package cinder
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -34,11 +33,6 @@ import (
 	kstrings "k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util"
-)
-
-const (
-	// DefaultCloudConfigPath is the default path for cloud configuration
-	DefaultCloudConfigPath = "/etc/kubernetes/cloud-config"
 )
 
 // ProbeVolumePlugins is the primary entrypoint for volume plugins.
@@ -194,30 +188,11 @@ func (plugin *cinderPlugin) newProvisionerInternal(options volume.VolumeOptions,
 }
 
 func (plugin *cinderPlugin) getCloudProvider() (BlockStorageProvider, error) {
-	cloud := plugin.host.GetCloudProvider()
-	if cloud == nil {
-		if _, err := os.Stat(DefaultCloudConfigPath); err == nil {
-			var config *os.File
-			config, err = os.Open(DefaultCloudConfigPath)
-			if err != nil {
-				return nil, fmt.Errorf("unable to load OpenStack configuration from default path : %v", err)
-			}
-			defer config.Close()
-			cloud, err = cloudprovider.GetCloudProvider(openstack.ProviderName, config)
-			if err != nil {
-				return nil, fmt.Errorf("unable to create OpenStack cloud provider from default path : %v", err)
-			}
-		} else {
-			return nil, fmt.Errorf("OpenStack cloud provider was not initialized properly : %v", err)
-		}
+	cloud, err := openstack.NewOpenStack(plugin.host.GetKubeClient())
+	if err != nil {
+		return nil, err
 	}
-
-	switch cloud := cloud.(type) {
-	case *openstack.OpenStack:
-		return cloud, nil
-	default:
-		return nil, errors.New("invalid cloud provider: expected OpenStack")
-	}
+	return cloud, nil
 }
 
 func (plugin *cinderPlugin) ConstructVolumeSpec(volumeName, mountPath string) (*volume.Spec, error) {
