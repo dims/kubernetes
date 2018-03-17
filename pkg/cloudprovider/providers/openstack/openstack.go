@@ -27,7 +27,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
@@ -166,7 +165,7 @@ func init() {
 	registerMetrics()
 
 	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := readConfig(config, nil)
+		cfg, err := readConfig(config, nil, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -234,8 +233,14 @@ func configFromEnv(cfg *Config) {
 	cfg.BlockStorage.BSVersion = "auto"
 }
 
-func configFromSecret(cfg *Config, kubeClient clientset.Interface) error {
-	secret, err := kubeClient.CoreV1().Secrets("kube-system").Get("openstack", metav1.GetOptions{})
+func configFromSecret(cfg *Config, kubeClient clientset.Interface, name string, namespace string) error {
+	if name == "" {
+		name = "openstack"
+	}
+	if namespace == "" {
+		namespace = "kube-system"
+	}
+	secret, err := kubeClient.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
@@ -272,7 +277,7 @@ func configFromSecret(cfg *Config, kubeClient clientset.Interface) error {
 	return err
 }
 
-func readConfig(config io.Reader, kubeClient clientset.Interface) (Config, error) {
+func readConfig(config io.Reader, kubeClient clientset.Interface, name string, namespace string) (Config, error) {
 	var cfg Config
 
 	// Load what we can find in the environment variables
@@ -295,30 +300,25 @@ func readConfig(config io.Reader, kubeClient clientset.Interface) (Config, error
 	// If we have a kubeclient then try to load connection info
 	// from secret named "openstack" in "kube-system" namespace
 	if kubeClient != nil {
-		err := configFromSecret(&cfg, kubeClient)
+		err := configFromSecret(&cfg, kubeClient, name, namespace)
 		if err != nil {
-			return Config{}, fmt.Errorf("unable to fetch information from secret : %v", err)
+			return Config{}, fmt.Errorf("unable to fetch information from secret %v/%v : %v", namespace, name, err)
 		}
 	}
 
 	if !checkGlobalInfo(cfg) {
-		const size = 64 << 10
-		buf := make([]byte, size)
-		buf = buf[:runtime.Stack(buf, false)]
 		return Config{}, fmt.Errorf("not enough information to connect to openstack : %v", cfg.Global)
 	}
 	return cfg, nil
 }
 
 func checkGlobalInfo(cfg Config) bool {
-	ok := cfg.Global.AuthURL != "" &&
-		cfg.Global.Username != "" &&
+	// Region, TrustID and CAFile are optional fields
+	return cfg.Global.AuthURL != "" &&
 		cfg.Global.Password != "" &&
-		(cfg.Global.TenantID != "" || cfg.Global.TenantName != "" ||
-			cfg.Global.DomainID != "" || cfg.Global.DomainName != "" ||
-			cfg.Global.Region != "" || cfg.Global.UserID != "" ||
-			cfg.Global.TrustID != "")
-	return ok
+		(cfg.Global.Username != "" || cfg.Global.UserID != "") &&
+		(cfg.Global.TenantID != "" || cfg.Global.TenantName != "") &&
+		(cfg.Global.DomainID != "" || cfg.Global.DomainName != "")
 }
 
 // caller is a tiny helper for conditional unwind logic
@@ -376,7 +376,8 @@ func checkOpenStackOpts(openstackOpts *OpenStack) error {
 	return checkMetadataSearchOrder(openstackOpts.metadataOpts.SearchOrder)
 }
 
-func NewOpenStack(kubeClient clientset.Interface) (*OpenStack, error) {
+// NewOpenStack can be used when we need to use a specific secret
+func NewOpenStack(kubeClient clientset.Interface, name string, namespace string) (*OpenStack, error) {
 	var err error
 	var cfg Config
 	var config *os.File
@@ -386,12 +387,12 @@ func NewOpenStack(kubeClient clientset.Interface) (*OpenStack, error) {
 			return nil, fmt.Errorf("unable to load OpenStack configuration from default path : %v", err)
 		}
 		defer config.Close()
-		cfg, err = readConfig(config, kubeClient)
+		cfg, err = readConfig(config, kubeClient, name, namespace)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		cfg, err = readConfig(nil, kubeClient)
+		cfg, err = readConfig(nil, kubeClient, name, namespace)
 		if err != nil {
 			return nil, err
 		}

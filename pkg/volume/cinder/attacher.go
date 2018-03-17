@@ -68,7 +68,7 @@ func (attacher *cinderDiskAttacher) getCinderProvider() (BlockStorageProvider, e
 	if attacher.cinderProvider != nil {
 		return attacher.cinderProvider, nil
 	}
-	provider, err := attacher.cinderPlugin.getCloudProvider()
+	provider, err := attacher.cinderPlugin.getCloudProvider("", "")
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +344,7 @@ func (detacher *cinderDiskDetacher) getCinderProvider() (BlockStorageProvider, e
 	if detacher.cinderProvider != nil {
 		return detacher.cinderProvider, nil
 	}
-	provider, err := detacher.cinderPlugin.getCloudProvider()
+	provider, err := detacher.cinderPlugin.getCloudProvider("", "")
 	if err != nil {
 		return nil, err
 	}

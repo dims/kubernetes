@@ -19616,6 +19616,10 @@
       "type": "string",
       "description": "Filesystem type to mount. Must be a filesystem type supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md"
      },
+     "secretRef": {
+      "$ref": "v1.SecretReference",
+      "description": "Optional: SecretRef is reference to the secret object containing sensitive information to connect to openstack. This may be empty if no secret object is specified."
+     },
      "readOnly": {
       "type": "boolean",
       "description": "Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md"

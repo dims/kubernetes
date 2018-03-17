@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
@@ -114,6 +115,37 @@ func (plugin *cinderPlugin) GetAccessModes() []v1.PersistentVolumeAccessMode {
 	}
 }
 
+func (plugin *cinderPlugin) getSecretNameAndNamespace(spec *volume.Spec) (string, string, error) {
+	if spec.Volume != nil && spec.Volume.Cinder != nil {
+		localSecretRef := spec.Volume.Cinder.SecretRef
+		if localSecretRef != nil {
+			return localSecretRef.Name, localSecretRef.Namespace, nil
+		}
+	} else if spec.PersistentVolume != nil &&
+		spec.PersistentVolume.Spec.Cinder != nil {
+		secretRef := spec.PersistentVolume.Spec.Cinder.SecretRef
+		if secretRef != nil {
+			return secretRef.Name, secretRef.Namespace, nil
+		}
+	} else {
+		return "", "", fmt.Errorf("Spec does not reference an Cinder volume type")
+	}
+	name := ""
+	namespace := ""
+	class, err := util.GetClassForVolume(plugin.host.GetKubeClient(), spec.PersistentVolume)
+	if err == nil && class != nil {
+		for k, v := range class.Parameters {
+			switch strings.ToLower(k) {
+			case "secretname":
+				name = v
+			case "secretnamespace":
+				namespace = v
+			}
+		}
+	}
+	return name, namespace, nil
+}
+
 func (plugin *cinderPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	return plugin.newMounterInternal(spec, pod.UID, &DiskUtil{}, plugin.host.GetMounter(plugin.GetPluginName()))
 }
@@ -127,14 +159,21 @@ func (plugin *cinderPlugin) newMounterInternal(spec *volume.Spec, podUID types.U
 	pdName := cinder.VolumeID
 	fsType := cinder.FSType
 
+	secretName, secretNs, err := plugin.getSecretNameAndNamespace(spec)
+	if err != nil {
+		return nil, err
+	}
+
 	return &cinderVolumeMounter{
 		cinderVolume: &cinderVolume{
-			podUID:  podUID,
-			volName: spec.Name(),
-			pdName:  pdName,
-			mounter: mounter,
-			manager: manager,
-			plugin:  plugin,
+			podUID:     podUID,
+			volName:    spec.Name(),
+			pdName:     pdName,
+			mounter:    mounter,
+			manager:    manager,
+			plugin:     plugin,
+			secretName: secretName,
+			secretNs:   secretNs,
 		},
 		fsType:             fsType,
 		readOnly:           readOnly,
@@ -164,12 +203,20 @@ func (plugin *cinderPlugin) newDeleterInternal(spec *volume.Spec, manager cdMana
 	if spec.PersistentVolume != nil && spec.PersistentVolume.Spec.Cinder == nil {
 		return nil, fmt.Errorf("spec.PersistentVolumeSource.Cinder is nil")
 	}
+
+	secretName, secretNs, err := plugin.getSecretNameAndNamespace(spec)
+	if err != nil {
+		return nil, err
+	}
+
 	return &cinderVolumeDeleter{
 		&cinderVolume{
-			volName: spec.Name(),
-			pdName:  spec.PersistentVolume.Spec.Cinder.VolumeID,
-			manager: manager,
-			plugin:  plugin,
+			volName:    spec.Name(),
+			pdName:     spec.PersistentVolume.Spec.Cinder.VolumeID,
+			manager:    manager,
+			plugin:     plugin,
+			secretName: secretName,
+			secretNs:   secretNs,
 		}}, nil
 }
 
@@ -187,8 +234,8 @@ func (plugin *cinderPlugin) newProvisionerInternal(options volume.VolumeOptions,
 	}, nil
 }
 
-func (plugin *cinderPlugin) getCloudProvider() (BlockStorageProvider, error) {
-	cloud, err := openstack.NewOpenStack(plugin.host.GetKubeClient())
+func (plugin *cinderPlugin) getCloudProvider(name string, namespace string) (BlockStorageProvider, error) {
+	cloud, err := openstack.NewOpenStack(plugin.host.GetKubeClient(), name, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +268,13 @@ func (plugin *cinderPlugin) ExpandVolumeDevice(spec *volume.Spec, newSize resour
 	if err != nil {
 		return oldSize, err
 	}
-	cloud, err := plugin.getCloudProvider()
+
+	secretName, secretNs, err := plugin.getSecretNameAndNamespace(spec)
+	if err != nil {
+		return oldSize, err
+	}
+
+	cloud, err := plugin.getCloudProvider(secretName, secretNs)
 	if err != nil {
 		return oldSize, err
 	}
@@ -279,6 +332,8 @@ type cinderVolume struct {
 	blockDeviceMounter mount.Interface
 	plugin             *cinderPlugin
 	volume.MetricsNil
+	secretName string
+	secretNs   string
 }
 
 func (b *cinderVolumeMounter) GetAttributes() volume.Attributes {

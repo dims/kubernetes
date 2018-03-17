@@ -314,11 +314,17 @@ message CinderVolumeSource {
   // +optional
   optional string fsType = 2;
 
+  // Optional: SecretRef is reference to the secret object containing
+  // sensitive information to connect to openstack. This may be
+  // empty if no secret object is specified.
+  // +optional
+  optional SecretReference secretRef = 3;
+
   // Optional: Defaults to false (read/write). ReadOnly here will force
   // the ReadOnly setting in VolumeMounts.
   // More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md
   // +optional
-  optional bool readOnly = 3;
+  optional bool readOnly = 4;
 }
 
 // ClientIPConfig represents the configurations of Client IP based session affinity.
