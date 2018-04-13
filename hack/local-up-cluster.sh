@@ -31,6 +31,7 @@ KUBELET_AUTHORIZATION_WEBHOOK=${KUBELET_AUTHORIZATION_WEBHOOK:-""}
 KUBELET_AUTHENTICATION_WEBHOOK=${KUBELET_AUTHENTICATION_WEBHOOK:-""}
 POD_MANIFEST_PATH=${POD_MANIFEST_PATH:-"/var/run/kubernetes/static-pods"}
 KUBELET_FLAGS=${KUBELET_FLAGS:-""}
+KUBELET_IMAGE=${KUBELET_IMAGE:-""}
 # many dev environments run with swap on, so we don't fail in this env
 FAIL_SWAP_ON=${FAIL_SWAP_ON:-"false"}
 # Name of the network plugin, eg: "kubenet"
@@ -224,7 +225,7 @@ KUBELET_HOST=${KUBELET_HOST:-"127.0.0.1"}
 # By default only allow CORS for requests on localhost
 API_CORS_ALLOWED_ORIGINS=${API_CORS_ALLOWED_ORIGINS:-/127.0.0.1(:[0-9]+)?$,/localhost(:[0-9]+)?$}
 KUBELET_PORT=${KUBELET_PORT:-10250}
-LOG_LEVEL=${LOG_LEVEL:-3}
+LOG_LEVEL=${LOG_LEVEL:-10}
 # Use to increase verbosity on particular files, e.g. LOG_SPEC=token_controller*=5,other_controller*=4
 LOG_SPEC=${LOG_SPEC:-""}
 LOG_DIR=${LOG_DIR:-"/tmp"}
@@ -340,6 +341,12 @@ cleanup_dockerized_kubelet()
   if [[ -e $KUBELET_CIDFILE ]]; then
     docker kill $(<$KUBELET_CIDFILE) > /dev/null
     rm -f $KUBELET_CIDFILE
+
+    if [[ -f /var/log/docker.log ]]; then
+      sudo cp /var/log/docker.log ${LOG_DIR}/docker.log
+    elif command -v journalctl &>/dev/null; then
+      journalctl -u docker --no-pager > ${LOG_DIR}/docker.log
+    fi
   fi
 }
 
@@ -778,6 +785,14 @@ function start_kubelet {
       sudo -E "${GO_OUT}/hyperkube" kubelet "${all_kubelet_flags[@]}" >"${KUBELET_LOG}" 2>&1 &
       KUBELET_PID=$!
     else
+
+      set -x
+      # Build the hyperkube container image if necessary
+      if [[ -z "$KUBELET_IMAGE" && -n "$DOCKERIZE_KUBELET" ]]; then
+        HYPERKUBE_BIN="${GO_OUT}/hyperkube" REGISTRY="k8s.gcr.io" VERSION="latest" make -C "${KUBE_ROOT}/cluster/images/hyperkube" build
+        KUBELET_IMAGE="k8s.gcr.io/hyperkube-amd64:latest"
+      fi
+
       # Docker won't run a container with a cidfile (container id file)
       # unless that file does not already exist; clean up an existing
       # dockerized kubelet that might be running.
@@ -799,21 +814,30 @@ function start_kubelet {
       fi
       all_kubelet_flags+=(--containerized)
 
-      docker run --rm --name kubelet \
+      all_kubelet_volumes=(
         --volume=/:/rootfs:ro,rslave \
         --volume=/var/run:/var/run:rw \
         --volume=/sys:/sys:ro \
-        --volume=/var/lib/docker/:/var/lib/docker:rslave \
-        --volume=/var/lib/kubelet/:/var/lib/kubelet:rslave \
+        --volume=/var/lib/docker/:/var/lib/docker:rshared \
+        --volume=/var/lib/kubelet/:/var/lib/kubelet:rshared \
         --volume=/dev:/dev \
         --volume=/run/xtables.lock:/run/xtables.lock:rw \
+      )
+
+      if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
+        all_kubelet_flags+=(--root-dir=/docker-graph)
+        all_kubelet_volumes+=(--volume=/docker-graph:/docker-graph:rshared)
+      fi
+
+      docker run --rm --name kubelet \
+        "${all_kubelet_volumes[@]}" \
         ${cred_bind} \
         --net=host \
         --pid=host \
         --privileged=true \
         -i \
         --cidfile=$KUBELET_CIDFILE \
-        k8s.gcr.io/kubelet \
+        "${KUBELET_IMAGE}" \
         /kubelet "${all_kubelet_flags[@]}" >"${KUBELET_LOG}" 2>&1 &
       # Get PID of kubelet container.
       for i in {1..3}; do
@@ -834,6 +858,7 @@ function start_kubelet {
     else
       cat ${KUBELET_LOG} ; exit 1
     fi
+    set +x
 }
 
 function start_kubeproxy {
@@ -990,6 +1015,7 @@ if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
   export PATH="${KUBE_ROOT}/third_party/etcd:${PATH}"
   KUBE_FASTBUILD=true make ginkgo cross
   apt install -y sudo
+  apt remove -y systemd
   # configure shared mounts to prevent failure in DIND scenarios
   mount --make-rshared /
 fi

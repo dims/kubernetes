@@ -84,7 +84,10 @@ func NewNsenter() *Nsenter {
 	// search for the required commands in other locations besides /usr/bin
 	for binary := range ne.paths {
 		// default to root
-		ne.paths[binary] = filepath.Join("/", binary)
+		binPath := filepath.Join("/", binary)
+		if _, err := os.Stat(filepath.Join(hostRootFsPath, binPath)); err == nil {
+			ne.paths[binary] = binPath
+		}
 		for _, path := range []string{"/bin", "/usr/sbin", "/usr/bin"} {
 			binPath := filepath.Join(path, binary)
 			if _, err := os.Stat(filepath.Join(hostRootFsPath, binPath)); err != nil {
@@ -120,5 +123,5 @@ func (ne *Nsenter) AbsHostPath(command string) string {
 // SupportsSystemd checks whether command systemd-run exists
 func (ne *Nsenter) SupportsSystemd() (string, bool) {
 	systemdRunPath, hasSystemd := ne.paths["systemd-run"]
-	return systemdRunPath, hasSystemd
+	return systemdRunPath, hasSystemd && systemdRunPath != ""
 }

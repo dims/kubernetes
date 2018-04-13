@@ -22,6 +22,11 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${KUBE_ROOT}/cluster/common.sh"
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
+function finish {
+  sudo cp /var/log/docker.log /workspace/_artifacts/docker.log
+}
+trap finish EXIT
+
 # Find the ginkgo binary build as part of the release.
 ginkgo=$(kube::util::find-binary "ginkgo")
 e2e_test=$(kube::util::find-binary "e2e.test")

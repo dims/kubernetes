@@ -19,7 +19,7 @@
 
 REGISTRY?=staging-k8s.gcr.io
 ARCH?=amd64
-OUT_DIR?=_output
+OUT_DIR?=../../../_output
 HYPERKUBE_BIN?=$(OUT_DIR)/dockerized/bin/linux/$(ARCH)/hyperkube
 
 BASEIMAGE=k8s.gcr.io/debian-hyperkube-base-$(ARCH):0.10
@@ -33,7 +33,7 @@ ifndef VERSION
     $(error VERSION is undefined)
 endif
 	cp -r ./* ${TEMP_DIR}
-	cp ../../../${HYPERKUBE_BIN} ${TEMP_DIR}
+	cp ${HYPERKUBE_BIN} ${TEMP_DIR}
 
 	chmod a+rx ${TEMP_DIR}/hyperkube
 
