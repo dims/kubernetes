@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -6,15 +6,12 @@ go_library(
         "ascii.go",
         "proxy.go",
         "tc.go",
-        "tc_solaris_cgo.go",
         "term.go",
         "term_windows.go",
         "termios_bsd.go",
         "termios_linux.go",
         "winsize.go",
-        "winsize_solaris_cgo.go",
     ],
-    cgo = True,
     importmap = "k8s.io/kubernetes/vendor/github.com/docker/docker/pkg/term",
     importpath = "github.com/docker/docker/pkg/term",
     visibility = ["//visibility:public"],
@@ -55,6 +52,20 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "ascii_test.go",
+        "proxy_test.go",
+        "term_linux_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        "//vendor/github.com/stretchr/testify/require:go_default_library",
+    ],
 )
 
 filegroup(

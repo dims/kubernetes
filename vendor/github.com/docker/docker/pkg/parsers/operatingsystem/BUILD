@@ -1,14 +1,12 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "operatingsystem_linux.go",
-        "operatingsystem_solaris.go",
         "operatingsystem_unix.go",
         "operatingsystem_windows.go",
     ],
-    cgo = True,
     importmap = "k8s.io/kubernetes/vendor/github.com/docker/docker/pkg/parsers/operatingsystem",
     importpath = "github.com/docker/docker/pkg/parsers/operatingsystem",
     visibility = ["//visibility:public"],
@@ -21,6 +19,12 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["operatingsystem_unix_test.go"],
+    embed = [":go_default_library"],
 )
 
 filegroup(

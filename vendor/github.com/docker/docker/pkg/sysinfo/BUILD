@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -8,17 +8,9 @@ go_library(
         "numcpu_windows.go",
         "sysinfo.go",
         "sysinfo_linux.go",
-        "sysinfo_solaris.go",
         "sysinfo_unix.go",
         "sysinfo_windows.go",
     ],
-    cgo = True,
-    clinkopts = select({
-        "@io_bazel_rules_go//go/platform:solaris": [
-            "-llgrp",
-        ],
-        "//conditions:default": [],
-    }),
     importmap = "k8s.io/kubernetes/vendor/github.com/docker/docker/pkg/sysinfo",
     importpath = "github.com/docker/docker/pkg/sysinfo",
     visibility = ["//visibility:public"],
@@ -32,6 +24,22 @@ go_library(
         ],
         "@io_bazel_rules_go//go/platform:windows": [
             "//vendor/golang.org/x/sys/windows:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "sysinfo_linux_test.go",
+        "sysinfo_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "//vendor/github.com/stretchr/testify/require:go_default_library",
+            "//vendor/golang.org/x/sys/unix:go_default_library",
         ],
         "//conditions:default": [],
     }),
