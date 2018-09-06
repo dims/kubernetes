@@ -481,7 +481,7 @@ _____________________________________________________________________
 						KubeadmVersion: "v1.11.0",
 						DNSType:        "coredns",
 						DNSVersion:     "1.0.6",
-						EtcdVersion:    "3.2.18",
+						EtcdVersion:    "3.2.24",
 					},
 				},
 			},
@@ -498,7 +498,7 @@ Scheduler            v1.10.2   v1.11.0
 Kube Proxy           v1.10.2   v1.11.0
 CoreDNS                        1.0.6
 Kube DNS             1.14.7    
-Etcd                 3.1.11    3.2.18
+Etcd                 3.1.11    3.2.24
 
 You can now apply the upgrade by executing the following command:
 
@@ -528,7 +528,7 @@ _____________________________________________________________________
 						KubeadmVersion: "v1.11.0",
 						DNSType:        "coredns",
 						DNSVersion:     "1.0.6",
-						EtcdVersion:    "3.2.18",
+						EtcdVersion:    "3.2.24",
 					},
 				},
 			},
@@ -544,7 +544,7 @@ Controller Manager   v1.10.2   v1.11.0
 Scheduler            v1.10.2   v1.11.0
 Kube Proxy           v1.10.2   v1.11.0
 CoreDNS              1.0.5     1.0.6
-Etcd                 3.1.11    3.2.18
+Etcd                 3.1.11    3.2.24
 
 You can now apply the upgrade by executing the following command:
 
@@ -574,7 +574,7 @@ _____________________________________________________________________
 						KubeadmVersion: "v1.11.0",
 						DNSType:        "kube-dns",
 						DNSVersion:     "1.14.9",
-						EtcdVersion:    "3.2.18",
+						EtcdVersion:    "3.2.24",
 					},
 				},
 			},
@@ -591,7 +591,7 @@ Scheduler            v1.10.2   v1.11.0
 Kube Proxy           v1.10.2   v1.11.0
 CoreDNS              1.0.6     
 Kube DNS                       1.14.9
-Etcd                 3.1.11    3.2.18
+Etcd                 3.1.11    3.2.24
 
 You can now apply the upgrade by executing the following command:
 
