@@ -160,14 +160,14 @@ type Config struct {
 }
 
 func init() {
-	registerMetrics()
+	RegisterMetrics()
 
 	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := readConfig(config)
+		cfg, err := ReadConfig(config)
 		if err != nil {
 			return nil, err
 		}
-		return newOpenStack(cfg)
+		return NewOpenStack(cfg)
 	})
 }
 
@@ -241,7 +241,7 @@ func configFromEnv() (cfg Config, ok bool) {
 	return
 }
 
-func readConfig(config io.Reader) (Config, error) {
+func ReadConfig(config io.Reader) (Config, error) {
 	if config == nil {
 		return Config{}, fmt.Errorf("no OpenStack cloud provider config file given")
 	}
@@ -313,7 +313,7 @@ func checkOpenStackOpts(openstackOpts *OpenStack) error {
 	return checkMetadataSearchOrder(openstackOpts.metadataOpts.SearchOrder)
 }
 
-func newOpenStack(cfg Config) (*OpenStack, error) {
+func NewOpenStack(cfg Config) (*OpenStack, error) {
 	provider, err := openstack.NewClient(cfg.Global.AuthURL)
 	if err != nil {
 		return nil, err

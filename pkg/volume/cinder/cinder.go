@@ -210,7 +210,7 @@ func (plugin *cinderPlugin) getCloudProvider() (BlockStorageProvider, error) {
 				return nil, fmt.Errorf("unable to load OpenStack configuration from default path : %v", err)
 			}
 			defer config.Close()
-			cloud, err = cloudprovider.GetCloudProvider(openstack.ProviderName, config)
+			cloud, err = cloudprovider.GetCloudProvider(ProviderName, config)
 			if err != nil {
 				return nil, fmt.Errorf("unable to create OpenStack cloud provider from default path : %v", err)
 			}
@@ -221,6 +221,8 @@ func (plugin *cinderPlugin) getCloudProvider() (BlockStorageProvider, error) {
 
 	switch cloud := cloud.(type) {
 	case *openstack.OpenStack:
+		return cloud, nil
+	case *Cinder:
 		return cloud, nil
 	default:
 		return nil, errors.New("invalid cloud provider: expected OpenStack")

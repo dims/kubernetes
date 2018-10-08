@@ -12,6 +12,7 @@ go_library(
         "attacher.go",
         "cinder.go",
         "cinder_block.go",
+        "cinder_provider.go",
         "cinder_util.go",
         "doc.go",
     ],

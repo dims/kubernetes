@@ -44,7 +44,7 @@ var (
 	)
 )
 
-func registerMetrics() {
-	prometheus.MustRegister(openstackOperationsLatency)
-	prometheus.MustRegister(openstackAPIRequestErrors)
+func RegisterMetrics() {
+	prometheus.Register(openstackOperationsLatency)
+	prometheus.Register(openstackAPIRequestErrors)
 }
