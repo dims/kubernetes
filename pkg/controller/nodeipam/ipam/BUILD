@@ -38,6 +38,7 @@ go_library(
         "controller.go",
         "doc.go",
         "range_allocator.go",
+				"multi_range_allocator.go",
         "timeout.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/controller/nodeipam/ipam",

@@ -2966,6 +2966,16 @@ func ValidatePod(pod *core.Pod) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(specPath, hugePageResources, "must use a single hugepage size in a pod spec"))
 	}
 
+	// There should be no duplicates in list of Pod.IPs
+	statusPath := field.NewPath("status")
+	seen := make(map[string]int)
+	for idx, podIP := range pod.Status.PodIPs {
+		if atIdx, ok := seen[podIP.IP]; ok {
+			allErrs = append(allErrs, field.Forbidden(statusPath.Child("podIPs"), fmt.Sprintf("IP %v at idx:%v is duplicate at idx:%v", podIP.IP, idx, atIdx)))
+		} else {
+			seen[podIP.IP] = idx
+		}
+	}
 	return allErrs
 }
 
@@ -4135,10 +4145,20 @@ func ValidateNode(node *core.Node) field.ErrorList {
 	// That said, if specified, we need to ensure they are valid.
 	allErrs = append(allErrs, ValidateNodeResources(node)...)
 
-	if len(node.Spec.PodCIDR) != 0 {
-		_, err := ValidateCIDR(node.Spec.PodCIDR)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "podCIDR"), node.Spec.PodCIDR, "not a valid CIDR"))
+	if len(node.Spec.PodCIDRs) != 0 {
+		// validate all cidrs in node.Spec.PodCIDR[]
+		seen := make(map[string]int)
+		for idx, value := range node.Spec.PodCIDRs {
+			_, err := ValidateCIDR(value)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "podCIDR"), node.Spec.PodCIDRs, fmt.Sprintf("not a valid CIDR[%v]", idx)))
+			}
+			// should not be duplicate
+			if atIdx, ok := seen[value]; ok {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "podCIDR"), node.Spec.PodCIDRs, fmt.Sprintf("duplicate cidr %v duplicate with idx[%v]", value, atIdx)))
+			} else {
+				seen[value] = idx
+			}
 		}
 	}
 	return allErrs
@@ -4199,12 +4219,19 @@ func ValidateNodeUpdate(node, oldNode *core.Node) field.ErrorList {
 		addresses[address] = true
 	}
 
-	if len(oldNode.Spec.PodCIDR) == 0 {
+	if len(oldNode.Spec.PodCIDRs) == 0 {
 		// Allow the controller manager to assign a CIDR to a node if it doesn't have one.
-		oldNode.Spec.PodCIDR = node.Spec.PodCIDR
+		//this is a no op for a string slice.
+		oldNode.Spec.PodCIDRs = node.Spec.PodCIDRs
 	} else {
-		if oldNode.Spec.PodCIDR != node.Spec.PodCIDR {
-			allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", "podCIDR"), "node updates may not change podCIDR except from \"\" to valid"))
+		// compare the entire slice
+		if len(oldNode.Spec.PodCIDRs) != len(node.Spec.PodCIDRs) {
+			allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", "podCIDRs"), "node updates may not change podCIDR except from \"\" to valid"))
+		}
+		for idx, value := range oldNode.Spec.PodCIDRs {
+			if value != node.Spec.PodCIDRs[idx] {
+				allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", "podCIDRs"), "node updates may not change podCIDR except from \"\" to valid"))
+			}
 		}
 	}
 

@@ -35,6 +35,10 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 	err := scheme.AddConversionFuncs(
 		Convert_core_Pod_To_v1_Pod,
 		Convert_core_PodSpec_To_v1_PodSpec,
+		Convert_v1_PodStatus_To_core_PodStatus,
+		Convert_core_PodStatus_To_v1_PodStatus,
+		Convert_core_NodeSpec_To_v1_NodeSpec,
+		Convert_v1_NodeSpec_To_core_NodeSpec,
 		Convert_core_ReplicationControllerSpec_To_v1_ReplicationControllerSpec,
 		Convert_core_ServiceSpec_To_v1_ServiceSpec,
 		Convert_v1_Pod_To_core_Pod,
@@ -270,6 +274,47 @@ func Convert_v1_PodTemplateSpec_To_core_PodTemplateSpec(in *v1.PodTemplateSpec, 
 	return nil
 }
 
+// Converts podStatus from v1 to core
+// auto + handling podIp/podIps
+func Convert_v1_PodStatus_To_core_PodStatus(in *v1.PodStatus, out *core.PodStatus, s conversion.Scope) error {
+	if err := autoConvert_v1_PodStatus_To_core_PodStatus(in, out, s); err != nil {
+		return err
+	}
+
+	// If both fields are provided, then test  in.PodIP == in.PodIPs[0]
+	if (len(in.PodIP) > 0 && len(in.PodIPs) > 0) && (in.PodIP != in.PodIPs[0].IP) {
+		return fmt.Errorf("conversion Error: in.PodIP(%v) != in.PodIPs[0](%v)", in.PodIP, in.PodIPs[0].IP)
+	}
+	// input has PodIP but not PodIPs
+	// Copy PodIP => PodIP[0]
+	if len(in.PodIP) > 0 && len(in.PodIPs) == 0 {
+		// PodIP + NO entries in PodIPs
+		out.PodIPs = []core.PodIP{
+			{
+				IP:         in.PodIP,
+				Properties: make(map[string]string),
+			},
+		}
+	}
+	return nil
+}
+
+// Converts podStatus from core to v1
+// auto + handling podIp/podIps
+func Convert_core_PodStatus_To_v1_PodStatus(in *core.PodStatus, out *v1.PodStatus, s conversion.Scope) error {
+	if err := autoConvert_core_PodStatus_To_v1_PodStatus(in, out, s); err != nil {
+		return err
+	}
+	// handle ip/ips fields
+	//v1.PodIP gets the out.PodIps[0]
+	//v1.PodIPs gets the entire list of PodIPs
+	// via auto convert
+	if len(in.PodIPs) > 0 {
+		out.PodIP = in.PodIPs[0].IP
+	}
+	return nil
+}
+
 // The following two v1.PodSpec conversions are done here to support v1.ServiceAccount
 // as an alias for ServiceAccountName.
 func Convert_core_PodSpec_To_v1_PodSpec(in *core.PodSpec, out *v1.PodSpec, s conversion.Scope) error {
@@ -289,6 +334,35 @@ func Convert_core_PodSpec_To_v1_PodSpec(in *core.PodSpec, out *v1.PodSpec, s con
 		out.ShareProcessNamespace = in.SecurityContext.ShareProcessNamespace
 	}
 
+	return nil
+}
+
+// The following NodeSpec conversions functions focus on converting
+// NodeSpec.PodCIDR -> NodeSpec.PodCIDRs
+func Convert_core_NodeSpec_To_v1_NodeSpec(in *core.NodeSpec, out *v1.NodeSpec, s conversion.Scope) error {
+	if err := autoConvert_core_NodeSpec_To_v1_NodeSpec(in, out, s); err != nil {
+		return err
+	}
+	if len(in.PodCIDRs) > 0 {
+		out.PodCIDR = in.PodCIDRs[0]
+	}
+	out.PodCIDRs = in.PodCIDRs
+	return nil
+}
+func Convert_v1_NodeSpec_To_core_NodeSpec(in *v1.NodeSpec, out *core.NodeSpec, s conversion.Scope) error {
+	if err := autoConvert_v1_NodeSpec_To_core_NodeSpec(in, out, s); err != nil {
+		return err
+	}
+	// handle cidr/cidrs fields
+	// if in.PodCIDR and in.PodCIDRs are provided then test in.PodCIDR == in.PodCIDRs[0]
+	if (len(in.PodCIDR) > 0 && len(in.PodCIDRs) > 0) && (in.PodCIDR != in.PodCIDRs[0]) {
+		return fmt.Errorf("conversion Error: in.PodCIDR(%v) != in.CIDRs[0](%v)", in.PodCIDR, in.PodCIDRs[0])
+	}
+	if len(in.PodCIDR) > 0 && len(in.PodCIDRs) == 0 {
+		// CIDR + NO entries in CIDRs
+		// copy node.PodCIDR[0] = node.PodCIDR
+		out.PodCIDRs = []string{in.PodCIDR}
+	}
 	return nil
 }
 

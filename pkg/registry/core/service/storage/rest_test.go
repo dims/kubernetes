@@ -1180,7 +1180,7 @@ func TestServiceRegistryResourceLocation(t *testing.T) {
 					Containers:    []api.Container{{Name: "bar", Image: "test", ImagePullPolicy: api.PullIfNotPresent, TerminationMessagePolicy: api.TerminationMessageReadFile}},
 				},
 				Status: api.PodStatus{
-					PodIP: "1.2.3.4",
+					PodIPs: []api.PodIP{{IP: "1.2.3.4"}},
 				},
 			},
 			{
@@ -1194,7 +1194,7 @@ func TestServiceRegistryResourceLocation(t *testing.T) {
 					Containers:    []api.Container{{Name: "bar", Image: "test", ImagePullPolicy: api.PullIfNotPresent, TerminationMessagePolicy: api.TerminationMessageReadFile}},
 				},
 				Status: api.PodStatus{
-					PodIP: "1.2.3.5",
+					PodIPs: []api.PodIP{{IP: "1.2.3.5"}},
 				},
 			},
 		},

@@ -428,3 +428,9 @@ func SetDefaults_SecurityContext(obj *v1.SecurityContext) {
 		obj.ProcMount = &defProcMount
 	}
 }
+
+func SetDefaults_NodeSpec(obj *v1.NodeSpec) {
+	if obj.PodCIDRs == nil {
+		obj.PodCIDRs = []string{}
+	}
+}

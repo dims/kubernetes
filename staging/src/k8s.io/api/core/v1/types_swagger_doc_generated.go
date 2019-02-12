@@ -1446,6 +1446,14 @@ func (PodExecOptions) SwaggerDoc() map[string]string {
 	return map_PodExecOptions
 }
 
+var map_PodIP = map[string]string{
+	"": "IP address information for entries in the (plural) PodIPs slice. Each entry includes:\n   IP: An IP address allocated to the pod. Routable at least within\n       the cluster.\n   Properties: Arbitrary metadata associated with the allocated IP.",
+}
+
+func (PodIP) SwaggerDoc() map[string]string {
+	return map_PodIP
+}
+
 var map_PodList = map[string]string{
 	"":         "PodList is a list of Pods.",
 	"metadata": "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",

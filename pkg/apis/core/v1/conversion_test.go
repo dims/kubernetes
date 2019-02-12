@@ -346,3 +346,203 @@ func roundTripRS(t *testing.T, rs *apps.ReplicaSet) *apps.ReplicaSet {
 	}
 	return obj3
 }
+
+func Test_core_PodStatus_to_v1_PodStatus(t *testing.T) {
+	// core to v1
+	testInputs := []core.PodStatus{
+		core.PodStatus{
+			// we have list but no IP
+			PodIPs: []core.PodIP{
+				{
+					IP:         "1.1.1.1",
+					Properties: make(map[string]string),
+				},
+				{
+					IP:         "2.2.2.2",
+					Properties: make(map[string]string),
+				},
+			},
+		},
+	}
+	for _, input := range testInputs {
+		v1PodStatus := v1.PodStatus{}
+		if err := corev1.Convert_core_PodStatus_To_v1_PodStatus(&input, &v1PodStatus, nil); nil != err {
+			t.Errorf("Convert core.PodStatus to v1.PodStatus failed with error %v", err.Error())
+		}
+
+		// Primary IP was not set..
+		if len(v1PodStatus.PodIP) == 0 {
+			t.Errorf("Convert core.PodStatus to v1.PodStatus failed out.PodIP is empty, should be %v", v1PodStatus.PodIP)
+		}
+
+		// Primary should always == in.PodIPs[0].IP
+		if len(input.PodIPs) > 0 && v1PodStatus.PodIP != input.PodIPs[0].IP {
+			t.Errorf("Convert core.PodStatus to v1.PodStatus failed out.PodIP != in.PodIP[0].IP expected %v found %v", input.PodIPs[0].IP, v1PodStatus.PodIP)
+		}
+		// match v1.PodIPs to core.PodIPs
+		for idx := range input.PodIPs {
+			if v1PodStatus.PodIPs[idx].IP != input.PodIPs[idx].IP {
+				t.Errorf("Convert core.PodStatus to v1.PodStatus failed. Expected v1.PodStatus[%v]=%v but found %v", idx, input.PodIPs[idx].IP, v1PodStatus.PodIPs[idx].IP)
+			}
+		}
+	}
+}
+func Test_v1_PodStatus_to_core_PodStatus(t *testing.T) {
+	// fail
+	v1FailTestInputs := []v1.PodStatus{
+		v1.PodStatus{
+			PodIP: "1.1.2.1", // fail becaue PodIP != PodIPs[0]
+			PodIPs: []v1.PodIP{
+				{IP: "1.1.1.1"},
+				{IP: "2.2.2.2"},
+			},
+		},
+	}
+	// success
+	v1TestInputs := []v1.PodStatus{
+		// only list of IPs
+		v1.PodStatus{
+			PodIPs: []v1.PodIP{
+				{IP: "1.1.1.1"},
+				{IP: "2.2.2.2"},
+			},
+		},
+		// only Primary IP Provided
+		v1.PodStatus{
+			PodIP: "1.1.1.1",
+		},
+		// Both
+		v1.PodStatus{
+			PodIP: "1.1.1.1",
+			PodIPs: []v1.PodIP{
+				{IP: "1.1.1.1"},
+				{IP: "2.2.2.2"},
+			},
+		},
+		// v4 and v6
+		v1.PodStatus{
+			PodIP: "1.1.1.1",
+			PodIPs: []v1.PodIP{
+				{IP: "1.1.1.1"},
+				{IP: "ace:cab:deca::/8"},
+			},
+		},
+	}
+	// run failed cases
+	for _, failedTest := range v1FailTestInputs {
+		corePodStatus := core.PodStatus{}
+		// convert..
+		if err := corev1.Convert_v1_PodStatus_To_core_PodStatus(&failedTest, &corePodStatus, nil); err == nil {
+			t.Errorf("Convert v1.PodStatus to core.PodStatus should have failed for input %+v", failedTest)
+		}
+	}
+
+	// run ok cases
+	for _, testInput := range v1TestInputs {
+		corePodStatus := core.PodStatus{}
+		// convert..
+		if err := corev1.Convert_v1_PodStatus_To_core_PodStatus(&testInput, &corePodStatus, nil); err != nil {
+			t.Errorf("Convert v1.PodStatus to core.PodStatus failed with error:%v for input %+v", err.Error(), testInput)
+		}
+
+		// List should have at least 1 IP == v1.PodIP || v1.PodIPs[0] (whichever provided)
+		if len(testInput.PodIP) > 0 && corePodStatus.PodIPs[0].IP != testInput.PodIP {
+			t.Errorf("Convert v1.PodStatus to core.PodStatus failed. expected corePodStatus.PodIPs[0].ip=%v found %v", corePodStatus.PodIPs[0].IP, corePodStatus.PodIPs[0].IP)
+		}
+
+		// walk the list
+		for idx, _ := range testInput.PodIPs {
+			if corePodStatus.PodIPs[idx].IP != testInput.PodIPs[idx].IP {
+				t.Errorf("Convert v1.PodStatus to core.PodStatus failed core.PodIPs[%v]=%v expected %v", idx, corePodStatus.PodIPs[idx].IP, testInput.PodIPs[idx].IP)
+			}
+		}
+
+		// if input has a list of IPs
+		// then out put should have the same length
+		if len(testInput.PodIPs) > 0 && len(testInput.PodIPs) != len(corePodStatus.PodIPs) {
+			t.Errorf("Convert v1.PodStatus to core.PodStatus failed len(core.PodIPs) != len(v1.PodStatus.PodIPs) [%v]=[%v]", len(corePodStatus.PodIPs), len(testInput.PodIPs))
+		}
+	}
+}
+
+func Test_core_NodeSpec_to_v1_NodeSpec(t *testing.T) {
+	// core to v1
+	testInputs := []core.NodeSpec{
+		core.NodeSpec{
+			PodCIDRs: []string{"10.0.0.0/24", "10.0.1.0/24"},
+		},
+		core.NodeSpec{
+			PodCIDRs: []string{"10.0.0.0/24", "ace:cab:deca::/8"},
+		},
+	}
+
+	for _, testInput := range testInputs {
+		v1NodeSpec := v1.NodeSpec{}
+		// convert
+		if err := corev1.Convert_core_NodeSpec_To_v1_NodeSpec(&testInput, &v1NodeSpec, nil); nil != err {
+			t.Errorf("Convert core.NodeSpec to v1.NodeSpec failed with error %v", err.Error())
+		}
+
+		// validate results
+		if v1NodeSpec.PodCIDR != testInput.PodCIDRs[0] {
+			t.Errorf("Convert core.NodeSpec to v1.NodeSpec failed. Expected v1.PodCIDR=%v but found %v", testInput.PodCIDRs[0], v1NodeSpec.PodCIDR)
+		}
+
+		// match v1.PodIPs to core.PodIPs
+		for idx := range testInput.PodCIDRs {
+			if v1NodeSpec.PodCIDRs[idx] != testInput.PodCIDRs[idx] {
+				t.Errorf("Convert core.NodeSpec to v1.NodeSpec failed. Expected v1.NodeSpec[%v]=%v but found %v", idx, testInput.PodCIDRs[idx], v1NodeSpec.PodCIDRs[idx])
+			}
+		}
+	}
+}
+
+func Test_v1_NodeSpec_to_core_NodeSpec(t *testing.T) {
+
+	failInputs := []v1.NodeSpec{
+		v1.NodeSpec{
+			PodCIDR:  "10.0.0.0/24",
+			PodCIDRs: []string{"10.0.1.0/24", "ace:cab:deca::/8"},
+		},
+	}
+
+	testInputs := []v1.NodeSpec{
+		// Both are provided
+		v1.NodeSpec{
+			PodCIDR:  "10.0.1.0/24",
+			PodCIDRs: []string{"10.0.1.0/24", "ace:cab:deca::/8"},
+		},
+		// list only
+		v1.NodeSpec{
+			PodCIDRs: []string{"10.0.1.0/24", "ace:cab:deca::/8"},
+		},
+		// cidr only
+		v1.NodeSpec{
+			PodCIDR: "10.0.1.0/24",
+		},
+	}
+
+	// fail cases
+	for _, failInput := range failInputs {
+		coreNodeSpec := core.NodeSpec{}
+		if err := corev1.Convert_v1_NodeSpec_To_core_NodeSpec(&failInput, &coreNodeSpec, nil); err == nil {
+			t.Errorf("Convert v1.NodeSpec to core.NodeSpec failed. Expected an error when coreNodeSpec.PodCIDR != coreNodeSpec.PodCIDRs[0]")
+		}
+	}
+
+	for _, testInput := range testInputs {
+		coreNodeSpec := core.NodeSpec{}
+		if err := corev1.Convert_v1_NodeSpec_To_core_NodeSpec(&testInput, &coreNodeSpec, nil); err != nil {
+			t.Errorf("Convert v1.NodeSpec to core.NodeSpec failed with error:%v", err.Error())
+		}
+		if len(testInput.PodCIDR) > 0 && coreNodeSpec.PodCIDRs[0] != testInput.PodCIDR {
+			t.Errorf("Convert v1.NodeSpec to core.NodeSpec failed. expected coreNodeSpec.PodCIDRs[0]=%v found %v", testInput.PodCIDR, coreNodeSpec.PodCIDRs[0])
+		}
+		// match ip list
+		for idx := range testInput.PodCIDRs {
+			if coreNodeSpec.PodCIDRs[idx] != testInput.PodCIDRs[idx] {
+				t.Errorf("Convert v1.NodeSpec to core.NodeSpec failed core.PodCIDRs[%v]=%v expected %v", idx, coreNodeSpec.PodCIDRs[idx], testInput.PodCIDRs[idx])
+			}
+		}
+	}
+}

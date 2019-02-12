@@ -116,14 +116,22 @@ func TestMatchPod(t *testing.T) {
 		},
 		{
 			in: &api.Pod{
-				Status: api.PodStatus{PodIP: "1.2.3.4"},
+				Status: api.PodStatus{
+					PodIPs: []api.PodIP{
+						{IP: "1.2.3.4"},
+					},
+				},
 			},
 			fieldSelector: fields.ParseSelectorOrDie("status.podIP=1.2.3.4"),
 			expectMatch:   true,
 		},
 		{
 			in: &api.Pod{
-				Status: api.PodStatus{PodIP: "1.2.3.4"},
+				Status: api.PodStatus{
+					PodIPs: []api.PodIP{
+						{IP: "1.2.3.4"},
+					},
+				},
 			},
 			fieldSelector: fields.ParseSelectorOrDie("status.podIP=4.3.2.1"),
 			expectMatch:   false,

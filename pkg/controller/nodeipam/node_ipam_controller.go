@@ -37,6 +37,9 @@ import (
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam"
 	nodesync "k8s.io/kubernetes/pkg/controller/nodeipam/ipam/sync"
 	"k8s.io/kubernetes/pkg/util/metrics"
+
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -55,10 +58,10 @@ const (
 type Controller struct {
 	allocatorType ipam.CIDRAllocatorType
 
-	cloud       cloudprovider.Interface
-	clusterCIDR *net.IPNet
-	serviceCIDR *net.IPNet
-	kubeClient  clientset.Interface
+	cloud        cloudprovider.Interface
+	clusterCIDRs []*net.IPNet
+	serviceCIDR  *net.IPNet
+	kubeClient   clientset.Interface
 	// Method for easy mocking in unittest.
 	lookupIP func(host string) ([]net.IP, error)
 
@@ -79,7 +82,7 @@ func NewNodeIpamController(
 	nodeInformer coreinformers.NodeInformer,
 	cloud cloudprovider.Interface,
 	kubeClient clientset.Interface,
-	clusterCIDR *net.IPNet,
+	ClusterCIDRs []*net.IPNet,
 	serviceCIDR *net.IPNet,
 	nodeCIDRMaskSize int,
 	allocatorType ipam.CIDRAllocatorType) (*Controller, error) {
@@ -101,13 +104,21 @@ func NewNodeIpamController(
 		metrics.RegisterMetricAndTrackRateLimiterUsage("node_ipam_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 
+	// Cloud CIDR allocator does not rely on clusterCIDR or nodeCIDRMaskSize for allocation.
+	// for each cidr, node mask size must be < cidr mask
 	if allocatorType != ipam.CloudAllocatorType {
-		// Cloud CIDR allocator does not rely on clusterCIDR or nodeCIDRMaskSize for allocation.
-		if clusterCIDR == nil {
+		if 0 == len(ClusterCIDRs) {
 			klog.Fatal("Controller: Must specify --cluster-cidr if --allocate-node-cidrs is set")
 		}
-		if maskSize, _ := clusterCIDR.Mask.Size(); maskSize > nodeCIDRMaskSize {
-			klog.Fatal("Controller: Invalid --cluster-cidr, mask size of cluster CIDR must be less than --node-cidr-mask-size")
+		for idx, cidr := range ClusterCIDRs {
+			mask := cidr.Mask
+			if maskSize, _ := mask.Size(); maskSize > nodeCIDRMaskSize {
+				klog.Fatal("Controller: Invalid --cluster-cidr at index %v, mask size of cluster CIDR must be less than --node-cidr-mask-size", idx)
+			}
+
+			if !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) && 1 < idx {
+				break // no need to validate the rest if the feature gate is disabled
+			}
 		}
 	}
 
@@ -115,7 +126,7 @@ func NewNodeIpamController(
 		cloud:         cloud,
 		kubeClient:    kubeClient,
 		lookupIP:      net.LookupIP,
-		clusterCIDR:   clusterCIDR,
+		clusterCIDRs:  ClusterCIDRs,
 		serviceCIDR:   serviceCIDR,
 		allocatorType: allocatorType,
 	}
@@ -133,7 +144,7 @@ func NewNodeIpamController(
 		case ipam.IPAMFromCloudAllocatorType:
 			cfg.Mode = nodesync.SyncFromCloud
 		}
-		ipamc, err := ipam.NewController(cfg, kubeClient, cloud, clusterCIDR, serviceCIDR, nodeCIDRMaskSize)
+		ipamc, err := ipam.NewController(cfg, kubeClient, cloud, ClusterCIDRs[0], serviceCIDR, nodeCIDRMaskSize)
 		if err != nil {
 			klog.Fatalf("Error creating ipam controller: %v", err)
 		}
@@ -143,7 +154,7 @@ func NewNodeIpamController(
 	} else {
 		var err error
 		ic.cidrAllocator, err = ipam.New(
-			kubeClient, cloud, nodeInformer, ic.allocatorType, ic.clusterCIDR, ic.serviceCIDR, nodeCIDRMaskSize)
+			kubeClient, cloud, nodeInformer, ic.allocatorType, ClusterCIDRs, ic.serviceCIDR, nodeCIDRMaskSize)
 		if err != nil {
 			return nil, err
 		}

@@ -3869,6 +3869,36 @@ func TestHugePagesIsolation(t *testing.T) {
 				DNSPolicy:     core.DNSClusterFirst,
 			},
 		},
+		{ // fails because of duplication in IPs.
+			ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+			Spec: core.PodSpec{
+				Containers: []core.Container{
+					{
+						Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File",
+						Resources: core.ResourceRequirements{
+							Requests: core.ResourceList{
+								core.ResourceName(core.ResourceCPU):    resource.MustParse("10"),
+								core.ResourceName(core.ResourceMemory): resource.MustParse("10G"),
+								core.ResourceName("hugepages-2Mi"):     resource.MustParse("1Gi"),
+							},
+							Limits: core.ResourceList{
+								core.ResourceName(core.ResourceCPU):    resource.MustParse("10"),
+								core.ResourceName(core.ResourceMemory): resource.MustParse("10G"),
+								core.ResourceName("hugepages-2Mi"):     resource.MustParse("1Gi"),
+							},
+						},
+					},
+				},
+				RestartPolicy: core.RestartPolicyAlways,
+				DNSPolicy:     core.DNSClusterFirst,
+			},
+			Status: core.PodStatus{
+				PodIPs: []core.PodIP{
+					{IP: "1.1.1.1"},
+					{IP: "1.1.1.1"},
+				},
+			},
+		},
 	}
 	for i := range successCases {
 		pod := &successCases[i]
@@ -10180,7 +10210,7 @@ func TestValidateNode(t *testing.T) {
 				},
 			},
 			Spec: core.NodeSpec{
-				PodCIDR: "192.168.0.0/16",
+				PodCIDRs: []string{"192.168.0.0/16"},
 			},
 		},
 	}
@@ -10387,7 +10417,24 @@ func TestValidateNode(t *testing.T) {
 				},
 			},
 			Spec: core.NodeSpec{
-				PodCIDR: "192.168.0.0",
+				PodCIDRs: []string{"192.168.0.0"},
+			},
+		},
+		"duplicate-pod-cidr": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "abc",
+			},
+			Status: core.NodeStatus{
+				Addresses: []core.NodeAddress{
+					{Type: core.NodeExternalIP, Address: "something"},
+				},
+				Capacity: core.ResourceList{
+					core.ResourceName(core.ResourceCPU):    resource.MustParse("10"),
+					core.ResourceName(core.ResourceMemory): resource.MustParse("0"),
+				},
+			},
+			Spec: core.NodeSpec{
+				PodCIDRs: []string{"10.0.0.1/16", "10.0.0.1/16"},
 			},
 		},
 	}
@@ -10470,14 +10517,14 @@ func TestValidateNodeUpdate(t *testing.T) {
 				Name: "foo",
 			},
 			Spec: core.NodeSpec{
-				PodCIDR: "",
+				PodCIDRs: []string{},
 			},
 		}, core.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 			},
 			Spec: core.NodeSpec{
-				PodCIDR: "192.168.0.0/16",
+				PodCIDRs: []string{"192.168.0.0/16"},
 			},
 		}, true},
 		{core.Node{
@@ -10485,14 +10532,14 @@ func TestValidateNodeUpdate(t *testing.T) {
 				Name: "foo",
 			},
 			Spec: core.NodeSpec{
-				PodCIDR: "192.123.0.0/16",
+				PodCIDRs: []string{"192.123.0.0/16"},
 			},
 		}, core.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 			},
 			Spec: core.NodeSpec{
-				PodCIDR: "192.168.0.0/16",
+				PodCIDRs: []string{"192.168.0.0/16"},
 			},
 		}, false},
 		{core.Node{

@@ -58,6 +58,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/volume/pvcprotection"
 	"k8s.io/kubernetes/pkg/controller/volume/pvprotection"
 	"k8s.io/kubernetes/pkg/features"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/quota/v1/generic"
 	quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
 	"k8s.io/kubernetes/pkg/util/metrics"
@@ -81,21 +82,47 @@ func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
 }
 
 func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) {
-	var clusterCIDR *net.IPNet
 	var serviceCIDR *net.IPNet
+	clusterCIDRs := make([]*net.IPNet, 0)
 
 	if !ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs {
 		return nil, false, nil
 	}
 
 	var err error
+	// cluster cidr list processing
 	if len(strings.TrimSpace(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)) != 0 {
-		_, clusterCIDR, err = net.ParseCIDR(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)
-		if err != nil {
-			klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
+		cidrListIn := strings.Split(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, ",")
+		cidrListLen := len(cidrListIn)
+
+		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) {
+			if 2 < cidrListLen {
+				klog.Warningf("cluster cidr list is >2 (%v). 3+ will be ignored!", cidrListLen)
+			}
+			for idx, cidr := range cidrListIn {
+				_, current, err := net.ParseCIDR(cidr)
+				// append only the valid. ignore the rest
+				if err != nil {
+					klog.Warningf("Unsuccessful parsing of cluster CIDR at index %v with value %v with error:%v. This CIDR will be ignored", idx, cidr, err)
+				} else {
+					clusterCIDRs = append(clusterCIDRs, current)
+				}
+			}
+		} else {
+			// if user supplied more than one cidr, and feature flag is disabled
+			// warn and use only the first one.
+			if 1 < cidrListLen {
+				klog.Warningf("ipv6dual stack feature is disabled but count of cluster cidrs is > 1: %v", cidrListLen)
+			}
+			_, clusterCIDRSingle, err := net.ParseCIDR(cidrListIn[0])
+			if err != nil {
+				klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v, this CIDR will be ignored", cidrListIn[0], err)
+			} else {
+				clusterCIDRs = append(clusterCIDRs, clusterCIDRSingle)
+			}
 		}
 	}
-
+	// servie cidr processing
 	if len(strings.TrimSpace(ctx.ComponentConfig.NodeIPAMController.ServiceCIDR)) != 0 {
 		_, serviceCIDR, err = net.ParseCIDR(ctx.ComponentConfig.NodeIPAMController.ServiceCIDR)
 		if err != nil {
@@ -107,7 +134,7 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 		ctx.InformerFactory.Core().V1().Nodes(),
 		ctx.Cloud,
 		ctx.ClientBuilder.ClientOrDie("node-controller"),
-		clusterCIDR,
+		clusterCIDRs,
 		serviceCIDR,
 		int(ctx.ComponentConfig.NodeIPAMController.NodeCIDRMaskSize),
 		ipam.CIDRAllocatorType(ctx.ComponentConfig.KubeCloudShared.CIDRAllocatorType),
