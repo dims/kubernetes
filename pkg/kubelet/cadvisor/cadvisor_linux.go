@@ -19,6 +19,7 @@ limitations under the License.
 package cadvisor
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
@@ -26,13 +27,20 @@ import (
 	"path"
 	"time"
 
+	"github.com/google/cadvisor/accelerators"
 	"github.com/google/cadvisor/cache/memory"
 	cadvisormetrics "github.com/google/cadvisor/container"
+	"github.com/google/cadvisor/container/docker"
 	"github.com/google/cadvisor/events"
+	"github.com/google/cadvisor/fs"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
+	info "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	"github.com/google/cadvisor/machine"
 	"github.com/google/cadvisor/manager"
 	"github.com/google/cadvisor/utils/sysfs"
+	"github.com/google/cadvisor/watcher"
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"k8s.io/klog"
 )
 
@@ -89,7 +97,7 @@ func New(imageFsInfoProvider ImageFsInfoProvider, rootPath string, usingLegacySt
 	// collect metrics for all cgroups
 	rawContainerCgroupPathPrefixWhiteList := []string{"/"}
 	// Create and start the cAdvisor container manager.
-	m, err := manager.New(memory.New(statsCacheDuration, nil), sysFs, maxHousekeepingInterval, allowDynamicHousekeeping, includedMetrics, http.DefaultClient, rawContainerCgroupPathPrefixWhiteList)
+	m, err := NewCadvisor(memory.New(statsCacheDuration, nil), sysFs, maxHousekeepingInterval, allowDynamicHousekeeping, includedMetrics, http.DefaultClient, rawContainerCgroupPathPrefixWhiteList)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +120,110 @@ func New(imageFsInfoProvider ImageFsInfoProvider, rootPath string, usingLegacySt
 
 	return cadvisorClient, nil
 }
+
+const dockerClientTimeout = 10 * time.Second
+
+func NewCadvisor(memoryCache *memory.InMemoryCache, sysfs sysfs.SysFs, duration time.Duration, b bool, includedMetricsSet cadvisormetrics.MetricSet, collectorHttpClient *http.Client, rawContainerCgroupPathPrefixWhiteList []string) (manager.Manager, error) {
+	if memoryCache == nil {
+		return nil, fmt.Errorf("manager requires memory storage")
+	}
+
+	// Detect the container we are running on.
+	selfContainer, err := cgroups.GetOwnCgroupPath("cpu")
+	if err != nil {
+		return nil, err
+	}
+	klog.V(2).Infof("cAdvisor running in container: %q", selfContainer)
+
+	var (
+		dockerStatus info.DockerStatus
+	)
+	docker.SetTimeout(dockerClientTimeout)
+	// Try to connect to docker indefinitely on startup.
+	dockerStatus = retryDockerStatus()
+
+	context := fs.Context{
+		Docker: fs.DockerContext{
+			Root:         docker.RootDir(),
+			Driver:       dockerStatus.Driver,
+			DriverStatus: dockerStatus.DriverStatus,
+		},
+	}
+	fsInfo, err := fs.NewFsInfo(context)
+	if err != nil {
+		return nil, err
+	}
+
+	// If cAdvisor was started with host's rootfs mounted, assume that its running
+	// in its own namespaces.
+	inHostNamespace := false
+	if _, err := os.Stat("/rootfs/proc"); os.IsNotExist(err) {
+		inHostNamespace = true
+	}
+
+	// Register for new subcontainers.
+	eventsChannel := make(chan watcher.ContainerEvent, 16)
+
+	machineInfo, err := machine.Info(sysfs, fsInfo, inHostNamespace)
+	if err != nil {
+		return nil, err
+	}
+	klog.V(1).Infof("Machine: %+v", *machineInfo)
+
+	newManager := manager.New(
+		memoryCache,
+		fsInfo,
+		sysfs,
+		*machineInfo,
+		make([]chan error, 0, 2),
+		selfContainer,
+		inHostNamespace,
+		time.Now(),
+		maxHousekeepingInterval,
+		allowDynamicHousekeeping,
+		includedMetricsSet,
+		[]watcher.ContainerWatcher{},
+		eventsChannel,
+		collectorHttpClient,
+		&accelerators.NvidiaManager{},
+		rawContainerCgroupPathPrefixWhiteList)
+
+	versionInfo, err := newManager.GetVersionInfo()
+	if err != nil {
+		return nil, err
+	}
+	klog.V(1).Infof("Version: %+v", *versionInfo)
+	return newManager, nil
+}
+
+func retryDockerStatus() info.DockerStatus {
+	startupTimeout := dockerClientTimeout
+	maxTimeout := 4 * startupTimeout
+	for {
+		ctx, e := context.WithTimeout(context.Background(), startupTimeout)
+		if e != nil {
+			klog.V(5).Infof("error during timeout: %v", e)
+		}
+		dockerStatus, err := docker.StatusWithContext(ctx)
+		if err == nil {
+			return dockerStatus
+		}
+
+		switch err {
+		case context.DeadlineExceeded:
+			klog.Warningf("Timeout trying to communicate with docker during initialization, will retry")
+		default:
+			klog.V(5).Infof("Docker not connected: %v", err)
+			return info.DockerStatus{}
+		}
+
+		startupTimeout = 2 * startupTimeout
+		if startupTimeout > maxTimeout {
+			startupTimeout = maxTimeout
+		}
+	}
+}
+
 
 func (cc *cadvisorClient) Start() error {
 	return cc.Manager.Start()
