@@ -1117,6 +1117,7 @@ var map_NodeSpec = map[string]string{
 	"taints":        "If specified, the node's taints.",
 	"configSource":  "If specified, the source to get node configuration from The DynamicKubeletConfig feature gate must be enabled for the Kubelet to use this field",
 	"externalID":    "Deprecated. Not all kubelets will set this field. Remove field after 1.13. see: https://issues.k8s.io/61966",
+	"podCIDRs":      "PodCIDRs represents the list of ranges for ciders assigned to this node.",
 }
 
 func (NodeSpec) SwaggerDoc() map[string]string {
@@ -1583,6 +1584,7 @@ var map_PodStatus = map[string]string{
 	"initContainerStatuses": "The list has one entry per init container in the manifest. The most recent successful init container will have ready = true, the most recently started container will have startTime set. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status",
 	"containerStatuses":     "The list has one entry per container in the manifest. Each entry is currently the output of `docker inspect`. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status",
 	"qosClass":              "The Quality of Service (QOS) classification assigned to the pod based on resource requirements See PodQOSClass type for available QOS classes More info: https://git.k8s.io/community/contributors/design-proposals/node/resource-qos.md",
+	"podIPs":                "IP addresses allocated to the pod with associated metadata. This list is inclusive, i.e. it includes the default IP address stored in the \"PodIP\" field, and this default IP address must be recorded in the 0th entry (PodIPs[0]) of the slice. The list is empty if no IPs have been allocated yet.",
 }
 
 func (PodStatus) SwaggerDoc() map[string]string {

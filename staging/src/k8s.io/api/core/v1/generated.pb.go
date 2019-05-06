@@ -790,336 +790,336 @@ func (*PodIP) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []i
 
 func (m *PodList) Reset()                    { *m = PodList{} }
 func (*PodList) ProtoMessage()               {}
-func (*PodList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{122} }
+func (*PodList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{123} }
 
 func (m *PodLogOptions) Reset()                    { *m = PodLogOptions{} }
 func (*PodLogOptions) ProtoMessage()               {}
-func (*PodLogOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{123} }
+func (*PodLogOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{124} }
 
 func (m *PodPortForwardOptions) Reset()                    { *m = PodPortForwardOptions{} }
 func (*PodPortForwardOptions) ProtoMessage()               {}
-func (*PodPortForwardOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{124} }
+func (*PodPortForwardOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{125} }
 
 func (m *PodProxyOptions) Reset()                    { *m = PodProxyOptions{} }
 func (*PodProxyOptions) ProtoMessage()               {}
-func (*PodProxyOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{125} }
+func (*PodProxyOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{126} }
 
 func (m *PodReadinessGate) Reset()                    { *m = PodReadinessGate{} }
 func (*PodReadinessGate) ProtoMessage()               {}
-func (*PodReadinessGate) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{126} }
+func (*PodReadinessGate) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{127} }
 
 func (m *PodSecurityContext) Reset()                    { *m = PodSecurityContext{} }
 func (*PodSecurityContext) ProtoMessage()               {}
-func (*PodSecurityContext) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{127} }
+func (*PodSecurityContext) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{128} }
 
 func (m *PodSignature) Reset()                    { *m = PodSignature{} }
 func (*PodSignature) ProtoMessage()               {}
-func (*PodSignature) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{128} }
+func (*PodSignature) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{129} }
 
 func (m *PodSpec) Reset()                    { *m = PodSpec{} }
 func (*PodSpec) ProtoMessage()               {}
-func (*PodSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{129} }
+func (*PodSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{130} }
 
 func (m *PodStatus) Reset()                    { *m = PodStatus{} }
 func (*PodStatus) ProtoMessage()               {}
-func (*PodStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{130} }
+func (*PodStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{131} }
 
 func (m *PodStatusResult) Reset()                    { *m = PodStatusResult{} }
 func (*PodStatusResult) ProtoMessage()               {}
-func (*PodStatusResult) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{131} }
+func (*PodStatusResult) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{132} }
 
 func (m *PodTemplate) Reset()                    { *m = PodTemplate{} }
 func (*PodTemplate) ProtoMessage()               {}
-func (*PodTemplate) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{132} }
+func (*PodTemplate) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{133} }
 
 func (m *PodTemplateList) Reset()                    { *m = PodTemplateList{} }
 func (*PodTemplateList) ProtoMessage()               {}
-func (*PodTemplateList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{133} }
+func (*PodTemplateList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{134} }
 
 func (m *PodTemplateSpec) Reset()                    { *m = PodTemplateSpec{} }
 func (*PodTemplateSpec) ProtoMessage()               {}
-func (*PodTemplateSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{134} }
+func (*PodTemplateSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{135} }
 
 func (m *PortworxVolumeSource) Reset()                    { *m = PortworxVolumeSource{} }
 func (*PortworxVolumeSource) ProtoMessage()               {}
-func (*PortworxVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{135} }
+func (*PortworxVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{136} }
 
 func (m *Preconditions) Reset()                    { *m = Preconditions{} }
 func (*Preconditions) ProtoMessage()               {}
-func (*Preconditions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{136} }
+func (*Preconditions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{137} }
 
 func (m *PreferAvoidPodsEntry) Reset()                    { *m = PreferAvoidPodsEntry{} }
 func (*PreferAvoidPodsEntry) ProtoMessage()               {}
-func (*PreferAvoidPodsEntry) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{137} }
+func (*PreferAvoidPodsEntry) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{138} }
 
 func (m *PreferredSchedulingTerm) Reset()      { *m = PreferredSchedulingTerm{} }
 func (*PreferredSchedulingTerm) ProtoMessage() {}
 func (*PreferredSchedulingTerm) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{138}
+	return fileDescriptorGenerated, []int{139}
 }
 
 func (m *Probe) Reset()                    { *m = Probe{} }
 func (*Probe) ProtoMessage()               {}
-func (*Probe) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{139} }
+func (*Probe) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{140} }
 
 func (m *ProjectedVolumeSource) Reset()                    { *m = ProjectedVolumeSource{} }
 func (*ProjectedVolumeSource) ProtoMessage()               {}
-func (*ProjectedVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{140} }
+func (*ProjectedVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{141} }
 
 func (m *QuobyteVolumeSource) Reset()                    { *m = QuobyteVolumeSource{} }
 func (*QuobyteVolumeSource) ProtoMessage()               {}
-func (*QuobyteVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{141} }
+func (*QuobyteVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{142} }
 
 func (m *RBDPersistentVolumeSource) Reset()      { *m = RBDPersistentVolumeSource{} }
 func (*RBDPersistentVolumeSource) ProtoMessage() {}
 func (*RBDPersistentVolumeSource) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{142}
+	return fileDescriptorGenerated, []int{143}
 }
 
 func (m *RBDVolumeSource) Reset()                    { *m = RBDVolumeSource{} }
 func (*RBDVolumeSource) ProtoMessage()               {}
-func (*RBDVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{143} }
+func (*RBDVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{144} }
 
 func (m *RangeAllocation) Reset()                    { *m = RangeAllocation{} }
 func (*RangeAllocation) ProtoMessage()               {}
-func (*RangeAllocation) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{144} }
+func (*RangeAllocation) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{145} }
 
 func (m *ReplicationController) Reset()                    { *m = ReplicationController{} }
 func (*ReplicationController) ProtoMessage()               {}
-func (*ReplicationController) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{145} }
+func (*ReplicationController) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{146} }
 
 func (m *ReplicationControllerCondition) Reset()      { *m = ReplicationControllerCondition{} }
 func (*ReplicationControllerCondition) ProtoMessage() {}
 func (*ReplicationControllerCondition) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{146}
+	return fileDescriptorGenerated, []int{147}
 }
 
 func (m *ReplicationControllerList) Reset()      { *m = ReplicationControllerList{} }
 func (*ReplicationControllerList) ProtoMessage() {}
 func (*ReplicationControllerList) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{147}
+	return fileDescriptorGenerated, []int{148}
 }
 
 func (m *ReplicationControllerSpec) Reset()      { *m = ReplicationControllerSpec{} }
 func (*ReplicationControllerSpec) ProtoMessage() {}
 func (*ReplicationControllerSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{148}
+	return fileDescriptorGenerated, []int{149}
 }
 
 func (m *ReplicationControllerStatus) Reset()      { *m = ReplicationControllerStatus{} }
 func (*ReplicationControllerStatus) ProtoMessage() {}
 func (*ReplicationControllerStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{149}
+	return fileDescriptorGenerated, []int{150}
 }
 
 func (m *ResourceFieldSelector) Reset()                    { *m = ResourceFieldSelector{} }
 func (*ResourceFieldSelector) ProtoMessage()               {}
-func (*ResourceFieldSelector) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{150} }
+func (*ResourceFieldSelector) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{151} }
 
 func (m *ResourceQuota) Reset()                    { *m = ResourceQuota{} }
 func (*ResourceQuota) ProtoMessage()               {}
-func (*ResourceQuota) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{151} }
+func (*ResourceQuota) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{152} }
 
 func (m *ResourceQuotaList) Reset()                    { *m = ResourceQuotaList{} }
 func (*ResourceQuotaList) ProtoMessage()               {}
-func (*ResourceQuotaList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{152} }
+func (*ResourceQuotaList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{153} }
 
 func (m *ResourceQuotaSpec) Reset()                    { *m = ResourceQuotaSpec{} }
 func (*ResourceQuotaSpec) ProtoMessage()               {}
-func (*ResourceQuotaSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{153} }
+func (*ResourceQuotaSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{154} }
 
 func (m *ResourceQuotaStatus) Reset()                    { *m = ResourceQuotaStatus{} }
 func (*ResourceQuotaStatus) ProtoMessage()               {}
-func (*ResourceQuotaStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{154} }
+func (*ResourceQuotaStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{155} }
 
 func (m *ResourceRequirements) Reset()                    { *m = ResourceRequirements{} }
 func (*ResourceRequirements) ProtoMessage()               {}
-func (*ResourceRequirements) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{155} }
+func (*ResourceRequirements) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{156} }
 
 func (m *SELinuxOptions) Reset()                    { *m = SELinuxOptions{} }
 func (*SELinuxOptions) ProtoMessage()               {}
-func (*SELinuxOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{156} }
+func (*SELinuxOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{157} }
 
 func (m *ScaleIOPersistentVolumeSource) Reset()      { *m = ScaleIOPersistentVolumeSource{} }
 func (*ScaleIOPersistentVolumeSource) ProtoMessage() {}
 func (*ScaleIOPersistentVolumeSource) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{157}
+	return fileDescriptorGenerated, []int{158}
 }
 
 func (m *ScaleIOVolumeSource) Reset()                    { *m = ScaleIOVolumeSource{} }
 func (*ScaleIOVolumeSource) ProtoMessage()               {}
-func (*ScaleIOVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{158} }
+func (*ScaleIOVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{159} }
 
 func (m *ScopeSelector) Reset()                    { *m = ScopeSelector{} }
 func (*ScopeSelector) ProtoMessage()               {}
-func (*ScopeSelector) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{159} }
+func (*ScopeSelector) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{160} }
 
 func (m *ScopedResourceSelectorRequirement) Reset()      { *m = ScopedResourceSelectorRequirement{} }
 func (*ScopedResourceSelectorRequirement) ProtoMessage() {}
 func (*ScopedResourceSelectorRequirement) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{160}
+	return fileDescriptorGenerated, []int{161}
 }
 
 func (m *Secret) Reset()                    { *m = Secret{} }
 func (*Secret) ProtoMessage()               {}
-func (*Secret) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{161} }
+func (*Secret) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{162} }
 
 func (m *SecretEnvSource) Reset()                    { *m = SecretEnvSource{} }
 func (*SecretEnvSource) ProtoMessage()               {}
-func (*SecretEnvSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{162} }
+func (*SecretEnvSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{163} }
 
 func (m *SecretKeySelector) Reset()                    { *m = SecretKeySelector{} }
 func (*SecretKeySelector) ProtoMessage()               {}
-func (*SecretKeySelector) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{163} }
+func (*SecretKeySelector) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{164} }
 
 func (m *SecretList) Reset()                    { *m = SecretList{} }
 func (*SecretList) ProtoMessage()               {}
-func (*SecretList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{164} }
+func (*SecretList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{165} }
 
 func (m *SecretProjection) Reset()                    { *m = SecretProjection{} }
 func (*SecretProjection) ProtoMessage()               {}
-func (*SecretProjection) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{165} }
+func (*SecretProjection) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{166} }
 
 func (m *SecretReference) Reset()                    { *m = SecretReference{} }
 func (*SecretReference) ProtoMessage()               {}
-func (*SecretReference) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{166} }
+func (*SecretReference) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{167} }
 
 func (m *SecretVolumeSource) Reset()                    { *m = SecretVolumeSource{} }
 func (*SecretVolumeSource) ProtoMessage()               {}
-func (*SecretVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{167} }
+func (*SecretVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{168} }
 
 func (m *SecurityContext) Reset()                    { *m = SecurityContext{} }
 func (*SecurityContext) ProtoMessage()               {}
-func (*SecurityContext) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{168} }
+func (*SecurityContext) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{169} }
 
 func (m *SerializedReference) Reset()                    { *m = SerializedReference{} }
 func (*SerializedReference) ProtoMessage()               {}
-func (*SerializedReference) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{169} }
+func (*SerializedReference) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{170} }
 
 func (m *Service) Reset()                    { *m = Service{} }
 func (*Service) ProtoMessage()               {}
-func (*Service) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{170} }
+func (*Service) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{171} }
 
 func (m *ServiceAccount) Reset()                    { *m = ServiceAccount{} }
 func (*ServiceAccount) ProtoMessage()               {}
-func (*ServiceAccount) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{171} }
+func (*ServiceAccount) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{172} }
 
 func (m *ServiceAccountList) Reset()                    { *m = ServiceAccountList{} }
 func (*ServiceAccountList) ProtoMessage()               {}
-func (*ServiceAccountList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{172} }
+func (*ServiceAccountList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{173} }
 
 func (m *ServiceAccountTokenProjection) Reset()      { *m = ServiceAccountTokenProjection{} }
 func (*ServiceAccountTokenProjection) ProtoMessage() {}
 func (*ServiceAccountTokenProjection) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{173}
+	return fileDescriptorGenerated, []int{174}
 }
 
 func (m *ServiceList) Reset()                    { *m = ServiceList{} }
 func (*ServiceList) ProtoMessage()               {}
-func (*ServiceList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{174} }
+func (*ServiceList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{175} }
 
 func (m *ServicePort) Reset()                    { *m = ServicePort{} }
 func (*ServicePort) ProtoMessage()               {}
-func (*ServicePort) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{175} }
+func (*ServicePort) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{176} }
 
 func (m *ServiceProxyOptions) Reset()                    { *m = ServiceProxyOptions{} }
 func (*ServiceProxyOptions) ProtoMessage()               {}
-func (*ServiceProxyOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{176} }
+func (*ServiceProxyOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{177} }
 
 func (m *ServiceSpec) Reset()                    { *m = ServiceSpec{} }
 func (*ServiceSpec) ProtoMessage()               {}
-func (*ServiceSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{177} }
+func (*ServiceSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{178} }
 
 func (m *ServiceStatus) Reset()                    { *m = ServiceStatus{} }
 func (*ServiceStatus) ProtoMessage()               {}
-func (*ServiceStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{178} }
+func (*ServiceStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{179} }
 
 func (m *SessionAffinityConfig) Reset()                    { *m = SessionAffinityConfig{} }
 func (*SessionAffinityConfig) ProtoMessage()               {}
-func (*SessionAffinityConfig) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{179} }
+func (*SessionAffinityConfig) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{180} }
 
 func (m *StorageOSPersistentVolumeSource) Reset()      { *m = StorageOSPersistentVolumeSource{} }
 func (*StorageOSPersistentVolumeSource) ProtoMessage() {}
 func (*StorageOSPersistentVolumeSource) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{180}
+	return fileDescriptorGenerated, []int{181}
 }
 
 func (m *StorageOSVolumeSource) Reset()                    { *m = StorageOSVolumeSource{} }
 func (*StorageOSVolumeSource) ProtoMessage()               {}
-func (*StorageOSVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{181} }
+func (*StorageOSVolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{182} }
 
 func (m *Sysctl) Reset()                    { *m = Sysctl{} }
 func (*Sysctl) ProtoMessage()               {}
-func (*Sysctl) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{182} }
+func (*Sysctl) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{183} }
 
 func (m *TCPSocketAction) Reset()                    { *m = TCPSocketAction{} }
 func (*TCPSocketAction) ProtoMessage()               {}
-func (*TCPSocketAction) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{183} }
+func (*TCPSocketAction) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{184} }
 
 func (m *Taint) Reset()                    { *m = Taint{} }
 func (*Taint) ProtoMessage()               {}
-func (*Taint) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{184} }
+func (*Taint) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{185} }
 
 func (m *Toleration) Reset()                    { *m = Toleration{} }
 func (*Toleration) ProtoMessage()               {}
-func (*Toleration) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{185} }
+func (*Toleration) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{186} }
 
 func (m *TopologySelectorLabelRequirement) Reset()      { *m = TopologySelectorLabelRequirement{} }
 func (*TopologySelectorLabelRequirement) ProtoMessage() {}
 func (*TopologySelectorLabelRequirement) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{186}
+	return fileDescriptorGenerated, []int{187}
 }
 
 func (m *TopologySelectorTerm) Reset()                    { *m = TopologySelectorTerm{} }
 func (*TopologySelectorTerm) ProtoMessage()               {}
-func (*TopologySelectorTerm) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{187} }
+func (*TopologySelectorTerm) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{188} }
 
 func (m *TypedLocalObjectReference) Reset()      { *m = TypedLocalObjectReference{} }
 func (*TypedLocalObjectReference) ProtoMessage() {}
 func (*TypedLocalObjectReference) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{188}
+	return fileDescriptorGenerated, []int{189}
 }
 
 func (m *Volume) Reset()                    { *m = Volume{} }
 func (*Volume) ProtoMessage()               {}
-func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{189} }
+func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{190} }
 
 func (m *VolumeDevice) Reset()                    { *m = VolumeDevice{} }
 func (*VolumeDevice) ProtoMessage()               {}
-func (*VolumeDevice) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{190} }
+func (*VolumeDevice) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{191} }
 
 func (m *VolumeMount) Reset()                    { *m = VolumeMount{} }
 func (*VolumeMount) ProtoMessage()               {}
-func (*VolumeMount) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{191} }
+func (*VolumeMount) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{192} }
 
 func (m *VolumeNodeAffinity) Reset()                    { *m = VolumeNodeAffinity{} }
 func (*VolumeNodeAffinity) ProtoMessage()               {}
-func (*VolumeNodeAffinity) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{192} }
+func (*VolumeNodeAffinity) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{193} }
 
 func (m *VolumeProjection) Reset()                    { *m = VolumeProjection{} }
 func (*VolumeProjection) ProtoMessage()               {}
-func (*VolumeProjection) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{193} }
+func (*VolumeProjection) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{194} }
 
 func (m *VolumeSource) Reset()                    { *m = VolumeSource{} }
 func (*VolumeSource) ProtoMessage()               {}
-func (*VolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{194} }
+func (*VolumeSource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{195} }
 
 func (m *VsphereVirtualDiskVolumeSource) Reset()      { *m = VsphereVirtualDiskVolumeSource{} }
 func (*VsphereVirtualDiskVolumeSource) ProtoMessage() {}
 func (*VsphereVirtualDiskVolumeSource) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{195}
+	return fileDescriptorGenerated, []int{196}
 }
 
 func (m *WeightedPodAffinityTerm) Reset()      { *m = WeightedPodAffinityTerm{} }
 func (*WeightedPodAffinityTerm) ProtoMessage() {}
 func (*WeightedPodAffinityTerm) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{196}
+	return fileDescriptorGenerated, []int{197}
 }
 
 func (m *WindowsSecurityContextOptions) Reset()      { *m = WindowsSecurityContextOptions{} }
 func (*WindowsSecurityContextOptions) ProtoMessage() {}
 func (*WindowsSecurityContextOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{197}
+	return fileDescriptorGenerated, []int{198}
 }
 
 func init() {
@@ -5707,6 +5707,21 @@ func (m *NodeSpec) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n95
 	}
+	if len(m.PodCIDRs) > 0 {
+		for _, s := range m.PodCIDRs {
+			dAtA[i] = 0x3a
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
 	return i, nil
 }
 
@@ -7317,7 +7332,6 @@ func (m *PodIP) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
->>>>>>> 5868685... generated items for the modified types (podIPInfo => PodIP)
 func (m *PodList) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -7990,6 +8004,18 @@ func (m *PodStatus) MarshalTo(dAtA []byte) (int, error) {
 	i++
 	i = encodeVarintGenerated(dAtA, i, uint64(len(m.NominatedNodeName)))
 	i += copy(dAtA[i:], m.NominatedNodeName)
+	if len(m.PodIPs) > 0 {
+		for _, msg := range m.PodIPs {
+			dAtA[i] = 0x62
+			i++
+			i = encodeVarintGenerated(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	return i, nil
 }
 
@@ -12830,6 +12856,12 @@ func (m *NodeSpec) Size() (n int) {
 		l = m.ConfigSource.Size()
 		n += 1 + l + sovGenerated(uint64(l))
 	}
+	if len(m.PodCIDRs) > 0 {
+		for _, s := range m.PodCIDRs {
+			l = len(s)
+			n += 1 + l + sovGenerated(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -13682,6 +13714,12 @@ func (m *PodStatus) Size() (n int) {
 	}
 	l = len(m.NominatedNodeName)
 	n += 1 + l + sovGenerated(uint64(l))
+	if len(m.PodIPs) > 0 {
+		for _, e := range m.PodIPs {
+			l = e.Size()
+			n += 1 + l + sovGenerated(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -16190,6 +16228,7 @@ func (this *NodeSpec) String() string {
 		`Unschedulable:` + fmt.Sprintf("%v", this.Unschedulable) + `,`,
 		`Taints:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Taints), "Taint", "Taint", 1), `&`, ``, 1) + `,`,
 		`ConfigSource:` + strings.Replace(fmt.Sprintf("%v", this.ConfigSource), "NodeConfigSource", "NodeConfigSource", 1) + `,`,
+		`PodCIDRs:` + fmt.Sprintf("%v", this.PodCIDRs) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -33163,6 +33202,35 @@ func (m *NodeSpec) Unmarshal(dAtA []byte) error {
 			if err := m.ConfigSource.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PodCIDRs", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PodCIDRs = append(m.PodCIDRs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

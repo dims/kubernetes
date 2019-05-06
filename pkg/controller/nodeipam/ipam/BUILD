@@ -37,8 +37,8 @@ go_library(
         "cloud_cidr_allocator.go",
         "controller.go",
         "doc.go",
+        "multi_range_allocator.go",
         "range_allocator.go",
-				"multi_range_allocator.go",
         "timeout.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/controller/nodeipam/ipam",
@@ -47,6 +47,7 @@ go_library(
         "//pkg/controller/nodeipam/ipam/cidrset:go_default_library",
         "//pkg/controller/nodeipam/ipam/sync:go_default_library",
         "//pkg/controller/util/node:go_default_library",
+        "//pkg/features:go_default_library",
         "//pkg/scheduler/api:go_default_library",
         "//pkg/util/node:go_default_library",
         "//pkg/util/taints:go_default_library",
@@ -59,6 +60,7 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/sets:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/util/feature:go_default_library",
         "//staging/src/k8s.io/client-go/informers/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/scheme:go_default_library",
@@ -70,6 +72,7 @@ go_library(
         "//staging/src/k8s.io/legacy-cloud-providers/gce:go_default_library",
         "//staging/src/k8s.io/metrics/pkg/client/clientset/versioned/scheme:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
+        "//vendor/k8s.io/utils/net:go_default_library",
     ],
 )
 

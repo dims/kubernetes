@@ -107,9 +107,8 @@ func New(kubeClient clientset.Interface, cloud cloudprovider.Interface, nodeInfo
 	case RangeAllocatorType:
 		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) {
 			return NewMultiCIDRRangeAllocator(kubeClient, nodeInformer, clusterCIDR, serviceCIDR, nodeCIDRMaskSize, nodeList)
-		} else {
-			return NewCIDRRangeAllocator(kubeClient, nodeInformer, clusterCIDR[0], serviceCIDR, nodeCIDRMaskSize, nodeList)
 		}
+		return NewCIDRRangeAllocator(kubeClient, nodeInformer, clusterCIDR[0], serviceCIDR, nodeCIDRMaskSize, nodeList)
 	case CloudAllocatorType:
 		return NewCloudCIDRAllocator(kubeClient, cloud, nodeInformer)
 	default:

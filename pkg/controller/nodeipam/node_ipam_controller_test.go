@@ -32,7 +32,7 @@ import (
 	"k8s.io/legacy-cloud-providers/gce"
 )
 
-func newTestNodeIpamController(clusterCIDR, serviceCIDR *net.IPNet, nodeCIDRMaskSize int, allocatorType ipam.CIDRAllocatorType) (*Controller, error) {
+func newTestNodeIpamController(clusterCIDR []*net.IPNet, serviceCIDR *net.IPNet, nodeCIDRMaskSize int, allocatorType ipam.CIDRAllocatorType) (*Controller, error) {
 	clientSet := fake.NewSimpleClientset()
 	fakeNodeHandler := &testutil.FakeNodeHandler{
 		Existing: []*v1.Node{
@@ -78,9 +78,13 @@ func TestNewNodeIpamControllerWithCIDRMasks(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			_, clusterCIDRIpNet, _ := net.ParseCIDR(tc.clusterCIDR)
 			_, serviceCIDRIpNet, _ := net.ParseCIDR(tc.serviceCIDR)
+
+			clusterCidrs := []*net.IPNet{
+				clusterCIDRIpNet,
+			}
 			if os.Getenv("EXIT_ON_FATAL") == "1" {
 				// This is the subprocess which runs the actual code.
-				newTestNodeIpamController(clusterCIDRIpNet, serviceCIDRIpNet, tc.maskSize, tc.allocatorType)
+				newTestNodeIpamController(clusterCidrs, serviceCIDRIpNet, tc.maskSize, tc.allocatorType)
 				return
 			}
 			// This is the host process that monitors the exit code of the subprocess.

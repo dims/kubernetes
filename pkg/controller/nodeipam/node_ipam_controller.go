@@ -107,16 +107,17 @@ func NewNodeIpamController(
 	// Cloud CIDR allocator does not rely on clusterCIDR or nodeCIDRMaskSize for allocation.
 	// for each cidr, node mask size must be < cidr mask
 	if allocatorType != ipam.CloudAllocatorType {
-		if 0 == len(ClusterCIDRs) {
+		if len(ClusterCIDRs) == 0 {
 			klog.Fatal("Controller: Must specify --cluster-cidr if --allocate-node-cidrs is set")
 		}
+
 		for idx, cidr := range ClusterCIDRs {
 			mask := cidr.Mask
 			if maskSize, _ := mask.Size(); maskSize > nodeCIDRMaskSize {
-				klog.Fatal("Controller: Invalid --cluster-cidr at index %v, mask size of cluster CIDR must be less than --node-cidr-mask-size", idx)
+				klog.Fatal("Controller: Invalid --cluster-cidr, mask size of cluster CIDR must be less than --node-cidr-mask-size")
 			}
 
-			if !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) && 1 < idx {
+			if !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) && 0 < idx {
 				break // no need to validate the rest if the feature gate is disabled
 			}
 		}
@@ -144,7 +145,14 @@ func NewNodeIpamController(
 		case ipam.IPAMFromCloudAllocatorType:
 			cfg.Mode = nodesync.SyncFromCloud
 		}
-		ipamc, err := ipam.NewController(cfg, kubeClient, cloud, ClusterCIDRs[0], serviceCIDR, nodeCIDRMaskSize)
+
+		// we may end up here with no cidr at all
+		// in case of FromCloud/FromCluster
+		var cidr *net.IPNet
+		if len(ClusterCIDRs) > 0 {
+			cidr = ClusterCIDRs[0]
+		}
+		ipamc, err := ipam.NewController(cfg, kubeClient, cloud, cidr, serviceCIDR, nodeCIDRMaskSize)
 		if err != nil {
 			klog.Fatalf("Error creating ipam controller: %v", err)
 		}
@@ -153,8 +161,7 @@ func NewNodeIpamController(
 		}
 	} else {
 		var err error
-		ic.cidrAllocator, err = ipam.New(
-			kubeClient, cloud, nodeInformer, ic.allocatorType, ClusterCIDRs, ic.serviceCIDR, nodeCIDRMaskSize)
+		ic.cidrAllocator, err = ipam.New(kubeClient, cloud, nodeInformer, ic.allocatorType, ClusterCIDRs, ic.serviceCIDR, nodeCIDRMaskSize)
 		if err != nil {
 			return nil, err
 		}

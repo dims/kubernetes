@@ -39,6 +39,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam/cidrset"
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 	utilnode "k8s.io/kubernetes/pkg/util/node"
+	utilnet "k8s.io/utils/net"
 )
 
 // cidrs are reserved, then
@@ -118,20 +119,20 @@ func NewMultiCIDRRangeAllocator(client clientset.Interface, nodeInformer informe
 
 	if nodeList != nil {
 		for _, node := range nodeList.Items {
-			if 0 != len(node.Spec.PodCIDRs) {
-				klog.Infof("Node %v has no CIDR, ignoring", node.Name)
-			} else {
-				klog.Infof("Node %v has CIDR %v, occupying it in CIDR map", node.Name, node.Spec.PodCIDRs)
-				// pre dual stack, first cidr, goes into node.PodCIDR
-				if err := ra.occupyCIDRs(&node); err != nil {
-					// This will happen if:
-					// 1. We find garbage in the podCIDR field. Retrying is useless.
-					// 2. CIDR out of range: This means a node CIDR has changed.
-					// This error will keep crashing controller-manager.
-					//
-					return nil, err
-				}
+			if len(node.Spec.PodCIDRs) == 0 {
+				klog.Infof("Node %v has no CIDRs, ignoring", node.Name)
+				continue
 			}
+			klog.Infof("Node %v has CIDR %v, occupying it in CIDR map", node.Name, node.Spec.PodCIDRs)
+			if err := ra.occupyCIDRs(&node); err != nil {
+				// This will happen if:
+				// 1. We find garbage in the podCIDR field. Retrying is useless.
+				// 2. CIDR out of range: This means a node CIDR has changed.
+				// This error will keep crashing controller-manager.
+				//
+				return nil, err
+			}
+
 		}
 	}
 
@@ -157,7 +158,7 @@ func NewMultiCIDRRangeAllocator(client clientset.Interface, nodeInformer informe
 			// which prevents it from being assigned to any new node. The cluster
 			// state is correct.
 			// Restart of NC fixes the issue.
-			if newNode.Spec.PodCIDR == "" {
+			if len(newNode.Spec.PodCIDRs) == 0 {
 				return ra.AllocateOrOccupyCIDR(newNode)
 			}
 			return nil
@@ -259,7 +260,7 @@ func (r *multiRangeAllocator) AllocateOrOccupyCIDR(node *v1.Node) error {
 		allocatedCIDRs: make([]*net.IPNet, len(r.cidrSets)),
 	}
 
-	for idx, _ := range r.cidrSets {
+	for idx := range r.cidrSets {
 		podCIDR, err := r.cidrSets[idx].AllocateNext()
 		if err != nil {
 			r.removeNodeFromProcessing(node.Name)
@@ -294,28 +295,6 @@ func (r *multiRangeAllocator) ReleaseCIDR(node *v1.Node) error {
 	return nil
 }
 
-// Marks all CIDRs with subNetMaskSize that belongs to serviceCIDR as used,
-// across all cidrs
-// so that they won't be assignable.
-func (r *multiRangeAllocator) filterOutServiceRange(serviceCIDR *net.IPNet) {
-	// Checks if service CIDR has a nonempty intersection with cluster
-	// CIDR. It is the case if either clusterCIDR contains serviceCIDR with
-	// clusterCIDR's Mask applied (this means that clusterCIDR contains
-	// serviceCIDR) or vice versa (which means that serviceCIDR contains
-	// clusterCIDR).
-
-	// at this point, len(cidrSet) == len(clusterCidr)
-	for idx, cidr := range r.clusterCIDRs {
-		if !cidr.Contains(serviceCIDR.IP.Mask(cidr.Mask)) && !serviceCIDR.Contains(cidr.IP.Mask(serviceCIDR.Mask)) {
-			continue
-		}
-
-		if err := r.cidrSets[idx].Occupy(serviceCIDR); err != nil {
-			klog.Errorf("Error filtering out service cidr out cluster cidr:%v (index:%v) %v: %v", cidr, idx, serviceCIDR, err)
-		}
-	}
-}
-
 // updateCIDRAllocation assigns CIDR to Node and sends an update to the API server.
 func (r *multiRangeAllocator) updateCIDRAllocation(data nodeAndCIDRs) error {
 	var err error
@@ -347,14 +326,10 @@ func (r *multiRangeAllocator) updateCIDRAllocation(data nodeAndCIDRs) error {
 
 	// node has cidrs, release them
 	if 0 != len(node.Spec.PodCIDRs) {
-		klog.Errorf("Node %v already has a CIDR allocated %v. Releasing the new one %v.", node.Name, node.Spec.PodCIDRs)
-		for idx, cidr := range node.Spec.PodCIDRs {
-			_, parsedCidr, err := net.ParseCIDR(cidr)
-			if nil != err {
-				klog.Errorf("Error when parsing CIDR idx:%v value: %v", idx, cidr)
-			}
-			if err := r.cidrSets[idx].Release(parsedCidr); err != nil {
-				klog.Errorf("Error when releasing CIDR idx:%v value: %v", idx, cidr)
+		klog.Errorf("Node %v already has a CIDR allocated %v. Releasing the new one.", node.Name, node.Spec.PodCIDRs)
+		for idx, cidr := range data.allocatedCIDRs {
+			if releaseErr := r.cidrSets[idx].Release(cidr); err != nil {
+				klog.Errorf("Error when releasing CIDR idx:%v value: %v err:%v", idx, cidr, releaseErr)
 			}
 		}
 		return nil
@@ -390,4 +365,50 @@ func (r *multiRangeAllocator) cidrsAsString(inCIDRs []*net.IPNet) []string {
 		outCIDRs[idx] = inCIDR.String()
 	}
 	return outCIDRs
+}
+
+// Marks all CIDRs with subNetMaskSize that belongs to serviceCIDR as used,
+// across all cidrs
+// so that they won't be assignable.
+func (r *multiRangeAllocator) filterOutServiceRange(serviceCIDR *net.IPNet) {
+	// Checks if service CIDR has a nonempty intersection with cluster
+	// CIDR. It is the case if either clusterCIDR contains serviceCIDR with
+	// clusterCIDR's Mask applied (this means that clusterCIDR contains
+	// serviceCIDR) or vice versa (which means that serviceCIDR contains
+	// clusterCIDR).
+
+	for idx, cidr := range r.clusterCIDRs {
+		if !cidr.Contains(serviceCIDR.IP.Mask(cidr.Mask)) && !serviceCIDR.Contains(cidr.IP.Mask(serviceCIDR.Mask)) {
+			continue
+		}
+
+		// at this point, len(cidrSet) == len(clusterCidr)
+		if err := r.cidrSets[idx].Occupy(serviceCIDR); err != nil {
+			klog.Errorf("Error filtering out service cidr out cluster cidr:%v (index:%v) %v: %v", cidr, idx, serviceCIDR, err)
+		}
+	}
+}
+
+// given a list of cidrs returns an error if any cidr overlap with another
+func isOverlappedCIDRs(clusterCIDRs []*net.IPNet) bool {
+	for outerIdx, outer := range clusterCIDRs {
+		for innerIdx, inner := range clusterCIDRs {
+			if outerIdx == innerIdx {
+				continue
+			}
+
+			outerIsV6 := utilnet.IsIPv6CIDRString(outer.String())
+			innerIsV6 := utilnet.IsIPv6CIDRString(inner.String())
+
+			if outerIsV6 != innerIsV6 {
+				continue
+			}
+
+			if inner.Contains(outer.IP) || outer.Contains(inner.IP) {
+				return true
+			}
+
+		}
+	}
+	return false
 }

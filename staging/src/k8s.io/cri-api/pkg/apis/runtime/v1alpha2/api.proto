@@ -400,6 +400,9 @@ message PodSandboxStatusRequest {
 message PodSandboxNetworkStatus {
     // IP address of the PodSandbox.
     string ip = 1;
+    // additional ips of the PodSandBox
+    // this list will have all *other* ips
+    repeated string ips = 2;
 }
 
 // Namespace contains paths to the namespaces.

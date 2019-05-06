@@ -3914,7 +3914,7 @@ type NodeSpec struct {
 
 	// PodCIDRs represents the list of ranges for ciders assigned to this node.
 	// +optional
-	PodCIDRs []string `json:"podCIDRs,omitempty" protobuf:"bytes,7,opt,name=podCIDR"`
+	PodCIDRs []string `json:"podCIDRs,omitempty" protobuf:"bytes,7,opt,name=podCIDRs"`
 }
 
 // NodeConfigSource specifies a source of node configuration. Exactly one subfield (excluding metadata) must be non-nil.

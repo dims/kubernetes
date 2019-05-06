@@ -2106,6 +2106,10 @@ message NodeSpec {
   // see: https://issues.k8s.io/61966
   // +optional
   optional string externalID = 2;
+
+  // PodCIDRs represents the list of ranges for ciders assigned to this node.
+  // +optional
+  repeated string podCIDRs = 7;
 }
 
 // NodeStatus is information about the current status of a node.
@@ -2849,9 +2853,6 @@ message PodExecOptions {
 //    Properties: Arbitrary metadata associated with the allocated IP.
 message PodIP {
   optional string ip = 1;
-
-  map<string, string> properties = 2;
-}
 
 // PodList is a list of Pods.
 message PodList {
