@@ -10,7 +10,6 @@ go_library(
         "debug.go",
         "doc.go",
         "release.go",
-        "restore.go",
         "stringwriter.go",
         "toc.go",
     ],

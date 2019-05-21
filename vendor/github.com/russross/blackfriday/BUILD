@@ -4,10 +4,12 @@ go_library(
     name = "go_default_library",
     srcs = [
         "block.go",
+        "doc.go",
+        "esc.go",
         "html.go",
         "inline.go",
-        "latex.go",
         "markdown.go",
+        "node.go",
         "smartypants.go",
     ],
     importmap = "k8s.io/kubernetes/vendor/github.com/russross/blackfriday",

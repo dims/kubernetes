@@ -91,6 +91,23 @@ type RealFsInfo struct {
 	fsUUIDToDeviceName map[string]string
 }
 
+type Context struct {
+	// docker root directory.
+	Docker  DockerContext
+	RktPath string
+	Crio    CrioContext
+}
+
+type DockerContext struct {
+	Root         string
+	Driver       string
+	DriverStatus map[string]string
+}
+
+type CrioContext struct {
+	Root string
+}
+
 func NewFsInfo(context Context) (FsInfo, error) {
 	mounts, err := mount.GetMounts(nil)
 	if err != nil {
@@ -393,13 +410,8 @@ func (self *RealFsInfo) GetFsInfoForPath(mountSet map[string]struct{}) ([]Fs, er
 				klog.V(5).Infof("got devicemapper fs capacity stats: capacity: %v free: %v available: %v:", fs.Capacity, fs.Free, fs.Available)
 				fs.Type = DeviceMapper
 			case ZFS.String():
-				if _, devzfs := os.Stat("/dev/zfs"); os.IsExist(devzfs) {
-					fs.Capacity, fs.Free, fs.Available, err = getZfstats(device)
-					fs.Type = ZFS
-					break
-				}
-				// if /dev/zfs is not present default to VFS
-				fallthrough
+				fs.Capacity, fs.Free, fs.Available, err = getZfstats(device)
+				fs.Type = ZFS
 			default:
 				var inodes, inodesFree uint64
 				if utils.FileExists(partition.mountpoint) {
