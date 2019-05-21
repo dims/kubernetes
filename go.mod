@@ -125,9 +125,8 @@ require (
 	github.com/prometheus/common v0.4.0
 	github.com/quobyte/api v0.1.2
 	github.com/robfig/cron v1.1.0
-	github.com/russross/blackfriday v2.0.0+incompatible
+	github.com/russross/blackfriday v1.5.2
 	github.com/seccomp/libseccomp-golang v0.9.0 // indirect
-	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sigma/go-inotify v0.0.0-20181102212354-c87b6cf5033d
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/spf13/afero v1.2.2
@@ -393,7 +392,7 @@ replace (
 	github.com/remyoudompheng/bigfft => github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446
 	github.com/robfig/cron => github.com/robfig/cron v1.1.0
 	github.com/rubiojr/go-vhd => github.com/rubiojr/go-vhd v0.0.0-20160810183302-0bfd3b39853c
-	github.com/russross/blackfriday => github.com/russross/blackfriday v2.0.0+incompatible
+	github.com/russross/blackfriday => github.com/russross/blackfriday v1.5.2
 	github.com/satori/go.uuid => github.com/satori/go.uuid v1.2.0
 	github.com/seccomp/libseccomp-golang => github.com/seccomp/libseccomp-golang v0.9.0
 	github.com/shurcooL/sanitized_anchor_name => github.com/shurcooL/sanitized_anchor_name v1.0.0
