@@ -568,7 +568,7 @@ github.com/json-iterator/go
 github.com/jstemmer/go-junit-report
 github.com/jstemmer/go-junit-report/formatter
 github.com/jstemmer/go-junit-report/parser
-# github.com/jteeuwen/go-bindata v3.0.7+incompatible => github.com/jteeuwen/go-bindata v3.0.7+incompatible
+# github.com/jteeuwen/go-bindata v0.0.0-20151023091102-a0ff2567cfb7 => github.com/jteeuwen/go-bindata v0.0.0-20151023091102-a0ff2567cfb7
 github.com/jteeuwen/go-bindata
 github.com/jteeuwen/go-bindata/go-bindata
 # github.com/kardianos/osext v0.0.0-20150410034420-8fef92e41e22 => github.com/kardianos/osext v0.0.0-20150410034420-8fef92e41e22
