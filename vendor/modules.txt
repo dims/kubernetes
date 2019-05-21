@@ -32,7 +32,7 @@ github.com/JeffAshton/win_pdh
 github.com/MakeNowJust/heredoc
 # github.com/Microsoft/go-winio v0.4.11 => github.com/Microsoft/go-winio v0.4.11
 github.com/Microsoft/go-winio
-# github.com/Microsoft/hcsshim v0.0.0-20190110205307-69ac8d3f7fc1 => github.com/Microsoft/hcsshim v0.0.0-20190110205307-69ac8d3f7fc1
+# github.com/Microsoft/hcsshim v0.8.6 => github.com/Microsoft/hcsshim v0.8.6
 github.com/Microsoft/hcsshim
 github.com/Microsoft/hcsshim/hcn
 github.com/Microsoft/hcsshim/internal/cni
@@ -136,6 +136,8 @@ github.com/bazelbuild/buildtools/wspace
 github.com/beorn7/perks/quantile
 # github.com/blang/semver v3.5.0+incompatible => github.com/blang/semver v3.5.0+incompatible
 github.com/blang/semver
+# github.com/cenkalti/backoff v2.1.1+incompatible => github.com/cenkalti/backoff v2.1.1+incompatible
+github.com/cenkalti/backoff
 # github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c => github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c
 github.com/cespare/prettybench
 # github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 => github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5
@@ -162,7 +164,7 @@ github.com/cloudflare/cfssl/signer
 github.com/cloudflare/cfssl/signer/local
 # github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313 => github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313
 github.com/clusterhq/flocker-go
-# github.com/codedellemc/goscaleio v0.0.0-20170830184815-20e2ce2cf885 => github.com/codedellemc/goscaleio v0.0.0-20170830184815-20e2ce2cf885
+# github.com/codedellemc/goscaleio v0.1.0 => github.com/codedellemc/goscaleio v0.1.0
 github.com/codedellemc/goscaleio
 github.com/codedellemc/goscaleio/types/v1
 # github.com/container-storage-interface/spec v1.1.0 => github.com/container-storage-interface/spec v1.1.0
@@ -282,7 +284,7 @@ github.com/cpuguy83/go-md2man/md2man
 github.com/cyphar/filepath-securejoin
 # github.com/d2g/dhcp4 v0.0.0-20170904100407-a1d1b6c41b1c => github.com/d2g/dhcp4 v0.0.0-20170904100407-a1d1b6c41b1c
 github.com/d2g/dhcp4
-# github.com/d2g/dhcp4client v0.0.0-20170829104524-6e570ed0a266 => github.com/d2g/dhcp4client v0.0.0-20170829104524-6e570ed0a266
+# github.com/d2g/dhcp4client v1.0.0 => github.com/d2g/dhcp4client v1.0.0
 github.com/d2g/dhcp4client
 # github.com/davecgh/go-spew v1.1.1 => github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
@@ -575,11 +577,13 @@ github.com/kardianos/osext
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1 => github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/libopenstorage/openstorage v0.0.0-20170906232338-093a0c388875 => github.com/libopenstorage/openstorage v0.0.0-20170906232338-093a0c388875
+# github.com/libopenstorage/openstorage v8.0.0+incompatible => github.com/libopenstorage/openstorage v8.0.0+incompatible
 github.com/libopenstorage/openstorage/api
 github.com/libopenstorage/openstorage/api/client
 github.com/libopenstorage/openstorage/api/client/volume
+github.com/libopenstorage/openstorage/api/errors
 github.com/libopenstorage/openstorage/api/spec
+github.com/libopenstorage/openstorage/pkg/auth
 github.com/libopenstorage/openstorage/pkg/parser
 github.com/libopenstorage/openstorage/pkg/units
 github.com/libopenstorage/openstorage/volume
@@ -621,7 +625,7 @@ github.com/mholt/caddy/telemetry
 github.com/miekg/dns
 # github.com/mindprince/gonvml v0.0.0-20171110221305-fee913ce8fb2 => github.com/mindprince/gonvml v0.0.0-20171110221305-fee913ce8fb2
 github.com/mindprince/gonvml
-# github.com/mistifyio/go-zfs v0.0.0-20151009155749-1b4ae6fb4e77 => github.com/mistifyio/go-zfs v0.0.0-20151009155749-1b4ae6fb4e77
+# github.com/mistifyio/go-zfs v2.1.1+incompatible => github.com/mistifyio/go-zfs v2.1.1+incompatible
 github.com/mistifyio/go-zfs
 # github.com/mitchellh/go-wordwrap v1.0.0 => github.com/mitchellh/go-wordwrap v1.0.0
 github.com/mitchellh/go-wordwrap
@@ -790,9 +794,11 @@ github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
 # github.com/syndtr/gocapability v0.0.0-20160928074757-e7cb7fa329f4 => github.com/syndtr/gocapability v0.0.0-20160928074757-e7cb7fa329f4
 github.com/syndtr/gocapability/capability
+# github.com/thecodeteam/goscaleio v0.1.0 => github.com/thecodeteam/goscaleio v0.1.0
+github.com/thecodeteam/goscaleio/types/v1
 # github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8 => github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8
 github.com/tmc/grpc-websocket-proxy/wsproxy
-# github.com/vishvananda/netlink v0.0.0-20171020171820-b2de5d10e38e => github.com/vishvananda/netlink v0.0.0-20171020171820-b2de5d10e38e
+# github.com/vishvananda/netlink v1.0.0 => github.com/vishvananda/netlink v1.0.0
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20171111001504-be1fbeda1936 => github.com/vishvananda/netns v0.0.0-20171111001504-be1fbeda1936
@@ -835,7 +841,7 @@ github.com/vmware/govmomi/vim25/xml
 github.com/vmware/photon-controller-go-sdk/SSPI
 github.com/vmware/photon-controller-go-sdk/photon
 github.com/vmware/photon-controller-go-sdk/photon/lightwave
-# github.com/xanzy/go-cloudstack v0.0.0-20160728180336-1e2cbf647e57 => github.com/xanzy/go-cloudstack v0.0.0-20160728180336-1e2cbf647e57
+# github.com/xanzy/go-cloudstack v2.4.1+incompatible => github.com/xanzy/go-cloudstack v2.4.1+incompatible
 github.com/xanzy/go-cloudstack/cloudstack
 # github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 => github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18
 github.com/xiang90/probing
@@ -994,6 +1000,7 @@ google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
 # google.golang.org/genproto v0.0.0-20170731182057-09f6ed296fc6 => google.golang.org/genproto v0.0.0-20170731182057-09f6ed296fc6
+google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.13.0 => google.golang.org/grpc v1.13.0
 google.golang.org/grpc

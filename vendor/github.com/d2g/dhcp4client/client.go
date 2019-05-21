@@ -2,7 +2,12 @@ package dhcp4client
 
 import (
 	"bytes"
+	"fmt"
+	"hash/fnv"
+	"math/rand"
 	"net"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/d2g/dhcp4"
@@ -17,12 +22,12 @@ type Client struct {
 	ignoreServers []net.IP         //List of Servers to Ignore requests from.
 	timeout       time.Duration    //Time before we timeout.
 	broadcast     bool             //Set the Bcast flag in BOOTP Flags
-	connection    connection       //The Connection Method to use
+	connection    ConnectionInt    //The Connection Method to use
 	generateXID   func([]byte)     //Function Used to Generate a XID
 }
 
 //Abstracts the type of underlying socket used
-type connection interface {
+type ConnectionInt interface {
 	Close() error
 	Write(packet []byte) error
 	ReadFrom() ([]byte, net.IP, error)
@@ -31,14 +36,33 @@ type connection interface {
 
 func New(options ...func(*Client) error) (*Client, error) {
 	c := Client{
-		timeout:     time.Second * 10,
-		broadcast:   true,
-		generateXID: CryptoGenerateXID,
+		timeout:   time.Second * 10,
+		broadcast: true,
 	}
 
 	err := c.SetOption(options...)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.generateXID == nil {
+		// https://tools.ietf.org/html/rfc2131#section-4.1 explains:
+		//
+		// A DHCP client MUST choose 'xid's in such a way as to minimize the chance
+		// of using an 'xid' identical to one used by another client.
+		//
+		// Hence, seed a random number generator with the current time and hardware
+		// address.
+		h := fnv.New64()
+		h.Write(c.hardwareAddr)
+		seed := int64(h.Sum64()) + time.Now().Unix()
+		rnd := rand.New(rand.NewSource(seed))
+		var rndMu sync.Mutex
+		c.generateXID = func(b []byte) {
+			rndMu.Lock()
+			defer rndMu.Unlock()
+			rnd.Read(b)
+		}
 	}
 
 	//if connection hasn't been set as an option create the default.
@@ -90,7 +114,7 @@ func Broadcast(b bool) func(*Client) error {
 	}
 }
 
-func Connection(conn connection) func(*Client) error {
+func Connection(conn ConnectionInt) func(*Client) error {
 	return func(c *Client) error {
 		c.connection = conn
 		return nil
@@ -120,13 +144,32 @@ func (c *Client) SendDiscoverPacket() (dhcp4.Packet, error) {
 	return discoveryPacket, c.SendPacket(discoveryPacket)
 }
 
+// TimeoutError records a timeout when waiting for a DHCP packet.
+type TimeoutError struct {
+	Timeout time.Duration
+}
+
+func (te *TimeoutError) Error() string {
+	return fmt.Sprintf("no DHCP packet received within %v", te.Timeout)
+}
+
 //Retreive Offer...
 //Wait for the offer for a specific Discovery Packet.
 func (c *Client) GetOffer(discoverPacket *dhcp4.Packet) (dhcp4.Packet, error) {
+	start := time.Now()
+
 	for {
-		c.connection.SetReadTimeout(c.timeout)
+		timeout := c.timeout - time.Since(start)
+		if timeout < 0 {
+			return dhcp4.Packet{}, &TimeoutError{Timeout: c.timeout}
+		}
+
+		c.connection.SetReadTimeout(timeout)
 		readBuffer, source, err := c.connection.ReadFrom()
 		if err != nil {
+			if errno, ok := err.(syscall.Errno); ok && errno == syscall.EAGAIN {
+				return dhcp4.Packet{}, &TimeoutError{Timeout: c.timeout}
+			}
 			return dhcp4.Packet{}, err
 		}
 
@@ -164,10 +207,20 @@ func (c *Client) SendRequest(offerPacket *dhcp4.Packet) (dhcp4.Packet, error) {
 //Retreive Acknowledgement
 //Wait for the offer for a specific Request Packet.
 func (c *Client) GetAcknowledgement(requestPacket *dhcp4.Packet) (dhcp4.Packet, error) {
+	start := time.Now()
+
 	for {
-		c.connection.SetReadTimeout(c.timeout)
+		timeout := c.timeout - time.Since(start)
+		if timeout < 0 {
+			return dhcp4.Packet{}, &TimeoutError{Timeout: c.timeout}
+		}
+
+		c.connection.SetReadTimeout(timeout)
 		readBuffer, source, err := c.connection.ReadFrom()
 		if err != nil {
+			if errno, ok := err.(syscall.Errno); ok && errno == syscall.EAGAIN {
+				return dhcp4.Packet{}, &TimeoutError{Timeout: c.timeout}
+			}
 			return dhcp4.Packet{}, err
 		}
 
@@ -298,7 +351,6 @@ func (c *Client) DeclinePacket(acknowledgement *dhcp4.Packet) dhcp4.Packet {
 
 	return packet
 }
-
 
 //Lets do a Full DHCP Request.
 func (c *Client) Request() (bool, dhcp4.Packet, error) {
