@@ -25,7 +25,7 @@ import (
 	_ "github.com/cespare/prettybench"
 	_ "github.com/client9/misspell/cmd/misspell"
 	_ "github.com/jstemmer/go-junit-report"
-	_ "github.com/jteeuwen/go-bindata/go-bindata"
+	_ "github.com/go-bindata/go-bindata/go-bindata"
 	_ "github.com/onsi/ginkgo/ginkgo"
 	_ "golang.org/x/lint/golint"
 	_ "k8s.io/code-generator/cmd/go-to-protobuf"
