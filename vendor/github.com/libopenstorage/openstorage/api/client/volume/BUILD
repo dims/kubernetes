@@ -12,7 +12,6 @@ go_library(
     deps = [
         "//vendor/github.com/libopenstorage/openstorage/api:go_default_library",
         "//vendor/github.com/libopenstorage/openstorage/api/client:go_default_library",
-        "//vendor/github.com/libopenstorage/openstorage/api/errors:go_default_library",
         "//vendor/github.com/libopenstorage/openstorage/volume:go_default_library",
     ],
 )

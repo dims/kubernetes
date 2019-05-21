@@ -136,8 +136,6 @@ github.com/bazelbuild/buildtools/wspace
 github.com/beorn7/perks/quantile
 # github.com/blang/semver v3.5.0+incompatible => github.com/blang/semver v3.5.0+incompatible
 github.com/blang/semver
-# github.com/cenkalti/backoff v2.1.1+incompatible => github.com/cenkalti/backoff v2.1.1+incompatible
-github.com/cenkalti/backoff
 # github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c => github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c
 github.com/cespare/prettybench
 # github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 => github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5
@@ -577,13 +575,11 @@ github.com/kardianos/osext
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1 => github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/libopenstorage/openstorage v8.0.0+incompatible => github.com/libopenstorage/openstorage v8.0.0+incompatible
+# github.com/libopenstorage/openstorage v0.0.0-20170906232338-093a0c388875 => github.com/libopenstorage/openstorage v0.0.0-20170906232338-093a0c388875
 github.com/libopenstorage/openstorage/api
 github.com/libopenstorage/openstorage/api/client
 github.com/libopenstorage/openstorage/api/client/volume
-github.com/libopenstorage/openstorage/api/errors
 github.com/libopenstorage/openstorage/api/spec
-github.com/libopenstorage/openstorage/pkg/auth
 github.com/libopenstorage/openstorage/pkg/parser
 github.com/libopenstorage/openstorage/pkg/units
 github.com/libopenstorage/openstorage/volume
@@ -998,7 +994,6 @@ google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
 # google.golang.org/genproto v0.0.0-20170731182057-09f6ed296fc6 => google.golang.org/genproto v0.0.0-20170731182057-09f6ed296fc6
-google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.13.0 => google.golang.org/grpc v1.13.0
 google.golang.org/grpc

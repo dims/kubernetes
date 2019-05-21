@@ -87,10 +87,11 @@ type Client struct {
 	userAgent   string
 }
 
-func (c *Client) SetTLS(tlsConfig *tls.Config) {
-	c.httpClient = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: tlsConfig},
-	}
+// Status sends a Status request at the /status REST endpoint.
+func (c *Client) Status() (*Status, error) {
+	status := &Status{}
+	err := c.Get().UsePath("/status").Do().Unmarshal(status)
+	return status, err
 }
 
 // Versions send a request at the /versions REST endpoint.

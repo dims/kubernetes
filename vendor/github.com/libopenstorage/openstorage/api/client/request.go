@@ -3,43 +3,36 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/libopenstorage/openstorage/pkg/auth"
-)
-
-const (
-	maxRetryDuration = 5 * time.Minute
+	"math/rand"
 )
 
 // Request is contructed iteratively by the client and finally dispatched.
 // A REST endpoint is accessed with the following convention:
 // base_url/<version>/<resource>/[<instance>]
 type Request struct {
-	client      *http.Client
-	version     string
-	verb        string
-	path        string
-	base        *url.URL
-	params      url.Values
-	headers     http.Header
-	resource    string
-	instance    string
-	err         error
-	body        []byte
-	req         *http.Request
-	resp        *http.Response
-	timeout     time.Duration
-	authstring  string
+	client   *http.Client
+	version  string
+	verb     string
+	path     string
+	base     *url.URL
+	params   url.Values
+	headers  http.Header
+	resource string
+	instance string
+	err      error
+	body     []byte
+	req      *http.Request
+	resp     *http.Response
+	timeout  time.Duration
+	authstring string
 	accesstoken string
 }
 
@@ -60,11 +53,11 @@ type Status struct {
 // NewRequest instance
 func NewRequest(client *http.Client, base *url.URL, verb string, version string, authstring, userAgent string) *Request {
 	r := &Request{
-		client:     client,
-		verb:       verb,
-		base:       base,
-		path:       base.Path,
-		version:    version,
+		client:  client,
+		verb:    verb,
+		base:    base,
+		path:    base.Path,
+		version: version,
 		authstring: authstring,
 	}
 	r.SetHeader("User-Agent", userAgent)
@@ -184,7 +177,7 @@ func (r *Request) URL() *url.URL {
 		p = path.Join(p, strings.ToLower(r.version))
 	}
 	if len(r.resource) != 0 {
-		p = path.Join(p, r.resource)
+		p = path.Join(p, strings.ToLower(r.resource))
 		if len(r.instance) != 0 {
 			p = path.Join(p, r.instance)
 		}
@@ -216,18 +209,31 @@ func headerVal(key string, resp *http.Response) (int, bool) {
 }
 
 func parseHTTPStatus(resp *http.Response, body []byte) error {
-	if resp.StatusCode >= http.StatusOK &&
-		resp.StatusCode <= http.StatusPartialContent {
-		// Status is good and HTTP status is good, everything is good
+
+	var (
+		status *Status
+		err    error
+	)
+
+	httpOK := resp.StatusCode >= http.StatusOK && resp.StatusCode <= http.StatusPartialContent
+	hasStatus := false
+	if body != nil {
+		err = json.Unmarshal(body, status)
+		if err == nil && status.Message != "" {
+			hasStatus = true
+		}
+	}
+	// If the status is NG, return an error regardless of HTTP status.
+	if hasStatus && status.ErrorCode != 0 {
+		return fmt.Errorf("Error %v : %v", status.ErrorCode, status.Message)
+	}
+
+	// Status is good and HTTP status is good, everything is good
+	if httpOK {
 		return nil
 	}
 
-	// Get error from body if any
-	if len(string(body)) != 0 {
-		return errors.New(string(body))
-	}
-
-	// If no error was in the body, return a generic one
+	// If HTTP status is NG, return an error.
 	return fmt.Errorf("HTTP error %d", resp.StatusCode)
 }
 
@@ -240,7 +246,6 @@ func (r *Request) Do() *Response {
 		url  string
 		body []byte
 	)
-
 	if r.err != nil {
 		return &Response{err: r.err}
 	}
@@ -258,58 +263,30 @@ func (r *Request) Do() *Response {
 	req.Header.Set("Date", time.Now().String())
 
 	if len(r.authstring) > 0 {
-		if auth.IsJwtToken(r.authstring) {
-			req.Header.Set("Authorization", "bearer "+r.authstring)
-		} else {
-			req.Header.Set("Authorization", "Basic "+r.authstring)
-		}
+		req.Header.Set("Authorization", "Basic "+ r.authstring)
 	}
 
 	if len(r.accesstoken) > 0 {
 		req.Header.Set("Access-Token", r.accesstoken)
 	}
 
-	start := time.Now()
-	attemptNum := 0
-	for {
-		if resp, err = r.client.Do(req); err != nil {
-			return &Response{err: err}
-		}
-
-		if time.Since(start) >= maxRetryDuration ||
-			resp.StatusCode != http.StatusServiceUnavailable {
-			break
-		}
-		attemptNum++
-		handleServiceUnavailable(resp, attemptNum)
+	resp, err = r.client.Do(req)
+	if err != nil {
+		return &Response{err: err}
 	}
-
 	if resp.Body != nil {
 		defer resp.Body.Close()
-		if body, err = ioutil.ReadAll(resp.Body); err != nil {
-			return &Response{err: err}
-		}
+		body, err = ioutil.ReadAll(resp.Body)
 	}
-
+	if err != nil {
+		return &Response{err: err}
+	}
 	return &Response{
 		status:     resp.Status,
 		statusCode: resp.StatusCode,
 		body:       body,
 		err:        parseHTTPStatus(resp, body),
 	}
-}
-
-func handleServiceUnavailable(resp *http.Response, attemptNum int) {
-	var duration = time.Duration(1 * time.Second)
-	if len(resp.Header["Retry-After"]) > 0 {
-		if retryafter, err := strconv.Atoi(resp.Header["Retry-After"][0]); err == nil {
-			duration = time.Duration(retryafter*attemptNum) * time.Second
-		}
-	}
-	// Close body so go-routines can spin down.
-	resp.Body.Close()
-
-	time.Sleep(duration)
 }
 
 // Body return http body, valid only if there is no error
@@ -340,7 +317,7 @@ func (r Response) FormatError() error {
 	if len(r.body) == 0 {
 		return fmt.Errorf("Error: %v", r.err)
 	}
-	return fmt.Errorf("%v", strings.TrimSpace(string(r.body)))
+	return fmt.Errorf("HTTP-%d: %s", r.statusCode, string(r.body))
 }
 
 func digest(method string, path string) string {

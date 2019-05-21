@@ -9,7 +9,6 @@ go_library(
     importmap = "k8s.io/kubernetes/vendor/github.com/libopenstorage/openstorage/api/client",
     importpath = "github.com/libopenstorage/openstorage/api/client",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/github.com/libopenstorage/openstorage/pkg/auth:go_default_library"],
 )
 
 filegroup(
