@@ -20,8 +20,8 @@ go_library(
     importpath = "github.com/codedellemc/goscaleio",
     visibility = ["//visibility:public"],
     deps = [
+        "//vendor/github.com/codedellemc/goscaleio/types/v1:go_default_library",
         "//vendor/github.com/sirupsen/logrus:go_default_library",
-        "//vendor/github.com/thecodeteam/goscaleio/types/v1:go_default_library",
     ],
 )
 
