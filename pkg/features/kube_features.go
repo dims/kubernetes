@@ -459,6 +459,12 @@ const (
 	// Allow use of filesystems for ephemeral storage monitoring.
 	// Only applies if LocalStorageCapacityIsolation is set.
 	LocalStorageCapacityIsolationFSQuotaMonitoring featuregate.Feature = "LocalStorageCapacityIsolationFSQuotaMonitoring"
+
+	// owner: @khenidak
+	// alpha: v1.15
+	//
+	// Enables ipv6 dual stack
+	IPv6DualStack featuregate.Feature = "IPv6DualStack"
 )
 
 func init() {
@@ -536,6 +542,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	KubeletPodResources:                         {Default: false, PreRelease: featuregate.Alpha},
 	WindowsGMSA:                                 {Default: false, PreRelease: featuregate.Alpha},
 	LocalStorageCapacityIsolationFSQuotaMonitoring: {Default: false, PreRelease: featuregate.Alpha},
+	IPv6DualStack: {Default: false, PreRelease: featuregate.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
