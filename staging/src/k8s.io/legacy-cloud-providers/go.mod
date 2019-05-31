@@ -27,6 +27,7 @@ require (
 	k8s.io/apiserver v0.0.0
 	k8s.io/client-go v0.0.0
 	k8s.io/cloud-provider v0.0.0
+	k8s.io/component-base v0.0.0
 	k8s.io/csi-translation-lib v0.0.0
 	k8s.io/klog v0.3.2
 	k8s.io/utils v0.0.0-20190221042446-c2654d5206da
