@@ -668,9 +668,9 @@ func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, podStatus *kubecontaine
 	//
 	// We default to the IP in the passed-in pod status, and overwrite it if the
 	// sandbox needs to be (re)started.
-	podIP := ""
+	var podIPs []string
 	if podStatus != nil {
-		podIP = podStatus.IP
+		podIPs = podStatus.IPs
 	}
 
 	// Step 4: Create a sandbox for the pod if necessary.
@@ -711,9 +711,23 @@ func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, podStatus *kubecontaine
 		// host-network, we may use a stale IP.
 		if !kubecontainer.IsHostNetworkPod(pod) {
 			// Overwrite the podIP passed in the pod status, since we just started the pod sandbox.
-			podIP = m.determinePodSandboxIP(pod.Namespace, pod.Name, podSandboxStatus)
-			klog.V(4).Infof("Determined the ip %q for pod %q after sandbox changed", podIP, format.Pod(pod))
+			podIPs = m.determinePodSandboxIPs(pod.Namespace, pod.Name, podSandboxStatus)
+			klog.V(4).Infof("Determined the ip %v for pod %q after sandbox changed", podIPs, format.Pod(pod))
 		}
+	}
+
+	// the start containers routines depend on pod ip(as in primary pod ip)
+	// instead of trying to figure out if we have 0 < len(podIPs)
+	// everytime, we short circuit it here
+	podIP := ""
+	if 0 != len(podIPs) {
+		podIP = podIPs[0]
+	}
+
+	// There are situation where pod.IPs will not be
+	// reported correctly (host network is one of them)
+	if len(podIP) == 0 && podStatus != nil {
+		podIP = podStatus.IP
 	}
 
 	// Get podSandboxConfig for containers to start.
@@ -877,6 +891,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 
 	sandboxStatuses := make([]*runtimeapi.PodSandboxStatus, len(podSandboxIDs))
 	podIP := ""
+	podIPs := []string{}
 	for idx, podSandboxID := range podSandboxIDs {
 		podSandboxStatus, err := m.runtimeService.PodSandboxStatus(podSandboxID)
 		if err != nil {
@@ -887,7 +902,10 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 
 		// Only get pod IP from latest sandbox
 		if idx == 0 && podSandboxStatus.State == runtimeapi.PodSandboxState_SANDBOX_READY {
-			podIP = m.determinePodSandboxIP(namespace, name, podSandboxStatus)
+			podIPs = m.determinePodSandboxIPs(namespace, name, podSandboxStatus)
+			if 0 != len(podIPs) {
+				podIP = podIPs[0]
+			}
 		}
 	}
 
@@ -906,6 +924,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 		Name:              name,
 		Namespace:         namespace,
 		IP:                podIP,
+		IPs:               podIPs,
 		SandboxStatuses:   sandboxStatuses,
 		ContainerStatuses: containerStatuses,
 	}, nil

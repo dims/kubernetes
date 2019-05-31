@@ -325,64 +325,75 @@ func (ds *dockerService) RemovePodSandbox(ctx context.Context, r *runtimeapi.Rem
 }
 
 // getIPFromPlugin interrogates the network plugin for an IP.
-func (ds *dockerService) getIPFromPlugin(sandbox *dockertypes.ContainerJSON) (string, error) {
+func (ds *dockerService) getIPsFromPlugin(sandbox *dockertypes.ContainerJSON) ([]string, error) {
 	metadata, err := parseSandboxName(sandbox.Name)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	msg := fmt.Sprintf("Couldn't find network status for %s/%s through plugin", metadata.Namespace, metadata.Name)
 	cID := kubecontainer.BuildContainerID(runtimeName, sandbox.ID)
 	networkStatus, err := ds.network.GetPodNetworkStatus(metadata.Namespace, metadata.Name, cID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if networkStatus == nil {
-		return "", fmt.Errorf("%v: invalid network status for", msg)
+		return nil, fmt.Errorf("%v: invalid network status for", msg)
 	}
-	return networkStatus.IP.String(), nil
+
+	IPs := make([]string, 0)
+	for _, ip := range networkStatus.IPs {
+		IPs = append(IPs, ip.String())
+	}
+	// if we don't have any ip in our list then
+	// cni is using classic primary IP only
+	if 0 == len(IPs) {
+		IPs = append(IPs, networkStatus.IP.String())
+	}
+	return IPs, nil
 }
 
-// getIP returns the ip given the output of `docker inspect` on a pod sandbox,
+// getIPs returns the ip given the output of `docker inspect` on a pod sandbox,
 // first interrogating any registered plugins, then simply trusting the ip
 // in the sandbox itself. We look for an ipv4 address before ipv6.
-func (ds *dockerService) getIP(podSandboxID string, sandbox *dockertypes.ContainerJSON) string {
+func (ds *dockerService) getIPs(podSandboxID string, sandbox *dockertypes.ContainerJSON) []string {
 	if sandbox.NetworkSettings == nil {
-		return ""
+		return nil
 	}
 	if networkNamespaceMode(sandbox) == runtimeapi.NamespaceMode_NODE {
 		// For sandboxes using host network, the shim is not responsible for
 		// reporting the IP.
-		return ""
+		return nil
 	}
 
 	// Don't bother getting IP if the pod is known and networking isn't ready
 	ready, ok := ds.getNetworkReady(podSandboxID)
 	if ok && !ready {
-		return ""
+		return nil
 	}
 
-	ip, err := ds.getIPFromPlugin(sandbox)
+	ips, err := ds.getIPsFromPlugin(sandbox)
 	if err == nil {
-		return ip
+		return ips
 	}
 
+	ips = make([]string, 0)
 	// TODO: trusting the docker ip is not a great idea. However docker uses
 	// eth0 by default and so does CNI, so if we find a docker IP here, we
 	// conclude that the plugin must have failed setup, or forgotten its ip.
 	// This is not a sensible assumption for plugins across the board, but if
 	// a plugin doesn't want this behavior, it can throw an error.
 	if sandbox.NetworkSettings.IPAddress != "" {
-		return sandbox.NetworkSettings.IPAddress
+		ips = append(ips, sandbox.NetworkSettings.IPAddress)
 	}
 	if sandbox.NetworkSettings.GlobalIPv6Address != "" {
-		return sandbox.NetworkSettings.GlobalIPv6Address
+		ips = append(ips, sandbox.NetworkSettings.GlobalIPv6Address)
 	}
 
 	// If all else fails, warn but don't return an error, as pod status
 	// should generally not return anything except fatal errors
 	// FIXME: handle network errors by restarting the pod somehow?
 	klog.Warningf("failed to read pod IP from plugin/docker: %v", err)
-	return ""
+	return ips
 }
 
 // Returns the inspect container response, the sandbox metadata, and network namespace mode
@@ -422,11 +433,18 @@ func (ds *dockerService) PodSandboxStatus(ctx context.Context, req *runtimeapi.P
 		state = runtimeapi.PodSandboxState_SANDBOX_READY
 	}
 
-	var IP string
+	var IPs []string
 	// TODO: Remove this when sandbox is available on windows
 	// This is a workaround for windows, where sandbox is not in use, and pod IP is determined through containers belonging to the Pod.
-	if IP = ds.determinePodIPBySandboxID(podSandboxID); IP == "" {
-		IP = ds.getIP(podSandboxID, r)
+	if IPs = ds.determinePodIPBySandboxID(podSandboxID); 0 == len(IPs) {
+		IPs = ds.getIPs(podSandboxID, r)
+	}
+
+	// make sure that we have
+	// primary and list of ips
+	IP := ""
+	if 0 != len(IPs) {
+		IP = IPs[0]
 	}
 
 	labels, annotations := extractLabels(r.Config.Labels)
@@ -438,7 +456,8 @@ func (ds *dockerService) PodSandboxStatus(ctx context.Context, req *runtimeapi.P
 		Labels:      labels,
 		Annotations: annotations,
 		Network: &runtimeapi.PodSandboxNetworkStatus{
-			Ip: IP,
+			Ip:  IP,
+			Ips: IPs,
 		},
 		Linux: &runtimeapi.LinuxPodSandboxStatus{
 			Namespaces: &runtimeapi.Namespace{

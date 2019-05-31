@@ -28,6 +28,9 @@ import (
 
 // PatchPodStatus patches pod status.
 func PatchPodStatus(c clientset.Interface, namespace, name string, oldPodStatus, newPodStatus v1.PodStatus) (*v1.Pod, []byte, error) {
+	// we don't want to merge the list ips, we just want to replace it
+	// so we reset the list on the oldPodStatus
+	oldPodStatus.PodIPs = []v1.PodIP{}
 	patchBytes, err := preparePatchBytesforPodStatus(namespace, name, oldPodStatus, newPodStatus)
 	if err != nil {
 		return nil, nil, err

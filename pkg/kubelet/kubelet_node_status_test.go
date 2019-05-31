@@ -1006,6 +1006,7 @@ func TestUpdateNodeStatusWithLease(t *testing.T) {
 	assert.Equal(t, "", kubelet.runtimeState.podCIDR(), "Pod CIDR should be empty")
 	podCIDR := "10.0.0.0/24"
 	updatedNode.Spec.PodCIDR = podCIDR
+	updatedNode.Spec.PodCIDRs = []string{podCIDR}
 	kubeClient.ReactionChain = fake.NewSimpleClientset(&v1.NodeList{Items: []v1.Node{*updatedNode}}).ReactionChain
 	assert.NoError(t, kubelet.updateNodeStatus())
 	assert.Equal(t, podCIDR, kubelet.runtimeState.podCIDR(), "Pod CIDR should be updated now")

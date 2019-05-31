@@ -19,14 +19,14 @@ package kubelet
 import (
 	"context"
 	"fmt"
+	"k8s.io/klog"
 	"net"
 	goruntime "runtime"
 	"sort"
+	"strings"
 	"time"
 
-	"k8s.io/klog"
-
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -417,11 +417,12 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	}
 
 	podCIDRChanged := false
-	if node.Spec.PodCIDR != "" {
+	if 0 != len(node.Spec.PodCIDRs) {
 		// Pod CIDR could have been updated before, so we cannot rely on
 		// node.Spec.PodCIDR being non-empty. We also need to know if pod CIDR is
 		// actually changed.
-		if podCIDRChanged, err = kl.updatePodCIDR(node.Spec.PodCIDR); err != nil {
+		podCIDRs := strings.Join(node.Spec.PodCIDRs, ",")
+		if podCIDRChanged, err = kl.updatePodCIDR(podCIDRs); err != nil {
 			klog.Errorf(err.Error())
 		}
 	}

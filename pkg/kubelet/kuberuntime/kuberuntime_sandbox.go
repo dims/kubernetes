@@ -214,20 +214,44 @@ func (m *kubeGenericRuntimeManager) getKubeletSandboxes(all bool) ([]*runtimeapi
 	return resp, nil
 }
 
-// determinePodSandboxIP determines the IP address of the given pod sandbox.
-func (m *kubeGenericRuntimeManager) determinePodSandboxIP(podNamespace, podName string, podSandbox *runtimeapi.PodSandboxStatus) string {
+// determinePodSandboxIP determines the IP addresses of the given pod sandbox.
+func (m *kubeGenericRuntimeManager) determinePodSandboxIPs(podNamespace, podName string, podSandbox *runtimeapi.PodSandboxStatus) []string {
 	if podSandbox.Network == nil {
-		klog.Warningf("Pod Sandbox status doesn't have network information, cannot report IP")
-		return ""
+		klog.Warningf("Pod Sandbox status doesn't have network information, cannot report IPs")
+		return []string{}
 	}
-	ip := podSandbox.Network.Ip
-	if len(ip) != 0 && net.ParseIP(ip) == nil {
-		// ip could be an empty string if runtime is not responsible for the
-		// IP (e.g., host networking).
-		klog.Warningf("Pod Sandbox reported an unparseable IP %v", ip)
-		return ""
+
+	// two coditions
+	// runtime reported a classic single primary IP
+	// runtime reported a classic single primary IP and a list of IPs
+
+	podIPs := make([]string, 0)
+	// assume we are using a CRI that reports multiple IPs
+	if 0 != len(podSandbox.Network.Ips) {
+		for _, ip := range podSandbox.Network.Ips {
+			if nil == net.ParseIP(ip) {
+				// ip could be an empty string if runtime is not responsible for the
+				// IP (e.g., host networking).
+				klog.Warningf("Pod Sandbox reported an unparseable IP %v", ip)
+				return []string{}
+			}
+			podIPs = append(podIPs, ip)
+		}
 	}
-	return ip
+
+	// if we have a list, runtime reported a list of IPs
+	// if we don't then check primary IP and returned as IPs[0]
+
+	// we really depend cri correctly reporting
+	// ip == ips[0]
+	// TODO (khenidak): should we?
+	if 0 != len(podSandbox.Network.Ip) && 0 == len(podIPs) {
+		if nil != net.ParseIP(podSandbox.Network.Ip) {
+			klog.Warningf("Pod Sandbox reported an unparseable IP %v", podSandbox.Network.Ip)
+			podIPs = append(podIPs, podSandbox.Network.Ip)
+		}
+	}
+	return podIPs
 }
 
 // getPodSandboxID gets the sandbox id by podUID and returns ([]sandboxID, error).
