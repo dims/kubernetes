@@ -350,7 +350,7 @@ func roundTripRS(t *testing.T, rs *apps.ReplicaSet) *apps.ReplicaSet {
 func Test_core_PodStatus_to_v1_PodStatus(t *testing.T) {
 	// core to v1
 	testInputs := []core.PodStatus{
-		core.PodStatus{
+		{
 			// we have list but no IP
 			PodIPs: []core.PodIP{
 				{
@@ -390,7 +390,7 @@ func Test_core_PodStatus_to_v1_PodStatus(t *testing.T) {
 func Test_v1_PodStatus_to_core_PodStatus(t *testing.T) {
 	// fail
 	v1FailTestInputs := []v1.PodStatus{
-		v1.PodStatus{
+		{
 			PodIP: "1.1.2.1", // fail becaue PodIP != PodIPs[0]
 			PodIPs: []v1.PodIP{
 				{IP: "1.1.1.1"},
@@ -401,18 +401,18 @@ func Test_v1_PodStatus_to_core_PodStatus(t *testing.T) {
 	// success
 	v1TestInputs := []v1.PodStatus{
 		// only list of IPs
-		v1.PodStatus{
+		{
 			PodIPs: []v1.PodIP{
 				{IP: "1.1.1.1"},
 				{IP: "2.2.2.2"},
 			},
 		},
 		// only Primary IP Provided
-		v1.PodStatus{
+		{
 			PodIP: "1.1.1.1",
 		},
 		// Both
-		v1.PodStatus{
+		{
 			PodIP: "1.1.1.1",
 			PodIPs: []v1.PodIP{
 				{IP: "1.1.1.1"},
@@ -420,7 +420,7 @@ func Test_v1_PodStatus_to_core_PodStatus(t *testing.T) {
 			},
 		},
 		// v4 and v6
-		v1.PodStatus{
+		{
 			PodIP: "1.1.1.1",
 			PodIPs: []v1.PodIP{
 				{IP: "1.1.1.1"},
@@ -451,7 +451,7 @@ func Test_v1_PodStatus_to_core_PodStatus(t *testing.T) {
 		}
 
 		// walk the list
-		for idx, _ := range testInput.PodIPs {
+		for idx := range testInput.PodIPs {
 			if corePodStatus.PodIPs[idx].IP != testInput.PodIPs[idx].IP {
 				t.Errorf("Convert v1.PodStatus to core.PodStatus failed core.PodIPs[%v]=%v expected %v", idx, corePodStatus.PodIPs[idx].IP, testInput.PodIPs[idx].IP)
 			}
@@ -468,10 +468,10 @@ func Test_v1_PodStatus_to_core_PodStatus(t *testing.T) {
 func Test_core_NodeSpec_to_v1_NodeSpec(t *testing.T) {
 	// core to v1
 	testInputs := []core.NodeSpec{
-		core.NodeSpec{
+		{
 			PodCIDRs: []string{"10.0.0.0/24", "10.0.1.0/24"},
 		},
-		core.NodeSpec{
+		{
 			PodCIDRs: []string{"10.0.0.0/24", "ace:cab:deca::/8"},
 		},
 	}
@@ -500,7 +500,7 @@ func Test_core_NodeSpec_to_v1_NodeSpec(t *testing.T) {
 func Test_v1_NodeSpec_to_core_NodeSpec(t *testing.T) {
 
 	failInputs := []v1.NodeSpec{
-		v1.NodeSpec{
+		{
 			PodCIDR:  "10.0.0.0/24",
 			PodCIDRs: []string{"10.0.1.0/24", "ace:cab:deca::/8"},
 		},
@@ -508,16 +508,16 @@ func Test_v1_NodeSpec_to_core_NodeSpec(t *testing.T) {
 
 	testInputs := []v1.NodeSpec{
 		// Both are provided
-		v1.NodeSpec{
+		{
 			PodCIDR:  "10.0.1.0/24",
 			PodCIDRs: []string{"10.0.1.0/24", "ace:cab:deca::/8"},
 		},
 		// list only
-		v1.NodeSpec{
+		{
 			PodCIDRs: []string{"10.0.1.0/24", "ace:cab:deca::/8"},
 		},
 		// cidr only
-		v1.NodeSpec{
+		{
 			PodCIDR: "10.0.1.0/24",
 		},
 	}

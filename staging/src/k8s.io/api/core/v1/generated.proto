@@ -2854,6 +2854,9 @@ message PodExecOptions {
 message PodIP {
   optional string ip = 1;
 
+  map<string, string> properties = 2;
+}
+
 // PodList is a list of Pods.
 message PodList {
   // Standard list metadata.
