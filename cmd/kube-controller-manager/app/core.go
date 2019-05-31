@@ -83,42 +83,34 @@ func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
 
 func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) {
 	var serviceCIDR *net.IPNet
+	var err error
 	clusterCIDRs := make([]*net.IPNet, 0)
 
 	if !ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs {
 		return nil, false, nil
 	}
 
-	var err error
 	// cluster cidr list processing
+	//TODO (khenidak) clustercidr processing is the same
+	// across ipam and route and should be unified
 	if len(strings.TrimSpace(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)) != 0 {
-		cidrListIn := strings.Split(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, ",")
-		cidrListLen := len(cidrListIn)
+		clusterCIDRList := strings.Split(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, ",")
+		for idx, thisCIDR := range clusterCIDRList {
+			if idx > 0 && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) {
+				klog.Warningf("multiple cluster cidrs were supplied and dual stack is off, ignoring all but first")
+				break
+			}
+			if idx > 1 {
+				klog.Warningf("dual stacks enabled but more than 2 cidrs were supplied. ignoring all but first two cidrs")
+				break
+			}
 
-		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) {
-			if 2 < cidrListLen {
-				klog.Warningf("cluster cidr list is >2 (%v). 3+ will be ignored!", cidrListLen)
-			}
-			for idx, cidr := range cidrListIn {
-				_, current, err := net.ParseCIDR(cidr)
-				// append only the valid. ignore the rest
-				if err != nil {
-					klog.Warningf("Unsuccessful parsing of cluster CIDR at index %v with value %v with error:%v. This CIDR will be ignored", idx, cidr, err)
-				} else {
-					clusterCIDRs = append(clusterCIDRs, current)
-				}
-			}
-		} else {
-			// if user supplied more than one cidr, and feature flag is disabled
-			// warn and use only the first one.
-			if 1 < cidrListLen {
-				klog.Warningf("ipv6dual stack feature is disabled but count of cluster cidrs is > 1: %v", cidrListLen)
-			}
-			_, clusterCIDRSingle, err := net.ParseCIDR(cidrListIn[0])
+			_, clusterCIDR, err := net.ParseCIDR(thisCIDR)
+			// append only the valid. ignore the rest
 			if err != nil {
-				klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v, this CIDR will be ignored", cidrListIn[0], err)
+				klog.Warningf("Unsuccessful parsing of cluster CIDR at index %v with value %v with error:%v. This CIDR will be ignored", idx, thisCIDR, err)
 			} else {
-				clusterCIDRs = append(clusterCIDRs, clusterCIDRSingle)
+				clusterCIDRs = append(clusterCIDRs, clusterCIDR)
 			}
 		}
 	}
@@ -206,11 +198,25 @@ func startRouteController(ctx ControllerContext) (http.Handler, bool, error) {
 		klog.Warning("configure-cloud-routes is set, but cloud provider does not support routes. Will not configure cloud provider routes.")
 		return nil, false, nil
 	}
-	_, clusterCIDR, err := net.ParseCIDR(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)
-	if err != nil {
-		klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
+
+	clusterCIDRList := strings.Split(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, ",")
+	clusterCIDRs := make([]*net.IPNet, 0)
+	for idx, thisCIDR := range clusterCIDRList {
+		if idx > 0 && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) {
+			klog.Warningf("multiple cluster cidrs were supplied but dual stack is not enabled, ignoring all but first")
+			break
+		}
+		if idx > 1 {
+			klog.Warningf("dual stacks enabled but more than 2 cidrs were supplied. ignoring all but first two cidrs")
+			break
+		}
+		_, clusterCIDR, err := net.ParseCIDR(thisCIDR)
+		if err != nil {
+			return nil, false, fmt.Errorf("Unsuccessful parsing of cluster CIDR %v: %v", thisCIDR, err)
+		}
+		clusterCIDRs = append(clusterCIDRs, clusterCIDR)
 	}
-	routeController := routecontroller.New(routes, ctx.ClientBuilder.ClientOrDie("route-controller"), ctx.InformerFactory.Core().V1().Nodes(), ctx.ComponentConfig.KubeCloudShared.ClusterName, clusterCIDR)
+	routeController := routecontroller.New(routes, ctx.ClientBuilder.ClientOrDie("route-controller"), ctx.InformerFactory.Core().V1().Nodes(), ctx.ComponentConfig.KubeCloudShared.ClusterName, clusterCIDRs)
 	go routeController.Run(ctx.Stop, ctx.ComponentConfig.KubeCloudShared.RouteReconciliationPeriod.Duration)
 	return nil, true, nil
 }

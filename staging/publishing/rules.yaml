@@ -564,6 +564,11 @@ rules:
       branch: master
     - repository: csi-translation-lib
       branch: master
+    # we need util feature packages in azure
+    - repository: apiserver
+      branch: master
+    - repository: component-base
+      branch: master
   - source:
       branch: release-1.15
       dir: staging/src/k8s.io/legacy-cloud-providers

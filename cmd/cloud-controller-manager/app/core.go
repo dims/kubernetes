@@ -21,6 +21,7 @@ limitations under the License.
 package app
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -31,6 +32,9 @@ import (
 	cloudcontrollers "k8s.io/kubernetes/pkg/controller/cloud"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
+
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 func startCloudNodeController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cloudprovider.Interface, stopCh <-chan struct{}) (http.Handler, bool, error) {
@@ -98,12 +102,23 @@ func startRouteController(ctx *cloudcontrollerconfig.CompletedConfig, cloud clou
 		klog.Warning("configure-cloud-routes is set, but cloud provider does not support routes. Will not configure cloud provider routes.")
 		return nil, false, nil
 	}
-	var clusterCIDR *net.IPNet
-	var err error
+	clusterCIDRs := make([]*net.IPNet, 0)
 	if len(strings.TrimSpace(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)) != 0 {
-		_, clusterCIDR, err = net.ParseCIDR(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)
-		if err != nil {
-			klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
+		clusterCIDRList := strings.Split(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, ",")
+		for idx, thisCIDR := range clusterCIDRList {
+			if idx > 0 && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.IPv6DualStack) {
+				klog.Warningf("multiple cluster cidrs were supplied but dual stack is not enabled, ignoring all but first")
+				break
+			}
+			if idx > 1 {
+				klog.Warningf("dual stacks enabled but more than 2 cidrs were supplied. ignoring all but first two cidrs")
+				break
+			}
+			_, clusterCIDR, err := net.ParseCIDR(thisCIDR)
+			if err != nil {
+				return nil, false, fmt.Errorf("Unsuccessful parsing of cluster CIDR %v: %v", thisCIDR, err)
+			}
+			clusterCIDRs = append(clusterCIDRs, clusterCIDR)
 		}
 	}
 
@@ -112,7 +127,7 @@ func startRouteController(ctx *cloudcontrollerconfig.CompletedConfig, cloud clou
 		ctx.ClientBuilder.ClientOrDie("route-controller"),
 		ctx.SharedInformers.Core().V1().Nodes(),
 		ctx.ComponentConfig.KubeCloudShared.ClusterName,
-		clusterCIDR,
+		clusterCIDRs,
 	)
 	go routeController.Run(stopCh, ctx.ComponentConfig.KubeCloudShared.RouteReconciliationPeriod.Duration)
 
