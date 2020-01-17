@@ -61,7 +61,6 @@
 				"k8s.io/kubernetes/pkg/kubelet/checkpointmanager/errors",
 				"k8s.io/kubernetes/pkg/kubelet/configmap",
 				"k8s.io/kubernetes/pkg/kubelet/container",
-				"k8s.io/kubernetes/pkg/kubelet/dockershim/metrics",
 				"k8s.io/kubernetes/pkg/kubelet/events",
 				"k8s.io/kubernetes/pkg/kubelet/lifecycle",
 				"k8s.io/kubernetes/pkg/kubelet/metrics",
