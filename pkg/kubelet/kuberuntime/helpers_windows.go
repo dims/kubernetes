@@ -19,7 +19,7 @@ limitations under the License.
 package kuberuntime
 
 import (
-	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/dims/mobyutils/pkg/sysinfo"
 )
 
 const (

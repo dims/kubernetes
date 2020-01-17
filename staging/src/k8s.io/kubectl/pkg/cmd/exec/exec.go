@@ -22,7 +22,7 @@ import (
 	"net/url"
 	"time"
 
-	dockerterm "github.com/docker/docker/pkg/term"
+	dockerterm "github.com/dims/mobyutils/pkg/term"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

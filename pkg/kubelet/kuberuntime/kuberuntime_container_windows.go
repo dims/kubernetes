@@ -20,7 +20,7 @@ package kuberuntime
 
 import (
 	"fmt"
-	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/dims/mobyutils/pkg/sysinfo"
 
 	"k8s.io/api/core/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"

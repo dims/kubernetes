@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/docker/docker/daemon/logger/jsonfilelog/jsonlog"
+	"github.com/dims/mobyutils/daemon/logger/jsonfilelog/jsonlog"
 	"github.com/fsnotify/fsnotify"
 	"k8s.io/klog"
 

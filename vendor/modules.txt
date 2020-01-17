@@ -171,13 +171,6 @@ github.com/containerd/containerd/containers
 github.com/containerd/containerd/dialer
 github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/namespaces
-# github.com/containernetworking/cni v0.7.1 => github.com/containernetworking/cni v0.7.1
-github.com/containernetworking/cni/libcni
-github.com/containernetworking/cni/pkg/invoke
-github.com/containernetworking/cni/pkg/types
-github.com/containernetworking/cni/pkg/types/020
-github.com/containernetworking/cni/pkg/types/current
-github.com/containernetworking/cni/pkg/version
 # github.com/coredns/corefile-migration v1.0.4 => github.com/coredns/corefile-migration v1.0.4
 github.com/coredns/corefile-migration/migration
 github.com/coredns/corefile-migration/migration/corefile
@@ -227,11 +220,9 @@ github.com/docker/docker/api/types/volume
 github.com/docker/docker/client
 github.com/docker/docker/daemon/logger/jsonfilelog/jsonlog
 github.com/docker/docker/errdefs
-github.com/docker/docker/pkg/jsonmessage
 github.com/docker/docker/pkg/mount
 github.com/docker/docker/pkg/parsers
 github.com/docker/docker/pkg/parsers/operatingsystem
-github.com/docker/docker/pkg/stdcopy
 github.com/docker/docker/pkg/sysinfo
 github.com/docker/docker/pkg/term
 github.com/docker/docker/pkg/term/windows
@@ -526,8 +517,6 @@ github.com/modern-go/concurrent
 github.com/modern-go/reflect2
 # github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb => github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 github.com/mohae/deepcopy
-# github.com/morikuni/aec v1.0.0 => github.com/morikuni/aec v1.0.0
-github.com/morikuni/aec
 # github.com/mrunalp/fileutils v0.0.0-20171103030105-7d4729fb3618 => github.com/mrunalp/fileutils v0.0.0-20171103030105-7d4729fb3618
 github.com/mrunalp/fileutils
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 => github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
