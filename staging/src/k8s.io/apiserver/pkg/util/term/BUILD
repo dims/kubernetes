@@ -6,7 +6,7 @@ go_library(
     importmap = "k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/term",
     importpath = "k8s.io/apiserver/pkg/util/term",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/github.com/docker/docker/pkg/term:go_default_library"],
+    deps = ["//vendor/github.com/dims/mobyutils/pkg/term:go_default_library"],
 )
 
 filegroup(
