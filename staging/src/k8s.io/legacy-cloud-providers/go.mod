@@ -16,8 +16,6 @@ require (
 	github.com/aws/aws-sdk-go v1.28.2
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
 	github.com/golang/mock v1.3.1
-	github.com/gophercloud/gophercloud v0.1.0
-	github.com/mitchellh/mapstructure v1.1.2
 	github.com/rubiojr/go-vhd v0.0.0-20160810183302-0bfd3b39853c
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
