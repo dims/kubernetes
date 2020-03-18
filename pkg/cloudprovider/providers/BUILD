@@ -19,7 +19,6 @@ go_library(
         "//staging/src/k8s.io/legacy-cloud-providers/aws:go_default_library",
         "//staging/src/k8s.io/legacy-cloud-providers/azure:go_default_library",
         "//staging/src/k8s.io/legacy-cloud-providers/gce:go_default_library",
-        "//staging/src/k8s.io/legacy-cloud-providers/openstack:go_default_library",
         "//staging/src/k8s.io/legacy-cloud-providers/vsphere:go_default_library",
     ],
 )

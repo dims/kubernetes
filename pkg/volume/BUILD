@@ -99,7 +99,6 @@ filegroup(
         "//pkg/volume/azure_dd:all-srcs",
         "//pkg/volume/azure_file:all-srcs",
         "//pkg/volume/cephfs:all-srcs",
-        "//pkg/volume/cinder:all-srcs",
         "//pkg/volume/configmap:all-srcs",
         "//pkg/volume/csi:all-srcs",
         "//pkg/volume/csimigration:all-srcs",

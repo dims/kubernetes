@@ -82,7 +82,6 @@ go_library(
         "//test/e2e/framework/providers/azure:go_default_library",
         "//test/e2e/framework/providers/gce:go_default_library",
         "//test/e2e/framework/providers/kubemark:go_default_library",
-        "//test/e2e/framework/providers/openstack:go_default_library",
         "//test/e2e/framework/providers/vsphere:go_default_library",
         "//test/e2e/framework/skipper:go_default_library",
         "//test/e2e/framework/testfiles:go_default_library",

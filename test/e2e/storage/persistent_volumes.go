@@ -320,7 +320,7 @@ var _ = utils.SIGDescribe("PersistentVolumes", func() {
 
 			ginkgo.It("should be reschedulable [Slow]", func() {
 				// Only run on providers with default storageclass
-				e2eskipper.SkipUnlessProviderIs("openstack", "gce", "gke", "vsphere", "azure")
+				e2eskipper.SkipUnlessProviderIs("gce", "gke", "vsphere", "azure")
 
 				numVols := 4
 

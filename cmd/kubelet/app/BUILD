@@ -82,7 +82,6 @@ go_library(
         "//pkg/volume/azure_dd:go_default_library",
         "//pkg/volume/azure_file:go_default_library",
         "//pkg/volume/cephfs:go_default_library",
-        "//pkg/volume/cinder:go_default_library",
         "//pkg/volume/configmap:go_default_library",
         "//pkg/volume/csi:go_default_library",
         "//pkg/volume/csimigration:go_default_library",

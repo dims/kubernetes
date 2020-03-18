@@ -128,10 +128,6 @@ AUDIT_POLICY_FILE=${AUDIT_POLICY_FILE:-""}
 
 # sanity check for OpenStack provider
 if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
-    if [ "${CLOUD_CONFIG}" == "" ]; then
-        echo "Missing CLOUD_CONFIG env for OpenStack provider!"
-        exit 1
-    fi
     if [ ! -f "${CLOUD_CONFIG}" ]; then
         echo "Cloud config ${CLOUD_CONFIG} doesn't exist"
         exit 1

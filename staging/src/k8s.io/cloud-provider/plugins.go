@@ -43,7 +43,6 @@ var (
 		{"aws", false, "The AWS provider is deprecated and will be removed in a future release"},
 		{"azure", false, "The Azure provider is deprecated and will be removed in a future release"},
 		{"gce", false, "The GCE provider is deprecated and will be removed in a future release"},
-		{"openstack", true, "https://github.com/kubernetes/cloud-provider-openstack"},
 		{"vsphere", false, "The vSphere provider is deprecated and will be removed in a future release"},
 	}
 )
