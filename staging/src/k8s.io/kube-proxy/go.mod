@@ -10,7 +10,6 @@ require (
 )
 
 replace (
-	github.com/golang/groupcache => github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903
 	github.com/google/pprof => github.com/google/pprof v0.0.0-20181206194817-3ea8567a2e57
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.0.4
 	github.com/jstemmer/go-junit-report => github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
