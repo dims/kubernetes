@@ -39,7 +39,7 @@ import (
 	"github.com/google/cadvisor/utils/cpuload"
 
 	units "github.com/docker/go-units"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
 )
 
@@ -91,6 +91,9 @@ type containerData struct {
 
 	// nvidiaCollector updates stats for Nvidia GPUs attached to the container.
 	nvidiaCollector stats.Collector
+
+	// perfCollector updates stats for perf_event cgroup controller.
+	perfCollector stats.Collector
 }
 
 // jitter returns a time.Duration between duration and duration + maxFactor * duration,
@@ -115,6 +118,7 @@ func (c *containerData) Stop() error {
 		return err
 	}
 	close(c.stop)
+	c.perfCollector.Destroy()
 	return nil
 }
 
@@ -168,10 +172,17 @@ func (c *containerData) GetInfo(shouldUpdateSubcontainers bool) (*containerInfo,
 		}
 		c.infoLastUpdatedTime = c.clock.Now()
 	}
-	// Make a copy of the info for the user.
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return &c.info, nil
+	cInfo := containerInfo{
+		Subcontainers: c.info.Subcontainers,
+		Spec:          c.info.Spec,
+	}
+	cInfo.Id = c.info.Id
+	cInfo.Name = c.info.Name
+	cInfo.Aliases = c.info.Aliases
+	cInfo.Namespace = c.info.Namespace
+	return &cInfo, nil
 }
 
 func (c *containerData) DerivedStats() (v2.DerivedStats, error) {
@@ -387,6 +398,8 @@ func newContainerData(containerName string, memoryCache *memory.InMemoryCache, h
 		collectorManager:         collectorManager,
 		onDemandChan:             make(chan chan struct{}, 100),
 		clock:                    clock,
+		perfCollector:            &stats.NoopCollector{},
+		nvidiaCollector:          &stats.NoopCollector{},
 	}
 	cont.info.ContainerReference = ref
 
@@ -409,7 +422,7 @@ func newContainerData(containerName string, memoryCache *memory.InMemoryCache, h
 	cont.summaryReader, err = summary.New(cont.info.Spec)
 	if err != nil {
 		cont.summaryReader = nil
-		klog.Warningf("Failed to create summary reader for %q: %v", ref.Name, err)
+		klog.V(5).Infof("Failed to create summary reader for %q: %v", ref.Name, err)
 	}
 
 	return cont, nil
@@ -626,6 +639,8 @@ func (c *containerData) updateStats() error {
 		nvidiaStatsErr = c.nvidiaCollector.UpdateStats(stats)
 	}
 
+	perfStatsErr := c.perfCollector.UpdateStats(stats)
+
 	ref, err := c.handler.ContainerReference()
 	if err != nil {
 		// Ignore errors if the container is dead.
@@ -647,7 +662,12 @@ func (c *containerData) updateStats() error {
 		return statsErr
 	}
 	if nvidiaStatsErr != nil {
+		klog.Errorf("error occurred while collecting nvidia stats for container %s: %s", cInfo.Name, err)
 		return nvidiaStatsErr
+	}
+	if perfStatsErr != nil {
+		klog.Errorf("error occurred while collecting perf stats for container %s: %s", cInfo.Name, err)
+		return perfStatsErr
 	}
 	return customStatsErr
 }

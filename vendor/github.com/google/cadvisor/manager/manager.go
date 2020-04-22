@@ -37,6 +37,8 @@ import (
 	info "github.com/google/cadvisor/info/v1"
 	"github.com/google/cadvisor/info/v2"
 	"github.com/google/cadvisor/machine"
+	"github.com/google/cadvisor/nvm"
+	"github.com/google/cadvisor/perf"
 	"github.com/google/cadvisor/stats"
 	"github.com/google/cadvisor/utils/oomparser"
 	"github.com/google/cadvisor/utils/sysfs"
@@ -44,7 +46,7 @@ import (
 	"github.com/google/cadvisor/watcher"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
 )
 
@@ -133,8 +135,14 @@ type Manager interface {
 	DebugInfo() map[string][]string
 }
 
+// Housekeeping configuration for the manager
+type HouskeepingConfig = struct {
+	Interval     *time.Duration
+	AllowDynamic *bool
+}
+
 // New takes a memory storage and returns a new manager.
-func New(memoryCache *memory.InMemoryCache, sysfs sysfs.SysFs, maxHousekeepingInterval time.Duration, allowDynamicHousekeeping bool, includedMetricsSet container.MetricSet, collectorHttpClient *http.Client, rawContainerCgroupPathPrefixWhiteList []string) (Manager, error) {
+func New(memoryCache *memory.InMemoryCache, sysfs sysfs.SysFs, houskeepingConfig HouskeepingConfig, includedMetricsSet container.MetricSet, collectorHttpClient *http.Client, rawContainerCgroupPathPrefixWhiteList []string, perfEventsFile string) (Manager, error) {
 	if memoryCache == nil {
 		return nil, fmt.Errorf("manager requires memory storage")
 	}
@@ -176,8 +184,8 @@ func New(memoryCache *memory.InMemoryCache, sysfs sysfs.SysFs, maxHousekeepingIn
 		cadvisorContainer:                     selfContainer,
 		inHostNamespace:                       inHostNamespace,
 		startupTime:                           time.Now(),
-		maxHousekeepingInterval:               maxHousekeepingInterval,
-		allowDynamicHousekeeping:              allowDynamicHousekeeping,
+		maxHousekeepingInterval:               *houskeepingConfig.Interval,
+		allowDynamicHousekeeping:              *houskeepingConfig.AllowDynamic,
 		includedMetrics:                       includedMetricsSet,
 		containerWatchers:                     []watcher.ContainerWatcher{},
 		eventsChannel:                         eventsChannel,
@@ -192,6 +200,11 @@ func New(memoryCache *memory.InMemoryCache, sysfs sysfs.SysFs, maxHousekeepingIn
 	}
 	newManager.machineInfo = *machineInfo
 	klog.V(1).Infof("Machine: %+v", newManager.machineInfo)
+
+	newManager.perfManager, err = perf.NewManager(perfEventsFile, machineInfo.NumCores)
+	if err != nil {
+		return nil, err
+	}
 
 	versionInfo, err := getVersionInfo()
 	if err != nil {
@@ -232,6 +245,7 @@ type manager struct {
 	eventsChannel            chan watcher.ContainerEvent
 	collectorHttpClient      *http.Client
 	nvidiaManager            stats.Manager
+	perfManager              stats.Manager
 	// List of raw container cgroup path prefix whitelist.
 	rawContainerCgroupPathPrefixWhiteList []string
 }
@@ -261,9 +275,6 @@ func (self *manager) Start() error {
 	if !container.HasFactories() {
 		return nil
 	}
-
-	// Setup collection of nvidia GPU metrics if any of them are attached to the machine.
-	self.nvidiaManager.Setup()
 
 	// Create root and then recover all containers.
 	err = self.createContainer("/", watcher.Raw)
@@ -299,6 +310,7 @@ func (self *manager) Start() error {
 
 func (self *manager) Stop() error {
 	defer self.nvidiaManager.Destroy()
+	defer self.destroyPerfCollectors()
 	// Stop and wait on all quit channels.
 	for i, c := range self.quitChannels {
 		// Send the exit signal and wait on the thread to exit (by closing the channel).
@@ -311,7 +323,15 @@ func (self *manager) Stop() error {
 		}
 	}
 	self.quitChannels = make([]chan error, 0, 2)
+	nvm.Finalize()
+	perf.Finalize()
 	return nil
+}
+
+func (self *manager) destroyPerfCollectors() {
+	for _, container := range self.containers {
+		container.perfCollector.Destroy()
+	}
 }
 
 func (self *manager) updateMachineInfo(quit chan error) {
@@ -343,10 +363,10 @@ func (self *manager) globalHousekeeping(quit chan error) {
 		longHousekeeping = *globalHousekeepingInterval / 2
 	}
 
-	ticker := time.Tick(*globalHousekeepingInterval)
+	ticker := time.NewTicker(*globalHousekeepingInterval)
 	for {
 		select {
-		case t := <-ticker:
+		case t := <-ticker.C:
 			start := time.Now()
 
 			// Check for new containers.
@@ -662,7 +682,7 @@ func (self *manager) getRequestedContainers(containerName string, options v2.Req
 	containersMap := make(map[string]*containerData)
 	switch options.IdType {
 	case v2.TypeName:
-		if options.Recursive == false {
+		if !options.Recursive {
 			cont, err := self.getContainer(containerName)
 			if err != nil {
 				return containersMap, err
@@ -675,7 +695,7 @@ func (self *manager) getRequestedContainers(containerName string, options v2.Req
 			}
 		}
 	case v2.TypeDocker:
-		if options.Recursive == false {
+		if !options.Recursive {
 			containerName = strings.TrimPrefix(containerName, "/")
 			cont, err := self.getDockerContainer(containerName)
 			if err != nil {
@@ -772,8 +792,7 @@ func (self *manager) GetFsInfo(label string) ([]v2.FsInfo, error) {
 func (m *manager) GetMachineInfo() (*info.MachineInfo, error) {
 	m.machineMu.RLock()
 	defer m.machineMu.RUnlock()
-	// Copy and return the MachineInfo.
-	return &m.machineInfo, nil
+	return m.machineInfo.Clone(), nil
 }
 
 func (m *manager) GetVersionInfo() (*info.VersionInfo, error) {
@@ -785,18 +804,15 @@ func (m *manager) GetVersionInfo() (*info.VersionInfo, error) {
 }
 
 func (m *manager) Exists(containerName string) bool {
-	m.containersLock.Lock()
-	defer m.containersLock.Unlock()
+	m.containersLock.RLock()
+	defer m.containersLock.RUnlock()
 
 	namespacedName := namespacedContainerName{
 		Name: containerName,
 	}
 
 	_, ok := m.containers[namespacedName]
-	if ok {
-		return true
-	}
-	return false
+	return ok
 }
 
 func (m *manager) GetProcessList(containerName string, options v2.RequestOptions) ([]v2.ProcessInfo, error) {
@@ -853,35 +869,6 @@ func (m *manager) registerCollectors(collectorConfigs map[string]string, cont *c
 	return nil
 }
 
-// Enables overwriting an existing containerData/Handler object for a given containerName.
-// Can't use createContainer as it just returns if a given containerName has a handler already.
-// Ex: rkt handler will want to take priority over the raw handler, but the raw handler might be created first.
-
-// Only allow raw handler to be overridden
-func (m *manager) overrideContainer(containerName string, watchSource watcher.ContainerWatchSource) error {
-	m.containersLock.Lock()
-	defer m.containersLock.Unlock()
-
-	namespacedName := namespacedContainerName{
-		Name: containerName,
-	}
-
-	if _, ok := m.containers[namespacedName]; ok {
-		containerData := m.containers[namespacedName]
-
-		if containerData.handler.Type() != container.ContainerTypeRaw {
-			return nil
-		}
-
-		err := m.destroyContainerLocked(containerName)
-		if err != nil {
-			return fmt.Errorf("overrideContainer: failed to destroy containerData/handler for %v: %v", containerName, err)
-		}
-	}
-
-	return m.createContainerLocked(containerName, watchSource)
-}
-
 // Create a container.
 func (m *manager) createContainer(containerName string, watchSource watcher.ContainerWatchSource) error {
 	m.containersLock.Lock()
@@ -926,7 +913,17 @@ func (m *manager) createContainerLocked(containerName string, watchSource watche
 		} else {
 			cont.nvidiaCollector, err = m.nvidiaManager.GetCollector(devicesCgroupPath)
 			if err != nil {
-				klog.V(4).Infof("GPU metrics may be unavailable/incomplete for container %q: %v", cont.info.Name, err)
+				klog.V(4).Infof("GPU metrics may be unavailable/incomplete for container %s: %s", cont.info.Name, err)
+			}
+		}
+
+		perfCgroupPath, err := handler.GetCgroupPath("perf_event")
+		if err != nil {
+			klog.Warningf("Error getting perf_event cgroup path: %q", err)
+		} else {
+			cont.perfCollector, err = m.perfManager.GetCollector(perfCgroupPath)
+			if err != nil {
+				klog.Infof("perf_event metrics will not be available for container %s: %s", cont.info.Name, err)
 			}
 		}
 	}

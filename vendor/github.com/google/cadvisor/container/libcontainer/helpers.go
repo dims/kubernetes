@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/cadvisor/container"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type CgroupSubsystems struct {
@@ -104,15 +104,16 @@ func getCgroupSubsystemsHelper(allCgroups []cgroups.Mount, disableCgroups map[st
 
 // Cgroup subsystems we support listing (should be the minimal set we need stats from).
 var supportedSubsystems map[string]struct{} = map[string]struct{}{
-	"cpu":     {},
-	"cpuacct": {},
-	"memory":  {},
-	"hugetlb": {},
-	"pids":    {},
-	"cpuset":  {},
-	"blkio":   {},
-	"io":      {},
-	"devices": {},
+	"cpu":        {},
+	"cpuacct":    {},
+	"memory":     {},
+	"hugetlb":    {},
+	"pids":       {},
+	"cpuset":     {},
+	"blkio":      {},
+	"io":         {},
+	"devices":    {},
+	"perf_event": {},
 }
 
 func DiskStatsCopy0(major, minor uint64) *info.PerDiskStats {

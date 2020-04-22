@@ -17,34 +17,14 @@ package metrics
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/google/cadvisor/container"
 	info "github.com/google/cadvisor/info/v1"
 	"github.com/prometheus/client_golang/prometheus"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
-
-// infoProvider will usually be manager.Manager, but can be swapped out for testing.
-type infoProvider interface {
-	// SubcontainersInfo provides information about all subcontainers of the
-	// specified container including itself.
-	SubcontainersInfo(containerName string, query *info.ContainerInfoRequest) ([]*info.ContainerInfo, error)
-	// GetVersionInfo provides information about the version.
-	GetVersionInfo() (*info.VersionInfo, error)
-	// GetMachineInfo provides information about the machine.
-	GetMachineInfo() (*info.MachineInfo, error)
-}
-
-// metricValue describes a single metric value for a given set of label values
-// within a parent containerMetric.
-type metricValue struct {
-	value     float64
-	labels    []string
-	timestamp time.Time
-}
-
-type metricValues []metricValue
 
 // asFloat64 converts a uint64 into a float64.
 func asFloat64(v uint64) float64 { return float64(v) }
@@ -1562,17 +1542,49 @@ func NewPrometheusCollector(i infoProvider, f ContainerLabelsFunc, includedMetri
 				},
 			},
 		}...)
-
 	}
-
+	if c.includedMetrics.Has(container.PerfMetrics) {
+		c.containerMetrics = append(c.containerMetrics, []containerMetric{
+			{
+				name:        "container_perf_metric",
+				help:        "Perf event metric",
+				valueType:   prometheus.CounterValue,
+				extraLabels: []string{"cpu", "event"},
+				getValues: func(s *info.ContainerStats) metricValues {
+					values := make(metricValues, 0, len(s.PerfStats))
+					for _, metric := range s.PerfStats {
+						values = append(values, metricValue{
+							value:     float64(metric.Value),
+							labels:    []string{strconv.Itoa(metric.Cpu), metric.Name},
+							timestamp: s.Timestamp,
+						})
+					}
+					return values
+				},
+			},
+			{
+				name:        "container_perf_metric_scaling_ratio",
+				help:        "Perf event metric scaling ratio",
+				valueType:   prometheus.GaugeValue,
+				extraLabels: []string{"cpu", "event"},
+				getValues: func(s *info.ContainerStats) metricValues {
+					values := make(metricValues, 0, len(s.PerfStats))
+					for _, metric := range s.PerfStats {
+						values = append(values, metricValue{
+							value:     metric.ScalingRatio,
+							labels:    []string{strconv.Itoa(metric.Cpu), metric.Name},
+							timestamp: s.Timestamp,
+						})
+					}
+					return values
+				},
+			},
+		}...)
+	}
 	return c
 }
 
-var (
-	versionInfoDesc       = prometheus.NewDesc("cadvisor_version_info", "A metric with a constant '1' value labeled by kernel version, OS version, docker version, cadvisor version & cadvisor revision.", []string{"kernelVersion", "osVersion", "dockerVersion", "cadvisorVersion", "cadvisorRevision"}, nil)
-	machineInfoCoresDesc  = prometheus.NewDesc("machine_cpu_cores", "Number of CPU cores on the machine.", nil, nil)
-	machineInfoMemoryDesc = prometheus.NewDesc("machine_memory_bytes", "Amount of memory installed on the machine.", nil, nil)
-)
+var versionInfoDesc = prometheus.NewDesc("cadvisor_version_info", "A metric with a constant '1' value labeled by kernel version, OS version, docker version, cadvisor version & cadvisor revision.", []string{"kernelVersion", "osVersion", "dockerVersion", "cadvisorVersion", "cadvisorRevision"}, nil)
 
 // Describe describes all the metrics ever exported by cadvisor. It
 // implements prometheus.PrometheusCollector.
@@ -1582,15 +1594,12 @@ func (c *PrometheusCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- cm.desc([]string{})
 	}
 	ch <- versionInfoDesc
-	ch <- machineInfoCoresDesc
-	ch <- machineInfoMemoryDesc
 }
 
 // Collect fetches the stats from all containers and delivers them as
 // Prometheus metrics. It implements prometheus.PrometheusCollector.
 func (c *PrometheusCollector) Collect(ch chan<- prometheus.Metric) {
 	c.errors.Set(0)
-	c.collectMachineInfo(ch)
 	c.collectVersionInfo(ch)
 	c.collectContainersInfo(ch)
 	c.errors.Collect(ch)
@@ -1745,7 +1754,6 @@ func (c *PrometheusCollector) collectContainersInfo(ch chan<- prometheus.Metric)
 			}
 		}
 	}
-
 }
 
 func (c *PrometheusCollector) collectVersionInfo(ch chan<- prometheus.Metric) {
@@ -1756,17 +1764,6 @@ func (c *PrometheusCollector) collectVersionInfo(ch chan<- prometheus.Metric) {
 		return
 	}
 	ch <- prometheus.MustNewConstMetric(versionInfoDesc, prometheus.GaugeValue, 1, []string{versionInfo.KernelVersion, versionInfo.ContainerOsVersion, versionInfo.DockerVersion, versionInfo.CadvisorVersion, versionInfo.CadvisorRevision}...)
-}
-
-func (c *PrometheusCollector) collectMachineInfo(ch chan<- prometheus.Metric) {
-	machineInfo, err := c.infoProvider.GetMachineInfo()
-	if err != nil {
-		c.errors.Set(1)
-		klog.Warningf("Couldn't get machine info: %s", err)
-		return
-	}
-	ch <- prometheus.MustNewConstMetric(machineInfoCoresDesc, prometheus.GaugeValue, float64(machineInfo.NumCores))
-	ch <- prometheus.MustNewConstMetric(machineInfoMemoryDesc, prometheus.GaugeValue, float64(machineInfo.MemoryCapacity))
 }
 
 // Size after which we consider memory to be "unlimited". This is not
@@ -1780,10 +1777,10 @@ func specMemoryValue(v uint64) float64 {
 	return float64(v)
 }
 
-var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
+var invalidNameCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 // sanitizeLabelName replaces anything that doesn't match
 // client_label.LabelNameRE with an underscore.
 func sanitizeLabelName(name string) string {
-	return invalidLabelCharRE.ReplaceAllString(name, "_")
+	return invalidNameCharRE.ReplaceAllString(name, "_")
 }

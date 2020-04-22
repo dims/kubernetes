@@ -23,11 +23,12 @@ import (
 
 	"github.com/google/cadvisor/fs"
 	info "github.com/google/cadvisor/info/v1"
+	"github.com/google/cadvisor/nvm"
 	"github.com/google/cadvisor/utils/cloudinfo"
 	"github.com/google/cadvisor/utils/sysfs"
 	"github.com/google/cadvisor/utils/sysinfo"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"golang.org/x/sys/unix"
 )
@@ -77,7 +78,7 @@ func Info(sysFs sysfs.SysFs, fsInfo fs.FsInfo, inHostNamespace bool) (*info.Mach
 		return nil, err
 	}
 
-	nvmInfo, err := GetNVMInfo()
+	nvmInfo, err := nvm.GetInfo()
 	if err != nil {
 		return nil, err
 	}

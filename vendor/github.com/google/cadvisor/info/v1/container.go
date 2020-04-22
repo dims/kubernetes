@@ -202,7 +202,13 @@ func (self *ContainerSpec) Eq(b *ContainerSpec) bool {
 	if !reflect.DeepEqual(self.Memory, b.Memory) {
 		return false
 	}
+	if self.HasHugetlb != b.HasHugetlb {
+		return false
+	}
 	if self.HasNetwork != b.HasNetwork {
+		return false
+	}
+	if self.HasProcesses != b.HasProcesses {
 		return false
 	}
 	if self.HasFilesystem != b.HasFilesystem {
@@ -212,6 +218,9 @@ func (self *ContainerSpec) Eq(b *ContainerSpec) bool {
 		return false
 	}
 	if self.HasCustomMetrics != b.HasCustomMetrics {
+		return false
+	}
+	if self.Image != b.Image {
 		return false
 	}
 	return true
@@ -816,6 +825,29 @@ type AcceleratorStats struct {
 	DutyCycle uint64 `json:"duty_cycle"`
 }
 
+// PerfStat represents value of a single monitored perf event.
+type PerfStat struct {
+	// Indicates scaling ratio for an event: time_running/time_enabled
+	// (amount of time that event was being measured divided by
+	// amount of time that event was enabled for).
+	// value 1.0 indicates that no multiplexing occurred. Value close
+	// to 0 indicates that event was measured for short time and event's
+	// value might be inaccurate.
+	// See: https://lwn.net/Articles/324756/
+	ScalingRatio float64 `json:"scaling_ratio"`
+
+	// Value represents value of perf event retrieved from OS. It is
+	// normalized against ScalingRatio and takes multiplexing into
+	// consideration.
+	Value uint64 `json:"value"`
+
+	// Name is human readable name of an event.
+	Name string `json:"name"`
+
+	// CPU that perf event was measured on.
+	Cpu int `json:"cpu"`
+}
+
 type UlimitSpec struct {
 	Name      string `json:"name"`
 	SoftLimit int64  `json:"soft_limit"`
@@ -864,6 +896,9 @@ type ContainerStats struct {
 
 	// Custom metrics from all collectors
 	CustomMetrics map[string][]MetricVal `json:"custom_metrics,omitempty"`
+
+	// Statistics originating from perf events
+	PerfStats []PerfStat `json:"perf_stats,omitempty"`
 }
 
 func timeEq(t1, t2 time.Time, tolerance time.Duration) bool {
@@ -872,10 +907,7 @@ func timeEq(t1, t2 time.Time, tolerance time.Duration) bool {
 		t1, t2 = t2, t1
 	}
 	diff := t2.Sub(t1)
-	if diff <= tolerance {
-		return true
-	}
-	return false
+	return diff <= tolerance
 }
 
 const (
@@ -916,6 +948,15 @@ func (a *ContainerStats) StatsEq(b *ContainerStats) bool {
 	if !reflect.DeepEqual(a.Filesystem, b.Filesystem) {
 		return false
 	}
+	if !reflect.DeepEqual(a.TaskStats, b.TaskStats) {
+		return false
+	}
+	if !reflect.DeepEqual(a.Accelerators, b.Accelerators) {
+		return false
+	}
+	if !reflect.DeepEqual(a.CustomMetrics, b.CustomMetrics) {
+		return false
+	}
 	return true
 }
 
@@ -943,9 +984,9 @@ type EventType string
 
 const (
 	EventOom               EventType = "oom"
-	EventOomKill                     = "oomKill"
-	EventContainerCreation           = "containerCreation"
-	EventContainerDeletion           = "containerDeletion"
+	EventOomKill           EventType = "oomKill"
+	EventContainerCreation EventType = "containerCreation"
+	EventContainerDeletion EventType = "containerDeletion"
 )
 
 // Extra information about an event. Only one type will be set.

@@ -26,7 +26,7 @@ import (
 	info "github.com/google/cadvisor/info/v1"
 	"github.com/google/cadvisor/watcher"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // The namespace under which crio aliases are unique.
@@ -126,14 +126,6 @@ func (self *crioFactory) CanHandleAndAccept(name string) (bool, bool, error) {
 func (self *crioFactory) DebugInfo() map[string][]string {
 	return map[string][]string{}
 }
-
-var (
-	// TODO(runcom): handle versioning in CRI-O
-	version_regexp_string    = `(\d+)\.(\d+)\.(\d+)`
-	version_re               = regexp.MustCompile(version_regexp_string)
-	apiversion_regexp_string = `(\d+)\.(\d+)`
-	apiversion_re            = regexp.MustCompile(apiversion_regexp_string)
-)
 
 // Register root container before running this function!
 func Register(factory info.MachineInfoFactory, fsInfo fs.FsInfo, includedMetrics container.MetricSet) error {

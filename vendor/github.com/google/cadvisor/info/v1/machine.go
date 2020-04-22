@@ -138,17 +138,15 @@ type CloudProvider string
 
 const (
 	GCE             CloudProvider = "GCE"
-	AWS                           = "AWS"
-	Azure                         = "Azure"
-	Baremetal                     = "Baremetal"
-	UnknownProvider               = "Unknown"
+	AWS             CloudProvider = "AWS"
+	Azure           CloudProvider = "Azure"
+	UnknownProvider CloudProvider = "Unknown"
 )
 
 type InstanceType string
 
 const (
-	NoInstance      InstanceType = "None"
-	UnknownInstance              = "Unknown"
+	UnknownInstance = "Unknown"
 )
 
 type InstanceID string
@@ -211,6 +209,44 @@ type MachineInfo struct {
 
 	// ID of cloud instance (e.g. instance-1) given to it by the cloud provider.
 	InstanceID InstanceID `json:"instance_id"`
+}
+
+func (m *MachineInfo) Clone() *MachineInfo {
+	memoryByType := m.MemoryByType
+	if len(m.MemoryByType) > 0 {
+		memoryByType = make(map[string]*MemoryInfo)
+		for memoryType, memoryInfo := range m.MemoryByType {
+			memoryByType[memoryType] = memoryInfo
+		}
+	}
+	diskMap := m.DiskMap
+	if len(m.DiskMap) > 0 {
+		diskMap = make(map[string]DiskInfo)
+		for k, info := range m.DiskMap {
+			diskMap[k] = info
+		}
+	}
+	copy := MachineInfo{
+		NumCores:         m.NumCores,
+		NumPhysicalCores: m.NumPhysicalCores,
+		NumSockets:       m.NumSockets,
+		CpuFrequency:     m.CpuFrequency,
+		MemoryCapacity:   m.MemoryCapacity,
+		MemoryByType:     memoryByType,
+		NVMInfo:          m.NVMInfo,
+		HugePages:        m.HugePages,
+		MachineID:        m.MachineID,
+		SystemUUID:       m.SystemUUID,
+		BootID:           m.BootID,
+		Filesystems:      m.Filesystems,
+		DiskMap:          diskMap,
+		NetworkDevices:   m.NetworkDevices,
+		Topology:         m.Topology,
+		CloudProvider:    m.CloudProvider,
+		InstanceType:     m.InstanceType,
+		InstanceID:       m.InstanceID,
+	}
+	return &copy
 }
 
 type MemoryInfo struct {

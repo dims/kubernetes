@@ -22,7 +22,7 @@ import (
 
 	"github.com/euank/go-kmsg-parser/kmsgparser"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 var (
@@ -107,11 +107,8 @@ func getProcessNamePid(line string, currentOomInstance *OomInstance) (bool, erro
 
 // uses regex to see if line is the start of a kernel oom log
 func checkIfStartOfOomMessages(line string) bool {
-	potential_oom_start := firstLineRegexp.MatchString(line)
-	if potential_oom_start {
-		return true
-	}
-	return false
+	potentialOomStart := firstLineRegexp.MatchString(line)
+	return potentialOomStart
 }
 
 // StreamOoms writes to a provided a stream of OomInstance objects representing

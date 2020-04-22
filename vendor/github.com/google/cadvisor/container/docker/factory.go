@@ -38,7 +38,7 @@ import (
 
 	docker "github.com/docker/docker/client"
 	"golang.org/x/net/context"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 var ArgDockerEndpoint = flag.String("docker", "unix:///var/run/docker.sock", "docker endpoint")
@@ -103,6 +103,7 @@ const (
 	overlayStorageDriver      storageDriver = "overlay"
 	overlay2StorageDriver     storageDriver = "overlay2"
 	zfsStorageDriver          storageDriver = "zfs"
+	vfsStorageDriver          storageDriver = "vfs"
 )
 
 type dockerFactory struct {

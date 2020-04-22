@@ -22,7 +22,7 @@ import (
 	info "github.com/google/cadvisor/info/v1"
 	"github.com/google/cadvisor/watcher"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type ContainerHandlerFactory interface {
@@ -58,6 +58,7 @@ const (
 	AppMetrics                     MetricKind = "app"
 	ProcessMetrics                 MetricKind = "process"
 	HugetlbUsageMetrics            MetricKind = "hugetlb"
+	PerfMetrics                    MetricKind = "perf_event"
 )
 
 // AllMetrics represents all kinds of metrics that cAdvisor supported.
@@ -77,6 +78,7 @@ var AllMetrics = MetricSet{
 	ProcessMetrics:                 struct{}{},
 	AppMetrics:                     struct{}{},
 	HugetlbUsageMetrics:            struct{}{},
+	PerfMetrics:                    struct{}{},
 }
 
 func (mk MetricKind) String() string {
