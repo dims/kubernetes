@@ -29,7 +29,7 @@ require (
 	github.com/codegangsta/negroni v1.0.0 // indirect
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/containernetworking/cni v0.8.0
-	github.com/coredns/corefile-migration v1.0.8
+	github.com/coredns/corefile-migration v1.0.10
 	github.com/coreos/go-oidc v2.1.0+incompatible
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
