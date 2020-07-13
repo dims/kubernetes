@@ -57,7 +57,7 @@ require (
 	github.com/google/go-cmp v0.4.0
 	github.com/google/gofuzz v1.1.0
 	github.com/google/uuid v1.1.1
-	github.com/googleapis/gnostic v0.4.1
+	github.com/googleapis/gnostic v0.4.2
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/heketi/heketi v9.0.1-0.20190917153846-c2e2a4ab7ab9+incompatible
