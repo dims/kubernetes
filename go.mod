@@ -133,7 +133,7 @@ require (
 	k8s.io/kube-scheduler v0.0.0
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubelet v0.0.0
-	k8s.io/legacy-cloud-providers v0.0.0
+	k8s.io/legacy-cloud-providers v0.18.5
 	k8s.io/metrics v0.0.0
 	k8s.io/sample-apiserver v0.0.0
 	k8s.io/system-validators v1.1.2
