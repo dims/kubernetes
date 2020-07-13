@@ -127,7 +127,7 @@ require (
 	k8s.io/heapster v1.2.0-beta.1
 	k8s.io/klog/v2 v2.2.0
 	k8s.io/kube-aggregator v0.0.0
-	k8s.io/kube-controller-manager v0.0.0
+	k8s.io/kube-controller-manager v0.18.5
 	k8s.io/kube-openapi v0.0.0-20200427153329-656914f816f9
 	k8s.io/kube-proxy v0.0.0
 	k8s.io/kube-scheduler v0.0.0
