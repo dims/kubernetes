@@ -104,7 +104,7 @@ require (
 	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/tools v0.0.0-20200616133436-c1934b75d054
-	gonum.org/v1/gonum v0.6.2
+	gonum.org/v1/gonum v0.7.0
 	gonum.org/v1/netlib v0.0.0-20190331212654-76723241ea4e // indirect
 	google.golang.org/api v0.15.1
 	google.golang.org/grpc v1.27.0
