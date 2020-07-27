@@ -52,7 +52,7 @@ require (
 	github.com/go-ozzo/ozzo-validation v3.5.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7
-	github.com/golang/mock v1.3.1
+	github.com/golang/mock v1.4.3
 	github.com/google/cadvisor v0.37.0
 	github.com/google/go-cmp v0.4.0
 	github.com/google/gofuzz v1.1.0
