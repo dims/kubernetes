@@ -46,7 +46,7 @@ require (
 	github.com/go-bindata/go-bindata v3.1.1+incompatible
 	github.com/go-openapi/analysis v0.19.5
 	github.com/go-openapi/loads v0.19.4
-	github.com/go-openapi/spec v0.19.3
+	github.com/go-openapi/spec v0.19.9
 	github.com/go-openapi/strfmt v0.19.3
 	github.com/go-openapi/validate v0.19.5
 	github.com/go-ozzo/ozzo-validation v3.5.0+incompatible // indirect
