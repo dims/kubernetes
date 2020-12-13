@@ -72,7 +72,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/cri/remote"
-	"k8s.io/kubernetes/pkg/kubelet/cri/streaming"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/images"
@@ -2246,16 +2245,4 @@ func (kl *Kubelet) deletePodSandbox(podID types.UID) {
 func isSyncPodWorthy(event *pleg.PodLifecycleEvent) bool {
 	// ContainerRemoved doesn't affect pod state
 	return event.Type != pleg.ContainerRemoved
-}
-
-// Gets the streaming server configuration to use with in-process CRI shims.
-func getStreamingConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, kubeDeps *Dependencies, crOptions *config.ContainerRuntimeOptions) *streaming.Config {
-	config := &streaming.Config{
-		StreamIdleTimeout:               kubeCfg.StreamingConnectionIdleTimeout.Duration,
-		StreamCreationTimeout:           streaming.DefaultConfig.StreamCreationTimeout,
-		SupportedRemoteCommandProtocols: streaming.DefaultConfig.SupportedRemoteCommandProtocols,
-		SupportedPortForwardProtocols:   streaming.DefaultConfig.SupportedPortForwardProtocols,
-	}
-	config.Addr = net.JoinHostPort("localhost", "0")
-	return config
 }
