@@ -113,7 +113,7 @@ require (
 	k8s.io/cli-runtime v0.0.0
 	k8s.io/client-go v0.0.0
 	k8s.io/cloud-provider v0.0.0
-	k8s.io/cluster-bootstrap v0.0.0
+	k8s.io/cluster-bootstrap v0.21.0
 	k8s.io/code-generator v0.0.0
 	k8s.io/component-base v0.0.0
 	k8s.io/component-helpers v0.0.0
