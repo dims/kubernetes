@@ -1054,7 +1054,7 @@ golang.org/x/tools/internal/typesinternal
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 => golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
-# gonum.org/v1/gonum v0.6.2 => gonum.org/v1/gonum v0.6.2
+# gonum.org/v1/gonum v0.9.1 => gonum.org/v1/gonum v0.6.2
 ## explicit
 gonum.org/v1/gonum/blas
 gonum.org/v1/gonum/blas/blas64
