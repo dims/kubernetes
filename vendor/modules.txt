@@ -1544,7 +1544,7 @@ k8s.io/apiserver/plugin/pkg/authenticator/token/oidc
 k8s.io/apiserver/plugin/pkg/authenticator/token/tokentest
 k8s.io/apiserver/plugin/pkg/authenticator/token/webhook
 k8s.io/apiserver/plugin/pkg/authorizer/webhook
-# k8s.io/cli-runtime v0.0.0 => ./staging/src/k8s.io/cli-runtime
+# k8s.io/cli-runtime v0.21.0 => ./staging/src/k8s.io/cli-runtime
 ## explicit
 k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/printers
