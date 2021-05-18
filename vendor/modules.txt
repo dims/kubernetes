@@ -410,7 +410,7 @@ github.com/google/cadvisor/utils/sysinfo
 github.com/google/cadvisor/version
 github.com/google/cadvisor/watcher
 github.com/google/cadvisor/zfs
-# github.com/google/go-cmp v0.5.4 => github.com/google/go-cmp v0.5.4
+# github.com/google/go-cmp v0.5.5 => github.com/google/go-cmp v0.5.4
 ## explicit
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/cmpopts
