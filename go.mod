@@ -26,7 +26,6 @@ require (
 	github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/containernetworking/cni v0.8.1
-	github.com/coredns/corefile-migration v1.0.12
 	github.com/coreos/go-oidc v2.1.0+incompatible
 	github.com/coreos/go-systemd/v22 v22.3.2
 	github.com/cpuguy83/go-md2man/v2 v2.0.0
@@ -68,7 +67,6 @@ require (
 	github.com/opencontainers/runc v1.0.2
 	github.com/opencontainers/selinux v1.8.2
 	github.com/pkg/errors v0.9.1
-	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.28.0
@@ -80,7 +78,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.0
 	github.com/vmware/govmomi v0.20.3
-	go.etcd.io/etcd/api/v3 v3.5.0
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0
 	go.etcd.io/etcd/client/v3 v3.5.0
 	go.opentelemetry.io/otel/sdk v0.20.0

@@ -200,12 +200,6 @@ github.com/containernetworking/cni/pkg/types/020
 github.com/containernetworking/cni/pkg/types/current
 github.com/containernetworking/cni/pkg/utils
 github.com/containernetworking/cni/pkg/version
-# github.com/coredns/caddy v1.1.0 => github.com/coredns/caddy v1.1.0
-github.com/coredns/caddy/caddyfile
-# github.com/coredns/corefile-migration v1.0.12 => github.com/coredns/corefile-migration v1.0.12
-## explicit
-github.com/coredns/corefile-migration/migration
-github.com/coredns/corefile-migration/migration/corefile
 # github.com/coreos/go-oidc v2.1.0+incompatible => github.com/coreos/go-oidc v2.1.0+incompatible
 ## explicit
 github.com/coreos/go-oidc
@@ -658,7 +652,6 @@ github.com/peterbourgon/diskv
 ## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0 => github.com/pmezard/go-difflib v1.0.0
-## explicit
 github.com/pmezard/go-difflib/difflib
 # github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021 => github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021
 github.com/pquerna/cachecontrol
@@ -774,7 +767,6 @@ github.com/xlab/treeprint
 # go.etcd.io/bbolt v1.3.6 => go.etcd.io/bbolt v1.3.6
 go.etcd.io/bbolt
 # go.etcd.io/etcd/api/v3 v3.5.0 => go.etcd.io/etcd/api/v3 v3.5.0
-## explicit
 go.etcd.io/etcd/api/v3/authpb
 go.etcd.io/etcd/api/v3/etcdserverpb
 go.etcd.io/etcd/api/v3/etcdserverpb/gw
@@ -1027,7 +1019,6 @@ golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
-golang.org/x/sys/windows/svc/mgr
 # golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b => golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 ## explicit
 golang.org/x/term
@@ -1390,7 +1381,6 @@ k8s.io/apimachinery/pkg/runtime/serializer/protobuf
 k8s.io/apimachinery/pkg/runtime/serializer/recognizer
 k8s.io/apimachinery/pkg/runtime/serializer/streaming
 k8s.io/apimachinery/pkg/runtime/serializer/versioning
-k8s.io/apimachinery/pkg/runtime/serializer/yaml
 k8s.io/apimachinery/pkg/selection
 k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/util/cache

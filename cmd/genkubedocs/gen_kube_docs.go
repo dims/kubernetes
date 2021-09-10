@@ -17,19 +17,16 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/spf13/cobra/doc"
-	"github.com/spf13/pflag"
 	"k8s.io/kubernetes/cmd/genutils"
 	apiservapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	proxyapp "k8s.io/kubernetes/cmd/kube-proxy/app"
 	schapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
-	kubeadmapp "k8s.io/kubernetes/cmd/kubeadm/app/cmd"
+	//	kubeadmapp "k8s.io/kubernetes/cmd/kubeadm/app/cmd"
 	kubeletapp "k8s.io/kubernetes/cmd/kubelet/app"
 )
 
@@ -72,18 +69,18 @@ func main() {
 		// generate docs for kubelet
 		kubelet := kubeletapp.NewKubeletCommand()
 		doc.GenMarkdownTree(kubelet, outDir)
-	case "kubeadm":
-		// resets global flags created by kubelet or other commands e.g.
-		// --azure-container-registry-config from pkg/credentialprovider/azure
-		// --version pkg/version/verflag
-		pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
-
-		// generate docs for kubeadm
-		kubeadm := kubeadmapp.NewKubeadmCommand(bytes.NewReader(nil), ioutil.Discard, ioutil.Discard)
-		doc.GenMarkdownTree(kubeadm, outDir)
-
-		// cleanup generated code for usage as include in the website
-		MarkdownPostProcessing(kubeadm, outDir, cleanupForInclude)
+	//case "kubeadm":
+	//	// resets global flags created by kubelet or other commands e.g.
+	//	// --azure-container-registry-config from pkg/credentialprovider/azure
+	//	// --version pkg/version/verflag
+	//	pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
+	//
+	//	// generate docs for kubeadm
+	//	kubeadm := kubeadmapp.NewKubeadmCommand(bytes.NewReader(nil), ioutil.Discard, ioutil.Discard)
+	//	doc.GenMarkdownTree(kubeadm, outDir)
+	//
+	//	// cleanup generated code for usage as include in the website
+	//	MarkdownPostProcessing(kubeadm, outDir, cleanupForInclude)
 	default:
 		fmt.Fprintf(os.Stderr, "Module %s is not supported", module)
 		os.Exit(1)
