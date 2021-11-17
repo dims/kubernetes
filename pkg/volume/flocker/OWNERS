@@ -4,7 +4,6 @@ approvers:
   - rootfs
   - saad-ali
 reviewers:
-  - simonswine
   - saad-ali
   - jsafrane
   - rootfs

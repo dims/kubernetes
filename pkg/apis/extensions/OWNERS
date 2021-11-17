@@ -27,6 +27,5 @@ reviewers:
   - resouer
   - therc
   - pweil-
-  - lukaszo
 labels:
   - sig/apps

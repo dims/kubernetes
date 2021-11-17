@@ -94,7 +94,6 @@ aliases:
     - enj
     - liggitt
     - mikedanese
-    - WanLinghao
   # SIG Release
   release-engineering-approvers:
     - cpanato # SIG Technical Lead / RelEng subproject owner / Release Manager
@@ -241,7 +240,6 @@ aliases:
     - resouer
     - sjenning
     - vishh
-    - yifan-gu
     - yujuhong
     - krmayankk
     - matthyx
@@ -289,7 +287,6 @@ aliases:
     - erictune
     - smarterclayton
   sig-apps-reviewers:
-    - enisoc
     - erictune
     - foxish
     - janetkuo
@@ -303,7 +300,6 @@ aliases:
   # - tnozicka
 
   sig-autoscaling-maintainers:
-    - aleksandra-malinowska
     - bskiba
     - MaciekPytel
     - mwielgus
@@ -400,7 +396,6 @@ aliases:
     - caesarxuchao
     - vishh
     - mikedanese
-    - davidopp
     - pmorie
     - sttts
     - dchen1107
@@ -411,7 +406,6 @@ aliases:
     - pwittrock
     - ncdc
     - tallclair
-    - yifan-gu
     - mwielgus
     - timothysc
     - soltysh
@@ -499,9 +493,7 @@ aliases:
     - andrewsykim # Cloud Provider
     - brancz # Instrumentation
     - ahg-g # Scheduling
-    - calebamiles # Release
     - caseydavenport # Network
-    - countspongebob # Scalability
     - dcbw # Network
     - dchen1107 # Node
     - deads2k # API Machinery
@@ -523,7 +515,6 @@ aliases:
     - mwielgus # Autoscaling
     - prydonius # Apps
     - pwittrock # CLI
-    - quinton-hoole # Multicluster
     - justinsb # Cluster Lifecycle
     - saad-ali # Storage
     - seans3 # CLI

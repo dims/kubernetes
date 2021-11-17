@@ -7,13 +7,13 @@ approvers:
   - SandeepPissay
   - divyenpatel
   - BaluDontu
-  - imkin
   - frapposelli
   - dougm
-  - sandeeppsunny
 emeritus_approvers:
   - matchstick
   - abrarshivani
+  - imkin
+  - sandeeppsunny
 reviewers:
   - saad-ali
   - justinsb
@@ -24,7 +24,5 @@ reviewers:
   - SandeepPissay
   - divyenpatel
   - BaluDontu
-  - imkin
   - frapposelli
   - dougm
-  - sandeeppsunny

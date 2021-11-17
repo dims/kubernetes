@@ -6,7 +6,8 @@ approvers:
   - derekwaynecarr
   - vishh
   - yujuhong
-  - ConnorDoyle
   - klueska
 reviewers:
   - sig-node-reviewers
+emeritus_approvers:
+  - ConnorDoyle

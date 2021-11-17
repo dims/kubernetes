@@ -3,8 +3,8 @@
 approvers:
   - vishh
   - derekwaynecarr
-  - ConnorDoyle
 reviewers:
   - sig-node-reviewers
 emeritus_approvers:
   - balajismaniam
+  - ConnorDoyle
