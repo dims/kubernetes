@@ -13,10 +13,8 @@ reviewers:
   - vishh
   - mikedanese
   - liggitt
-  - davidopp
   - pmorie
   - sttts
-  - quinton-hoole
   - dchen1107
   - janetkuo
   - justinsb
@@ -27,5 +25,4 @@ reviewers:
   - jsafrane
   - dims
   - fejta
-  - krousey
   - rootfs
