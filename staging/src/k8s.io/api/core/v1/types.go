@@ -2595,7 +2595,7 @@ type ContainerStatus struct {
 	Image string `json:"image" protobuf:"bytes,6,opt,name=image"`
 	// ImageID of the container's image.
 	ImageID string `json:"imageID" protobuf:"bytes,7,opt,name=imageID"`
-	// Container's ID in the format '<container_id>'.
+	// Container's ID in the format '<type>://<container_id>'.
 	// +optional
 	ContainerID string `json:"containerID,omitempty" protobuf:"bytes,8,opt,name=containerID"`
 	// Specifies whether the container has passed its startup probe.
