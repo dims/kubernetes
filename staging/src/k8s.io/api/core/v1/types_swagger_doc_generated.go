@@ -405,7 +405,7 @@ var map_ContainerStateTerminated = map[string]string{
 	"message":     "Message regarding the last termination of the container",
 	"startedAt":   "Time at which previous execution of the container started",
 	"finishedAt":  "Time at which the container last terminated",
-	"containerID": "Container's ID in the format '<container_id>'",
+	"containerID": "Container's ID in the format '<type>://<container_id>'",
 }
 
 func (ContainerStateTerminated) SwaggerDoc() map[string]string {
@@ -431,7 +431,7 @@ var map_ContainerStatus = map[string]string{
 	"restartCount": "The number of times the container has been restarted.",
 	"image":        "The image the container is running. More info: https://kubernetes.io/docs/concepts/containers/images.",
 	"imageID":      "ImageID of the container's image.",
-	"containerID":  "Container's ID in the format '<container_id>'.",
+	"containerID":  "Container's ID in the format '<type>://<container_id>'.",
 	"started":      "Specifies whether the container has passed its startup probe. Initialized as false, becomes true after startupProbe is considered successful. Resets to false when the container is restarted, or if kubelet loses state temporarily. Is always true when no startupProbe is defined.",
 }
 
