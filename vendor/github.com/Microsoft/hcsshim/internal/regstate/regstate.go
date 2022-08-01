@@ -1,3 +1,5 @@
+//go:build windows
+
 package regstate
 
 import (
@@ -34,11 +36,11 @@ var localUser = &Key{registry.CURRENT_USER, "HKEY_CURRENT_USER"}
 var rootPath = `SOFTWARE\Microsoft\runhcs`
 
 type NotFoundError struct {
-	Id string
+	ID string
 }
 
 func (err *NotFoundError) Error() string {
-	return fmt.Sprintf("ID '%s' was not found", err.Id)
+	return fmt.Sprintf("ID '%s' was not found", err.ID)
 }
 
 func IsNotFoundError(err error) bool {
