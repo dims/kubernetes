@@ -223,7 +223,7 @@ github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/internal/dlopen
 github.com/coreos/go-systemd/v22/journal
 github.com/coreos/go-systemd/v22/util
-# github.com/cpuguy83/go-md2man/v2 v2.0.1 => github.com/cpuguy83/go-md2man/v2 v2.0.1
+# github.com/cpuguy83/go-md2man/v2 v2.0.2 => github.com/cpuguy83/go-md2man/v2 v2.0.1
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.3 => github.com/cyphar/filepath-securejoin v0.2.3
@@ -720,7 +720,7 @@ github.com/sirupsen/logrus
 # github.com/soheilhy/cmux v0.1.5 => github.com/soheilhy/cmux v0.1.5
 ## explicit; go 1.11
 github.com/soheilhy/cmux
-# github.com/spf13/cobra v1.4.0 => github.com/spf13/cobra v1.4.0
+# github.com/spf13/cobra v1.5.0 => github.com/spf13/cobra v1.5.0
 ## explicit; go 1.15
 github.com/spf13/cobra
 github.com/spf13/cobra/doc
@@ -2747,7 +2747,7 @@ sigs.k8s.io/yaml
 # github.com/smartystreets/goconvey => github.com/smartystreets/goconvey v1.6.4
 # github.com/soheilhy/cmux => github.com/soheilhy/cmux v0.1.5
 # github.com/spf13/afero => github.com/spf13/afero v1.6.0
-# github.com/spf13/cobra => github.com/spf13/cobra v1.4.0
+# github.com/spf13/cobra => github.com/spf13/cobra v1.5.0
 # github.com/spf13/pflag => github.com/spf13/pflag v1.0.5
 # github.com/stoewer/go-strcase => github.com/stoewer/go-strcase v1.2.0
 # github.com/stretchr/objx => github.com/stretchr/objx v0.2.0

@@ -5,7 +5,7 @@ module k8s.io/sample-cli-plugin
 go 1.19
 
 require (
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	k8s.io/cli-runtime v0.0.0
 	k8s.io/client-go v0.0.0
@@ -68,6 +68,7 @@ require (
 )
 
 replace (
+	github.com/cpuguy83/go-md2man/v2 => github.com/cpuguy83/go-md2man/v2 v2.0.1
 	k8s.io/api => ../api
 	k8s.io/apimachinery => ../apimachinery
 	k8s.io/cli-runtime => ../cli-runtime
