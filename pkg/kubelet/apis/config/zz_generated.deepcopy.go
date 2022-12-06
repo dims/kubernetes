@@ -269,6 +269,7 @@ func (in *KubeletConfiguration) DeepCopyInto(out *KubeletConfiguration) {
 		}
 	}
 	out.MemorySwap = in.MemorySwap
+	out.ContainerLogMonitorPeriod = in.ContainerLogMonitorPeriod
 	if in.AllowedUnsafeSysctls != nil {
 		in, out := &in.AllowedUnsafeSysctls, &out.AllowedUnsafeSysctls
 		*out = make([]string, len(*in))

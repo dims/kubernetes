@@ -476,6 +476,8 @@ func AddKubeletConfigFlags(mainfs *pflag.FlagSet, c *kubeletconfig.KubeletConfig
 	fs.MarkDeprecated("iptables-drop-bit", "This flag has no effect and will be removed in a future version.")
 	fs.StringVar(&c.ContainerLogMaxSize, "container-log-max-size", c.ContainerLogMaxSize, "<Warning: Beta feature> Set the maximum size (e.g. 10Mi) of container log file before it is rotated.")
 	fs.Int32Var(&c.ContainerLogMaxFiles, "container-log-max-files", c.ContainerLogMaxFiles, "<Warning: Beta feature> Set the maximum number of container log files that can be present for a container. The number must be >= 2.")
+	fs.Int32Var(&c.ContainerLogMaxWorkers, "container-log-max-workers", c.ContainerLogMaxWorkers, "<Warning: Beta feature> Set the maximum number of concurrent worker to spawn for performing the log rotation. Set the value to 0 to disable concurrent rotation. Defaults to 0")
+	fs.DurationVar(&c.ContainerLogMonitorPeriod.Duration, "container-log-monitor-period", c.ContainerLogMonitorPeriod.Duration, "<Warning: Beta feature> Set the duration at which kubelet will monitor the logs for performing rotation. Defaults to 10s.")
 	fs.StringSliceVar(&c.AllowedUnsafeSysctls, "allowed-unsafe-sysctls", c.AllowedUnsafeSysctls, "Comma-separated whitelist of unsafe sysctls or unsafe sysctl patterns (ending in *). Use these at your own risk.")
 
 	fs.Int32Var(&c.NodeStatusMaxImages, "node-status-max-images", c.NodeStatusMaxImages, "The maximum number of images to report in Node.Status.Images. If -1 is specified, no cap will be applied.")

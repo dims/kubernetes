@@ -239,6 +239,12 @@ func SetDefaults_KubeletConfiguration(obj *kubeletconfigv1beta1.KubeletConfigura
 	if obj.ContainerLogMaxFiles == nil {
 		obj.ContainerLogMaxFiles = utilpointer.Int32(5)
 	}
+	if obj.ContainerLogMaxWorkers == nil {
+		obj.ContainerLogMaxWorkers = utilpointer.Int32Ptr(0)
+	}
+	if obj.ContainerLogMonitorPeriod == nil {
+		obj.ContainerLogMonitorPeriod = &metav1.Duration{Duration: 10 * time.Second}
+	}
 	if obj.ConfigMapAndSecretChangeDetectionStrategy == "" {
 		obj.ConfigMapAndSecretChangeDetectionStrategy = kubeletconfigv1beta1.WatchChangeDetectionStrategy
 	}

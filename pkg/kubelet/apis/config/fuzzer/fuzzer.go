@@ -105,6 +105,8 @@ func Funcs(codecs runtimeserializer.CodecFactory) []interface{} {
 			obj.StaticPodURLHeader = make(map[string][]string)
 			obj.ContainerLogMaxFiles = 5
 			obj.ContainerLogMaxSize = "10Mi"
+			obj.ContainerLogMaxWorkers = 0
+			obj.ContainerLogMonitorPeriod = metav1.Duration{Duration: 10 * time.Second}
 			obj.ConfigMapAndSecretChangeDetectionStrategy = "Watch"
 			obj.AllowedUnsafeSysctls = []string{}
 			obj.VolumePluginDir = kubeletconfigv1beta1.DefaultVolumePluginDir

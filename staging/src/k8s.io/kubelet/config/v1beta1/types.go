@@ -589,6 +589,21 @@ type KubeletConfiguration struct {
 	// Default: 5
 	// +optional
 	ContainerLogMaxFiles *int32 `json:"containerLogMaxFiles,omitempty"`
+
+	// ContainerLogMaxWorkers specifies the maximum number of concurrent workers to spawn
+	// for performing the log rotate operations. Set this count to 0 for disabling the
+	// concurrent log rotation workflows
+	// Default: 0
+	// +optional
+	ContainerLogMaxWorkers *int32 `json:"containerLogMaxWorkers,omitempty"`
+
+	// ContainerLogMonitorPeriod specifies the duration at which the container logs are monitored
+	// for performing the log rotate operation. This defaults to 10 * time.Seconds. But can be
+	// customized to a smaller value based on the log generation rate and the size required to be
+	// rotated against
+	// Default: 10s
+	// +optional
+	ContainerLogMonitorPeriod *metav1.Duration `json:"containerLogMonitorPeriod,omitempty"`
 	// configMapAndSecretChangeDetectionStrategy is a mode in which ConfigMap and Secret
 	// managers are running. Valid values include:
 	//

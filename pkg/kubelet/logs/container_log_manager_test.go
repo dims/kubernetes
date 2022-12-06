@@ -23,11 +23,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/kubelet/container"
 
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -92,8 +95,12 @@ func TestRotateLogs(t *testing.T) {
 			MaxSize:  testMaxSize,
 			MaxFiles: testMaxFiles,
 		},
-		osInterface: container.RealOS{},
-		clock:       testingclock.NewFakeClock(now),
+		osInterface:      container.RealOS{},
+		clock:            testingclock.NewFakeClock(now),
+		mutex:            sync.Mutex{},
+		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "kubelet_log_rotate_manager"),
+		maxWorkers:       10,
+		monitoringPeriod: v1.Duration{Duration: 10 * time.Second},
 	}
 	testLogs := []string{
 		"test-log-1",
@@ -149,6 +156,7 @@ func TestRotateLogs(t *testing.T) {
 		},
 	}
 	f.SetFakeContainers(testContainers)
+	go c.processQueueItems(0)
 	require.NoError(t, c.rotateLogs(ctx))
 
 	timestamp := now.Format(timestampFormat)
@@ -160,6 +168,7 @@ func TestRotateLogs(t *testing.T) {
 	assert.Equal(t, testLogs[4]+compressSuffix, logs[2].Name())
 	assert.Equal(t, testLogs[2]+"."+timestamp, logs[3].Name())
 	assert.Equal(t, testLogs[3], logs[4].Name())
+	c.queue.ShutDown()
 }
 
 func TestClean(t *testing.T) {
@@ -180,8 +189,12 @@ func TestClean(t *testing.T) {
 			MaxSize:  testMaxSize,
 			MaxFiles: testMaxFiles,
 		},
-		osInterface: container.RealOS{},
-		clock:       testingclock.NewFakeClock(now),
+		osInterface:      container.RealOS{},
+		clock:            testingclock.NewFakeClock(now),
+		mutex:            sync.Mutex{},
+		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "kubelet_log_rotate_manager"),
+		maxWorkers:       10,
+		monitoringPeriod: v1.Duration{Duration: 10 * time.Second},
 	}
 	testLogs := []string{
 		"test-log-1",
@@ -383,10 +396,14 @@ func TestRotateLatestLog(t *testing.T) {
 		now := time.Now()
 		f := critest.NewFakeRuntimeService()
 		c := &containerLogManager{
-			runtimeService: f,
-			policy:         LogRotatePolicy{MaxFiles: test.maxFiles},
-			osInterface:    container.RealOS{},
-			clock:          testingclock.NewFakeClock(now),
+			runtimeService:   f,
+			policy:           LogRotatePolicy{MaxFiles: test.maxFiles},
+			osInterface:      container.RealOS{},
+			clock:            testingclock.NewFakeClock(now),
+			mutex:            sync.Mutex{},
+			queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "kubelet_log_rotate_manager"),
+			maxWorkers:       10,
+			monitoringPeriod: v1.Duration{Duration: 10 * time.Second},
 		}
 		if test.runtimeError != nil {
 			f.InjectError("ReopenContainerLog", test.runtimeError)
