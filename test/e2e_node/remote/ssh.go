@@ -29,7 +29,7 @@ import (
 )
 
 var sshOptions = flag.String("ssh-options", "", "Commandline options passed to ssh.")
-var sshEnv = flag.String("ssh-env", "", "Use predefined ssh options for environment.  Options: gce")
+var sshEnv = flag.String("ssh-env", "", "Use predefined ssh options for environment.  Options: gce or aws")
 var sshKey = flag.String("ssh-key", "", "Path to ssh private key.")
 var sshUser = flag.String("ssh-user", "", "Use predefined user for ssh.")
 
