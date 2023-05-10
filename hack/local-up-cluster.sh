@@ -186,10 +186,10 @@ do
     esac
 done
 
-if [ -z "${GO_OUT}" ]; then
+if [ -z "${GO_OUT:-$(guess_built_binary_path)}" ]; then
     make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/kube-apiserver cmd/kube-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
 else
-    echo "skipped the build."
+    echo "skipped the build as we found existing binaries in $(guess_built_binary_path)"
 fi
 
 # Shut down anyway if there's an error.
@@ -695,6 +695,41 @@ function wait_node_ready(){
   fi
 }
 
+function wait_coredns_available(){
+  local interval_time=2
+  local coredns_wait_time=300
+
+  # kick the coredns pods to be recreated
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" -n kube-system delete pods -l k8s-app=kube-dns
+  sleep 30
+
+  local coredns_pods_ready="${KUBECTL} --kubeconfig '${CERT_DIR}/admin.kubeconfig' wait --for=condition=Ready --timeout=60s pods -l k8s-app=kube-dns -n kube-system"
+  kube::util::wait_for_success "$coredns_wait_time" "$interval_time" "$coredns_pods_ready"
+  if [ $? == "1" ]; then
+    echo "time out on waiting for coredns pods"
+    exit 1
+  fi
+
+  local coredns_available="${KUBECTL} --kubeconfig '${CERT_DIR}/admin.kubeconfig' wait --for=condition=Available --timeout=60s deployments coredns -n kube-system"
+  kube::util::wait_for_success "$coredns_wait_time" "$interval_time" "$coredns_available"
+  if [ $? == "1" ]; then
+    echo "time out on waiting for coredns deployment"
+    exit 1
+  fi
+
+  echo "===== BEGIN get all ====="
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get all --all-namespaces
+  echo "===== END get all ====="
+
+  echo "===== BEGIN coredns pods ====="
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" -n kube-system get pods -l k8s-app=kube-dns -o yaml
+  echo "===== END coredns pods ====="
+
+  echo "===== BEGIN coredns logs ====="
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" -n kube-system logs -l k8s-app=kube-dns
+  echo "===== END coredns logs ====="
+}
+
 function start_kubelet {
     KUBELET_LOG=${LOG_DIR}/kubelet.log
     mkdir -p "${POD_MANIFEST_PATH}" &>/dev/null || sudo mkdir -p "${POD_MANIFEST_PATH}"
@@ -1046,6 +1081,45 @@ function parse_eviction {
   done
 }
 
+function update_packages {
+  apt-get update && apt-get install -y sudo
+  apt-get remove -y systemd
+
+  # jump through hoops to avoid removing docker/containerd
+  # when installing nftables and kmod, as those docker/containerd
+  # packages depend on iptables
+  dpkg -r --force-depends iptables && \
+  apt -y --fix-broken install && \
+  apt -y install nftables kmod && \
+  apt -y install iptables
+}
+
+function tolerate_cgroups_v2 {
+  # https://github.com/moby/moby/blob/ed89041433a031cafc0a0f19cfe573c31688d377/hack/dind#L28-L37
+  # cgroup v2: enable nesting
+  if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+    # move the init process (PID 1) from the root group to the /init group,
+    # otherwise writing subtree_control fails with EBUSY.
+    mkdir -p /sys/fs/cgroup/init
+    echo 1 > /sys/fs/cgroup/init/cgroup.procs
+    # enable controllers
+    sed -e 's/ / +/g' -e 's/^/+/' < /sys/fs/cgroup/cgroup.controllers \
+      > /sys/fs/cgroup/cgroup.subtree_control
+  fi
+}
+
+# Bind mounts device at mountpoint to bindpoint
+function safe-bind-mount(){
+  local mountpoint="${1}"
+  local bindpoint="${2}"
+
+  # Mount device to the mountpoint
+  mkdir -p "${bindpoint}"
+  echo "Binding '${mountpoint}' at '${bindpoint}'"
+  mount --bind "${mountpoint}" "${bindpoint}"
+  chmod a+w "${bindpoint}"
+}
+
 function install_cni {
   cni_plugin_sha=CNI_PLUGINS_${CNI_TARGETARCH^^}_SHA256SUM
   echo "Installing CNI plugin binaries ..." \
@@ -1118,8 +1192,8 @@ if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
   export PATH="${KUBE_ROOT}/third_party/etcd:${PATH}"
   KUBE_FASTBUILD=true make ginkgo cross
 
-  apt-get update && apt-get install -y sudo
-  apt-get remove -y systemd
+  # install things we need that are missing from the kubekins image
+  update_packages
 
   # configure shared mounts to prevent failure in DIND scenarios
   mount --make-rshared /
@@ -1132,9 +1206,20 @@ if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
   # install cni for docker in docker
   install_cni 
 
+  # If we are running in a cgroups v2 environment
+  # we need to enable nesting
+  tolerate_cgroups_v2
+
   # enable cri for docker in docker
   echo "enable cri"
   echo "DOCKER_OPTS=\"\${DOCKER_OPTS} --cri-containerd\"" >> /etc/default/docker
+
+  # let's log it where we can grab it later
+  echo "DOCKER_LOGFILE=${LOG_DIR}/docker.log" >> /etc/default/docker
+
+  # capture the container logs using a mount
+  mkdir -p "${LOG_DIR}/log_pods"
+  safe-bind-mount "${LOG_DIR}/log_pods" "/var/log/pods"
 
   echo "restarting docker"
   service docker restart
@@ -1211,6 +1296,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
         ;;
       Linux)
         start_kubeproxy
+        wait_coredns_available
         ;;
       *)
         print_color "Unsupported host OS.  Must be Linux or Mac OS X, kube-proxy aborted."
