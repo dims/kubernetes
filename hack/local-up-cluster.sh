@@ -1108,18 +1108,6 @@ function tolerate_cgroups_v2 {
   fi
 }
 
-# Bind mounts device at mountpoint to bindpoint
-function safe-bind-mount(){
-  local mountpoint="${1}"
-  local bindpoint="${2}"
-
-  # Mount device to the mountpoint
-  mkdir -p "${bindpoint}"
-  echo "Binding '${mountpoint}' at '${bindpoint}'"
-  mount --bind "${mountpoint}" "${bindpoint}"
-  chmod a+w "${bindpoint}"
-}
-
 function install_cni {
   cni_plugin_sha=CNI_PLUGINS_${CNI_TARGETARCH^^}_SHA256SUM
   echo "Installing CNI plugin binaries ..." \
@@ -1217,10 +1205,6 @@ if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
 
   # let's log it where we can grab it later
   echo "DOCKER_LOGFILE=${LOG_DIR}/docker.log" >> /etc/default/docker
-
-  # capture the container logs using a mount
-  mkdir -p "${LOG_DIR}/log_pods"
-  safe-bind-mount "${LOG_DIR}/log_pods" "/var/log/pods"
 
   echo "restarting docker"
   service docker restart
