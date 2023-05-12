@@ -716,18 +716,6 @@ function wait_coredns_available(){
     echo "time out on waiting for coredns deployment"
     exit 1
   fi
-
-  echo "===== BEGIN get all ====="
-  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get all --all-namespaces
-  echo "===== END get all ====="
-
-  echo "===== BEGIN coredns pods ====="
-  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" -n kube-system get pods -l k8s-app=kube-dns -o yaml
-  echo "===== END coredns pods ====="
-
-  echo "===== BEGIN coredns logs ====="
-  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" -n kube-system logs -l k8s-app=kube-dns
-  echo "===== END coredns logs ====="
 }
 
 function start_kubelet {
