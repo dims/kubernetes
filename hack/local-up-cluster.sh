@@ -716,6 +716,26 @@ function wait_coredns_available(){
     echo "time out on waiting for coredns deployment"
     exit 1
   fi
+
+  echo "================= BEGIN DEBUG ========================"
+  echo "====== ps ====="
+  sudo ps -ef
+  echo "====== ps coredns ====="
+  sudo ps -ef | grep -i coredns | grep -v grep
+  echo "====== pidof coredns ====="
+  COREDNS_PID=$(ps -ef | grep -i /etc/coredns/Corefile | grep -v grep | awk '{print $2}')
+  echo "====== adjust oom_score for coredns ====="
+  echo "-1000" | sudo tee /proc/${COREDNS_PID}/oom_score_adj
+  echo "====== print oom_score for coredns ======"
+  sudo cat /proc/${COREDNS_PID}/oom_score_adj
+  echo "================== END DEBUG ======================="
+
+  # bump log level
+  echo "6" | sudo tee /proc/sys/kernel/printk
+
+  # loop through and grab all things in dmesg
+  dmesg > "${LOG_DIR}/dmesg.log"
+  dmesg -w --human >> "${LOG_DIR}/dmesg.log" &
 }
 
 function start_kubelet {
