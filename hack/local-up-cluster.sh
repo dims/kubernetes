@@ -695,6 +695,30 @@ function wait_node_ready(){
   fi
 }
 
+function refresh_docker_containerd_runc {
+  apt update
+  apt-get install ca-certificates curl gnupg ripgrep tree vim
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+
+  echo \
+    "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+    tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  apt-get update
+  apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+  groupadd docker
+  usermod -aG docker $USER
+
+  if ! grep -q "cri-containerd" "/lib/systemd/system/docker.service"; then
+    sed -i "s/ExecStart=\(.*\)/ExecStart=\1 --cri-containerd/" /lib/systemd/system/docker.service
+  fi
+
+  apt install -y conntrack vim htop ripgrep dnsutils tree ripgrep build-essential
+}
+
 function wait_coredns_available(){
   local interval_time=2
   local coredns_wait_time=300
@@ -718,16 +742,25 @@ function wait_coredns_available(){
   fi
 
   echo "================= BEGIN DEBUG ========================"
+  echo "====== set overcommit_memory ====="
+  echo 1 | sudo tee /proc/sys/vm/overcommit_memory
+  sudo cat /proc/sys/vm/overcommit_memory
   echo "====== ps ====="
   sudo ps -ef
   echo "====== ps coredns ====="
   sudo ps -ef | grep -i coredns | grep -v grep
-  echo "====== pidof coredns ====="
-  COREDNS_PID=$(ps -ef | grep -i /etc/coredns/Corefile | grep -v grep | awk '{print $2}')
-  echo "====== adjust oom_score for coredns ====="
-  echo "-1000" | sudo tee /proc/${COREDNS_PID}/oom_score_adj
-  echo "====== print oom_score for coredns ======"
-  sudo cat /proc/${COREDNS_PID}/oom_score_adj
+  echo "====== set oom_score_adj for coredns related processes ====="
+  ps -ef | grep -i coredns | grep -v grep | awk '{print $2}' \
+  | while read PID; do
+    echo "setting oom_score_adj for $PID"
+    echo -1000 | sudo tee /proc/$PID/oom_score_adj
+  done
+  echo "====== print oom_score for coredns related processes ======"
+  ps -ef | grep -i coredns | grep -v grep | awk '{print $2}' \
+  | while read PID; do
+    echo "getting oom_score_adj for $PID"
+    sudo cat /proc/$PID/oom_score_adj
+  done
   echo "================== END DEBUG ======================="
 
   # bump log level
@@ -736,6 +769,19 @@ function wait_coredns_available(){
   # loop through and grab all things in dmesg
   dmesg > "${LOG_DIR}/dmesg.log"
   dmesg -w --human >> "${LOG_DIR}/dmesg.log" &
+
+  # grab coredns logs every 5 seconds
+  mkdir -p "${KUBE_ROOT}/_output"
+  cat <<EOF > "${KUBE_ROOT}/_output/log-coredns.sh"
+export KUBECONFIG="${CERT_DIR}/admin.kubeconfig"
+while sleep 5; do
+  POD_NAME=\$(kubectl get pods -n kube-system | tail -1 | awk '{print \$1}')
+  kubectl get pods -n kube-system -o yaml
+  kubectl logs -n kube-system pod/\${POD_NAME}
+done
+EOF
+  chmod +x "${KUBE_ROOT}/_output/log-coredns.sh"
+  nohup "${KUBE_ROOT}/_output/log-coredns.sh" > "${LOG_DIR}/coredns.log" 2>&1 &
 }
 
 function start_kubelet {
@@ -1215,8 +1261,19 @@ if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
   echo "enable cri"
   echo "DOCKER_OPTS=\"\${DOCKER_OPTS} --cri-containerd\"" >> /etc/default/docker
 
+  # enable debug
+  echo "DOCKER_OPTS=\"\${DOCKER_OPTS} --debug\"" >> /etc/default/docker
+
   # let's log it where we can grab it later
   echo "DOCKER_LOGFILE=${LOG_DIR}/docker.log" >> /etc/default/docker
+
+  # bump up things
+  refresh_docker_containerd_runc
+
+  # check if the new stuff is there
+  docker version
+  containerd --version
+  runc --version
 
   echo "restarting docker"
   service docker restart
