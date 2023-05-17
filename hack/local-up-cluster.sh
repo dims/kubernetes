@@ -741,27 +741,27 @@ function wait_coredns_available(){
     exit 1
   fi
 
-  echo "================= BEGIN DEBUG ========================"
-  echo "====== set overcommit_memory ====="
-  echo 1 | sudo tee /proc/sys/vm/overcommit_memory
-  sudo cat /proc/sys/vm/overcommit_memory
-  echo "====== ps ====="
-  sudo ps -ef
-  echo "====== ps coredns ====="
-  sudo ps -ef | grep -i coredns | grep -v grep
-  echo "====== set oom_score_adj for coredns related processes ====="
-  ps -ef | grep -i coredns | grep -v grep | awk '{print $2}' \
-  | while read PID; do
-    echo "setting oom_score_adj for $PID"
-    echo -1000 | sudo tee /proc/$PID/oom_score_adj
-  done
-  echo "====== print oom_score for coredns related processes ======"
-  ps -ef | grep -i coredns | grep -v grep | awk '{print $2}' \
-  | while read PID; do
-    echo "getting oom_score_adj for $PID"
-    sudo cat /proc/$PID/oom_score_adj
-  done
-  echo "================== END DEBUG ======================="
+#  echo "================= BEGIN DEBUG ========================"
+#  echo "====== set overcommit_memory ====="
+#  echo 1 | sudo tee /proc/sys/vm/overcommit_memory
+#  sudo cat /proc/sys/vm/overcommit_memory
+#  echo "====== ps ====="
+#  sudo ps -ef
+#  echo "====== ps coredns ====="
+#  sudo ps -ef | grep -i coredns | grep -v grep
+#  echo "====== set oom_score_adj for coredns related processes ====="
+#  ps -ef | grep -i coredns | grep -v grep | awk '{print $2}' \
+#  | while read PID; do
+#    echo "setting oom_score_adj for $PID"
+#    echo -1000 | sudo tee /proc/$PID/oom_score_adj
+#  done
+#  echo "====== print oom_score for coredns related processes ======"
+#  ps -ef | grep -i coredns | grep -v grep | awk '{print $2}' \
+#  | while read PID; do
+#    echo "getting oom_score_adj for $PID"
+#    sudo cat /proc/$PID/oom_score_adj
+#  done
+#  echo "================== END DEBUG ======================="
 
   # bump log level
   echo "6" | sudo tee /proc/sys/kernel/printk
@@ -770,18 +770,18 @@ function wait_coredns_available(){
   dmesg > "${LOG_DIR}/dmesg.log"
   dmesg -w --human >> "${LOG_DIR}/dmesg.log" &
 
-  # grab coredns logs every 5 seconds
-  mkdir -p "${KUBE_ROOT}/_output"
-  cat <<EOF > "${KUBE_ROOT}/_output/log-coredns.sh"
-export KUBECONFIG="${CERT_DIR}/admin.kubeconfig"
-while sleep 5; do
-  POD_NAME=\$(kubectl get pods -n kube-system | tail -1 | awk '{print \$1}')
-  kubectl get pods -n kube-system -o yaml
-  kubectl logs -n kube-system pod/\${POD_NAME}
-done
-EOF
-  chmod +x "${KUBE_ROOT}/_output/log-coredns.sh"
-  nohup "${KUBE_ROOT}/_output/log-coredns.sh" > "${LOG_DIR}/coredns.log" 2>&1 &
+#  # grab coredns logs every 5 seconds
+#  mkdir -p "${KUBE_ROOT}/_output"
+#  cat <<EOF > "${KUBE_ROOT}/_output/log-coredns.sh"
+#export KUBECONFIG="${CERT_DIR}/admin.kubeconfig"
+#while sleep 5; do
+#  POD_NAME=\$(kubectl get pods -n kube-system | tail -1 | awk '{print \$1}')
+#  kubectl get pods -n kube-system -o yaml
+#  kubectl logs -n kube-system pod/\${POD_NAME}
+#done
+#EOF
+#  chmod +x "${KUBE_ROOT}/_output/log-coredns.sh"
+#  nohup "${KUBE_ROOT}/_output/log-coredns.sh" > "${LOG_DIR}/coredns.log" 2>&1 &
 }
 
 function start_kubelet {
