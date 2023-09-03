@@ -2450,9 +2450,11 @@ function start-cluster-autoscaler {
 # $2: manifest source dir
 # $3: (optional) auxiliary manifest source dir
 function setup-addon-manifests {
+  echo "setup-addon-manifests called with [$1] [$2]"
   local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
   local -r dst_dir="/etc/kubernetes/$1/$2"
 
+  echo "setup-addon-manifests copying ${src_dir}/$2 to ${dst_dir}"
   copy-manifests "${src_dir}/$2" "${dst_dir}"
 }
 
