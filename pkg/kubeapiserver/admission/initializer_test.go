@@ -38,25 +38,25 @@ type doNothingPluginInitialization struct{}
 
 func (doNothingPluginInitialization) ValidateInitialization() error { return nil }
 
-type WantsCloudConfigAdmissionPlugin struct {
-	doNothingAdmission
-	cloudConfig []byte
-}
+//type WantsCloudConfigAdmissionPlugin struct {
+//	doNothingAdmission
+//	cloudConfig []byte
+//}
+//
+//func (p *WantsCloudConfigAdmissionPlugin) SetCloudConfig(cloudConfig []byte) {
+//	p.cloudConfig = cloudConfig
+//}
 
-func (p *WantsCloudConfigAdmissionPlugin) SetCloudConfig(cloudConfig []byte) {
-	p.cloudConfig = cloudConfig
-}
-
-func TestCloudConfigAdmissionPlugin(t *testing.T) {
-	cloudConfig := []byte("cloud-configuration")
-	initializer := NewPluginInitializer(cloudConfig, nil, nil)
-	wantsCloudConfigAdmission := &WantsCloudConfigAdmissionPlugin{}
-	initializer.Initialize(wantsCloudConfigAdmission)
-
-	if wantsCloudConfigAdmission.cloudConfig == nil {
-		t.Errorf("Expected cloud config to be initialized but found nil")
-	}
-}
+//func TestCloudConfigAdmissionPlugin(t *testing.T) {
+//	cloudConfig := []byte("cloud-configuration")
+//	initializer := NewPluginInitializer(cloudConfig, nil, nil)
+//	wantsCloudConfigAdmission := &WantsCloudConfigAdmissionPlugin{}
+//	initializer.Initialize(wantsCloudConfigAdmission)
+//
+//	if wantsCloudConfigAdmission.cloudConfig == nil {
+//		t.Errorf("Expected cloud config to be initialized but found nil")
+//	}
+//}
 
 type doNothingRESTMapper struct{}
 
@@ -94,7 +94,7 @@ func (p *WantsRESTMapperAdmissionPlugin) SetRESTMapper(mapper meta.RESTMapper) {
 
 func TestRESTMapperAdmissionPlugin(t *testing.T) {
 	mapper := doNothingRESTMapper{}
-	initializer := NewPluginInitializer(nil, mapper, nil)
+	initializer := NewPluginInitializer(mapper, nil)
 	wantsRESTMapperAdmission := &WantsRESTMapperAdmissionPlugin{}
 	initializer.Initialize(wantsRESTMapperAdmission)
 
@@ -121,7 +121,7 @@ func (p *WantsQuotaConfigurationAdmissionPlugin) SetQuotaConfiguration(config qu
 
 func TestQuotaConfigurationAdmissionPlugin(t *testing.T) {
 	config := doNothingQuotaConfiguration{}
-	initializer := NewPluginInitializer(nil, nil, config)
+	initializer := NewPluginInitializer(nil, config)
 	wantsQuotaConfigurationAdmission := &WantsQuotaConfigurationAdmissionPlugin{}
 	initializer.Initialize(wantsQuotaConfigurationAdmission)
 

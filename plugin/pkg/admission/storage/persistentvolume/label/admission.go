@@ -17,7 +17,6 @@ limitations under the License.
 package label
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -34,7 +33,6 @@ import (
 	"k8s.io/klog/v2"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
-	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 )
 
 const (
@@ -55,15 +53,16 @@ var _ = admission.Interface(&persistentVolumeLabel{})
 type persistentVolumeLabel struct {
 	*admission.Handler
 
-	mutex            sync.Mutex
-	cloudConfig      []byte
+	mutex sync.Mutex
+	//cloudConfig      []byte
 	gcePVLabeler     cloudprovider.PVLabeler
 	azurePVLabeler   cloudprovider.PVLabeler
 	vspherePVLabeler cloudprovider.PVLabeler
 }
 
 var _ admission.MutationInterface = &persistentVolumeLabel{}
-var _ kubeapiserveradmission.WantsCloudConfig = &persistentVolumeLabel{}
+
+//var _ kubeapiserveradmission.WantsCloudConfig = &persistentVolumeLabel{}
 
 // newPersistentVolumeLabel returns an admission.Interface implementation which adds labels to PersistentVolume CREATE requests,
 // based on the labels provided by the underlying cloud provider.
@@ -80,9 +79,9 @@ func newPersistentVolumeLabel() *persistentVolumeLabel {
 	}
 }
 
-func (l *persistentVolumeLabel) SetCloudConfig(cloudConfig []byte) {
-	l.cloudConfig = cloudConfig
-}
+//func (l *persistentVolumeLabel) SetCloudConfig(cloudConfig []byte) {
+//	l.cloudConfig = cloudConfig
+//}
 
 func nodeSelectorRequirementKeysExistInNodeSelectorTerms(reqs []api.NodeSelectorRequirement, terms []api.NodeSelectorTerm) bool {
 	for _, req := range reqs {
@@ -250,12 +249,12 @@ func (l *persistentVolumeLabel) getGCEPVLabeler() (cloudprovider.PVLabeler, erro
 	defer l.mutex.Unlock()
 
 	if l.gcePVLabeler == nil {
-		var cloudConfigReader io.Reader
-		if len(l.cloudConfig) > 0 {
-			cloudConfigReader = bytes.NewReader(l.cloudConfig)
-		}
+		//var cloudConfigReader io.Reader
+		////if len(l.cloudConfig) > 0 {
+		//	cloudConfigReader = bytes.NewReader(l.cloudConfig)
+		//}
 
-		cloudProvider, err := cloudprovider.GetCloudProvider("gce", cloudConfigReader)
+		cloudProvider, err := cloudprovider.GetCloudProvider("gce", nil)
 		if err != nil || cloudProvider == nil {
 			return nil, err
 		}
@@ -277,12 +276,12 @@ func (l *persistentVolumeLabel) getAzurePVLabeler() (cloudprovider.PVLabeler, er
 	defer l.mutex.Unlock()
 
 	if l.azurePVLabeler == nil {
-		var cloudConfigReader io.Reader
-		if len(l.cloudConfig) > 0 {
-			cloudConfigReader = bytes.NewReader(l.cloudConfig)
-		}
+		//var cloudConfigReader io.Reader
+		//if len(l.cloudConfig) > 0 {
+		//	cloudConfigReader = bytes.NewReader(l.cloudConfig)
+		//}
 
-		cloudProvider, err := cloudprovider.GetCloudProvider("azure", cloudConfigReader)
+		cloudProvider, err := cloudprovider.GetCloudProvider("azure", nil)
 		if err != nil || cloudProvider == nil {
 			return nil, err
 		}
@@ -346,11 +345,11 @@ func (l *persistentVolumeLabel) getVspherePVLabeler() (cloudprovider.PVLabeler, 
 	defer l.mutex.Unlock()
 
 	if l.vspherePVLabeler == nil {
-		var cloudConfigReader io.Reader
-		if len(l.cloudConfig) > 0 {
-			cloudConfigReader = bytes.NewReader(l.cloudConfig)
-		}
-		cloudProvider, err := cloudprovider.GetCloudProvider("vsphere", cloudConfigReader)
+		//var cloudConfigReader io.Reader
+		//if len(l.cloudConfig) > 0 {
+		//	cloudConfigReader = bytes.NewReader(l.cloudConfig)
+		//}
+		cloudProvider, err := cloudprovider.GetCloudProvider("vsphere", nil)
 		if err != nil || cloudProvider == nil {
 			return nil, err
 		}

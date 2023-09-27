@@ -18,10 +18,10 @@ package admission
 
 import (
 	"net/http"
-	"os"
+	//"os"
 	"time"
 
-	"k8s.io/klog/v2"
+	//"k8s.io/klog/v2"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -41,7 +41,7 @@ import (
 
 // Config holds the configuration needed to for initialize the admission plugins
 type Config struct {
-	CloudConfigFile      string
+	//CloudConfigFile      string
 	LoopbackClientConfig *rest.Config
 	ExternalInformers    externalinformers.SharedInformerFactory
 }
@@ -51,14 +51,14 @@ func (c *Config) New(proxyTransport *http.Transport, egressSelector *egressselec
 	webhookAuthResolverWrapper := webhook.NewDefaultAuthenticationInfoResolverWrapper(proxyTransport, egressSelector, c.LoopbackClientConfig, tp)
 	webhookPluginInitializer := webhookinit.NewPluginInitializer(webhookAuthResolverWrapper, serviceResolver)
 
-	var cloudConfig []byte
-	if c.CloudConfigFile != "" {
-		var err error
-		cloudConfig, err = os.ReadFile(c.CloudConfigFile)
-		if err != nil {
-			klog.Fatalf("Error reading from cloud configuration file %s: %#v", c.CloudConfigFile, err)
-		}
-	}
+	//var cloudConfig []byte
+	//if c.CloudConfigFile != "" {
+	//	var err error
+	//	cloudConfig, err = os.ReadFile(c.CloudConfigFile)
+	//	if err != nil {
+	//		klog.Fatalf("Error reading from cloud configuration file %s: %#v", c.CloudConfigFile, err)
+	//	}
+	//}
 	clientset, err := kubernetes.NewForConfig(c.LoopbackClientConfig)
 	if err != nil {
 		return nil, nil, err
@@ -66,7 +66,7 @@ func (c *Config) New(proxyTransport *http.Transport, egressSelector *egressselec
 	discoveryClient := cacheddiscovery.NewMemCacheClient(clientset.Discovery())
 	discoveryRESTMapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
 	kubePluginInitializer := NewPluginInitializer(
-		cloudConfig,
+		//cloudConfig,
 		discoveryRESTMapper,
 		quotainstall.NewQuotaConfigurationForAdmission(),
 	)
