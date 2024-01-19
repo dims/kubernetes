@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014 The Kubernetes Authors.
+# Copyright 2017 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,705 +14,540 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# shellcheck disable=SC2034 # Variables sourced in other scripts.
+# Common utilities for kube-up/kube-down
 
-# Common utilities, variables and checks for all build scripts.
 set -o errexit
 set -o nounset
 set -o pipefail
 
-# Unset CDPATH, having it set messes up with script import paths
-unset CDPATH
+KUBE_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)
 
-USER_ID=$(id -u)
-GROUP_ID=$(id -g)
+DEFAULT_KUBECONFIG="${HOME:-.}/.kube/config"
 
-DOCKER_OPTS=${DOCKER_OPTS:-""}
-IFS=" " read -r -a DOCKER <<< "docker ${DOCKER_OPTS}"
-DOCKER_HOST=${DOCKER_HOST:-""}
-GOPROXY=${GOPROXY:-""}
-
-# This will canonicalize the path
-KUBE_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd -P)
-
-source "${KUBE_ROOT}/hack/lib/init.sh"
-
-# Constants
-readonly KUBE_BUILD_IMAGE_REPO=kube-build
-KUBE_BUILD_IMAGE_CROSS_TAG="$(cat "${KUBE_ROOT}/build/build-image/cross/VERSION")"
-readonly KUBE_BUILD_IMAGE_CROSS_TAG
-
-readonly KUBE_DOCKER_REGISTRY="${KUBE_DOCKER_REGISTRY:-registry.k8s.io}"
-KUBE_BASE_IMAGE_REGISTRY="${KUBE_BASE_IMAGE_REGISTRY:-registry.k8s.io/build-image}"
-readonly KUBE_BASE_IMAGE_REGISTRY
-
-# This version number is used to cause everyone to rebuild their data containers
-# and build image.  This is especially useful for automated build systems like
-# Jenkins.
+source "${KUBE_ROOT}/hack/lib/util.sh"
+# KUBE_RELEASE_VERSION_REGEX matches things like "v1.2.3" or "v1.2.3-alpha.4"
 #
-# Increment/change this number if you change the build image (anything under
-# build/build-image) or change the set of volumes in the data container.
-KUBE_BUILD_IMAGE_VERSION_BASE="$(cat "${KUBE_ROOT}/build/build-image/VERSION")"
-readonly KUBE_BUILD_IMAGE_VERSION_BASE
-readonly KUBE_BUILD_IMAGE_VERSION="${KUBE_BUILD_IMAGE_VERSION_BASE}-${KUBE_BUILD_IMAGE_CROSS_TAG}"
-
-# Make it possible to override the `kube-cross` image, and tag independent of `KUBE_BASE_IMAGE_REGISTRY`
-KUBE_CROSS_IMAGE="${KUBE_CROSS_IMAGE:-"${KUBE_BASE_IMAGE_REGISTRY}/kube-cross"}"
-readonly KUBE_CROSS_IMAGE
-KUBE_CROSS_VERSION="${KUBE_CROSS_VERSION:-"${KUBE_BUILD_IMAGE_CROSS_TAG}"}"
-readonly KUBE_CROSS_VERSION
-
-# Here we map the output directories across both the local and remote _output
-# directories:
+# NOTE This must match the version_regex in build/common.sh
+# kube::release::parse_and_validate_release_version()
 #
-# *_OUTPUT_ROOT    - the base of all output in that environment.
-# *_OUTPUT_SUBPATH - location where golang stuff is built/cached.  Also
-#                    persisted across docker runs with a volume mount.
-# *_OUTPUT_BINPATH - location where final binaries are placed.  If the remote
-#                    is really remote, this is the stuff that has to be copied
-#                    back.
-# OUT_DIR can come in from the Makefile, so honor it.
-readonly LOCAL_OUTPUT_ROOT="${KUBE_ROOT}/${OUT_DIR:-_output}"
-readonly LOCAL_OUTPUT_SUBPATH="${LOCAL_OUTPUT_ROOT}/dockerized"
-readonly LOCAL_OUTPUT_BINPATH="${LOCAL_OUTPUT_SUBPATH}/bin"
-readonly LOCAL_OUTPUT_GOPATH="${LOCAL_OUTPUT_SUBPATH}/go"
-readonly LOCAL_OUTPUT_IMAGE_STAGING="${LOCAL_OUTPUT_ROOT}/images"
+# KUBE_RELEASE_VERSION_REGEX is used in hack/get-build.sh and cluster/gce/util.sh and KUBE_RELEASE_VERSION_DASHED_REGEX is used in cluster/gce/util.sh,
+# make sure to remove these vars when not used anymore
+export KUBE_RELEASE_VERSION_REGEX="^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-([a-zA-Z0-9]+)\\.(0|[1-9][0-9]*))?$"
+export KUBE_RELEASE_VERSION_DASHED_REGEX="v(0|[1-9][0-9]*)-(0|[1-9][0-9]*)-(0|[1-9][0-9]*)(-([a-zA-Z0-9]+)-(0|[1-9][0-9]*))?"
 
-# This is a symlink to binaries for "this platform" (e.g. build tools).
-readonly THIS_PLATFORM_BIN="${LOCAL_OUTPUT_ROOT}/bin"
-
-readonly REMOTE_ROOT="/go/src/${KUBE_GO_PACKAGE}"
-readonly REMOTE_OUTPUT_ROOT="${REMOTE_ROOT}/_output"
-readonly REMOTE_OUTPUT_SUBPATH="${REMOTE_OUTPUT_ROOT}/dockerized"
-readonly REMOTE_OUTPUT_BINPATH="${REMOTE_OUTPUT_SUBPATH}/bin"
-readonly REMOTE_OUTPUT_GOPATH="${REMOTE_OUTPUT_SUBPATH}/go"
-
-# This is the port on the workstation host to expose RSYNC on.  Set this if you
-# are doing something fancy with ssh tunneling.
-readonly KUBE_RSYNC_PORT="${KUBE_RSYNC_PORT:-}"
-
-# This is the port that rsync is running on *inside* the container. This may be
-# mapped to KUBE_RSYNC_PORT via docker networking.
-readonly KUBE_CONTAINER_RSYNC_PORT=8730
-
-# These are the default versions (image tags) for their respective base images.
-readonly __default_distroless_iptables_version=v0.4.4
-readonly __default_go_runner_version=v2.3.1-go1.21.6-bookworm.0
-readonly __default_setcap_version=bookworm-v1.0.0
-
-# These are the base images for the Docker-wrapped binaries.
-readonly KUBE_GORUNNER_IMAGE="${KUBE_GORUNNER_IMAGE:-$KUBE_BASE_IMAGE_REGISTRY/go-runner:$__default_go_runner_version}"
-readonly KUBE_APISERVER_BASE_IMAGE="${KUBE_APISERVER_BASE_IMAGE:-$KUBE_GORUNNER_IMAGE}"
-readonly KUBE_CONTROLLER_MANAGER_BASE_IMAGE="${KUBE_CONTROLLER_MANAGER_BASE_IMAGE:-$KUBE_GORUNNER_IMAGE}"
-readonly KUBE_SCHEDULER_BASE_IMAGE="${KUBE_SCHEDULER_BASE_IMAGE:-$KUBE_GORUNNER_IMAGE}"
-readonly KUBE_PROXY_BASE_IMAGE="${KUBE_PROXY_BASE_IMAGE:-$KUBE_BASE_IMAGE_REGISTRY/distroless-iptables:$__default_distroless_iptables_version}"
-readonly KUBECTL_BASE_IMAGE="${KUBECTL_BASE_IMAGE:-$KUBE_GORUNNER_IMAGE}"
-
-# This is the image used in a multi-stage build to apply capabilities to Docker-wrapped binaries.
-readonly KUBE_BUILD_SETCAP_IMAGE="${KUBE_BUILD_SETCAP_IMAGE:-$KUBE_BASE_IMAGE_REGISTRY/setcap:$__default_setcap_version}"
-
-# Get the set of master binaries that run in Docker (on Linux)
-# Entry format is "<binary-name>,<base-image>".
-# Binaries are placed in /usr/local/bin inside the image.
-# `make` users can override any or all of the base images using the associated
-# environment variables.
+# KUBE_CI_VERSION_REGEX matches things like "v1.2.3-alpha.4.56+abcdefg" and "v1.2.3-56+abcdefg"
 #
-# $1 - server architecture
-kube::build::get_docker_wrapped_binaries() {
-  ### If you change any of these lists, please also update DOCKERIZED_BINARIES
-  ### in build/BUILD. And kube::golang::server_image_targets
-  local targets=(
-    "kube-apiserver,${KUBE_APISERVER_BASE_IMAGE}"
-    "kube-controller-manager,${KUBE_CONTROLLER_MANAGER_BASE_IMAGE}"
-    "kube-scheduler,${KUBE_SCHEDULER_BASE_IMAGE}"
-    "kube-proxy,${KUBE_PROXY_BASE_IMAGE}"
-    "kubectl,${KUBECTL_BASE_IMAGE}"
+# NOTE This must match the version_regex in build/common.sh
+#
+# TODO: KUBE_CI_VERSION_REGEX is used in hack/get-build.sh and KUBE_CI_VERSION_DASHED_REGEX is used in cluster/gce/util.sh,
+# make sure to remove these vars when not used anymore
+#                              v1                .26               .0              -(rc            .0                .)?1              (  +014f      )?
+export KUBE_CI_VERSION_REGEX="^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)-([a-zA-Z0-9]+\\.(0|[1-9][0-9]*)\\.)?(0|[1-9][0-9]*)(\\+[-0-9a-z]*)?$"
+export KUBE_CI_VERSION_DASHED_REGEX="^v(0|[1-9][0-9]*)-(0|[1-9][0-9]*)-(0|[1-9][0-9]*)-([a-zA-Z0-9]+-(0|[1-9][0-9]*)-)?(0|[1-9][0-9]*)(\\+[-0-9a-z]*)?"
+
+# Generate kubeconfig data for the created cluster.
+# Assumed vars:
+#   KUBE_USER
+#   KUBE_PASSWORD
+#   KUBE_MASTER_IP
+#   KUBECONFIG
+#   CONTEXT
+#
+# If the apiserver supports bearer auth, also provide:
+#   KUBE_BEARER_TOKEN
+#
+# If the kubeconfig context being created should NOT be set as the current context
+# SECONDARY_KUBECONFIG=true
+#
+# To explicitly name the context being created, use OVERRIDE_CONTEXT
+#
+# The following can be omitted for --insecure-skip-tls-verify
+#   KUBE_CERT
+#   KUBE_KEY
+#   CA_CERT
+function create-kubeconfig() {
+  KUBECONFIG=${KUBECONFIG:-$DEFAULT_KUBECONFIG}
+  local kubectl="${KUBE_ROOT}/build/kubectl.sh"
+  SECONDARY_KUBECONFIG=${SECONDARY_KUBECONFIG:-}
+  OVERRIDE_CONTEXT=${OVERRIDE_CONTEXT:-}
+
+  if [[ "$OVERRIDE_CONTEXT" != "" ]];then
+      CONTEXT=$OVERRIDE_CONTEXT
+  fi
+
+  # KUBECONFIG determines the file we write to, but it may not exist yet
+  OLD_IFS=$IFS
+  IFS=':'
+  for cfg in ${KUBECONFIG} ; do
+    if [[ ! -e "${cfg}" ]]; then
+      mkdir -p "$(dirname "${cfg}")"
+      touch "${cfg}"
+    fi
+  done
+  IFS=$OLD_IFS
+
+  local cluster_args=(
+      "--server=${KUBE_SERVER:-https://${KUBE_MASTER_IP}}"
   )
+  if [[ -z "${CA_CERT:-}" ]]; then
+    cluster_args+=("--insecure-skip-tls-verify=true")
+  else
+    cluster_args+=(
+      "--certificate-authority=${CA_CERT}"
+      "--embed-certs=true"
+    )
+  fi
 
-  echo "${targets[@]}"
+  local user_args=()
+  if [[ -n "${KUBE_BEARER_TOKEN:-}" ]]; then
+    user_args+=(
+     "--token=${KUBE_BEARER_TOKEN}"
+    )
+  elif [[ -n "${KUBE_USER:-}" && -n "${KUBE_PASSWORD:-}" ]]; then
+    user_args+=(
+     "--username=${KUBE_USER}"
+     "--password=${KUBE_PASSWORD}"
+    )
+  fi
+  if [[ -n "${KUBE_CERT:-}" && -n "${KUBE_KEY:-}" ]]; then
+    user_args+=(
+     "--client-certificate=${KUBE_CERT}"
+     "--client-key=${KUBE_KEY}"
+     "--embed-certs=true"
+    )
+  fi
+
+  KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-cluster "${CONTEXT}" "${cluster_args[@]}"
+  if [[ -n "${user_args[*]:-}" ]]; then
+    KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-credentials "${CONTEXT}" "${user_args[@]}"
+  fi
+  KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-context "${CONTEXT}" --cluster="${CONTEXT}" --user="${CONTEXT}"
+
+  if [[ "${SECONDARY_KUBECONFIG}" != "true" ]];then
+      KUBECONFIG="${KUBECONFIG}" "${kubectl}" config use-context "${CONTEXT}"  --cluster="${CONTEXT}"
+  fi
+
+  # If we have a bearer token, also create a credential entry with basic auth
+  # so that it is easy to discover the basic auth password for your cluster
+  # to use in a web browser.
+  if [[ -n "${KUBE_BEARER_TOKEN:-}" && -n "${KUBE_USER:-}" && -n "${KUBE_PASSWORD:-}" ]]; then
+    KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-credentials "${CONTEXT}-basic-auth" "--username=${KUBE_USER}" "--password=${KUBE_PASSWORD}"
+  fi
+
+   echo "Wrote config for ${CONTEXT} to ${KUBECONFIG}"
 }
 
-# ---------------------------------------------------------------------------
-# Basic setup functions
+# Clear kubeconfig data for a context
+# Assumed vars:
+#   KUBECONFIG
+#   CONTEXT
+#
+# To explicitly name the context being removed, use OVERRIDE_CONTEXT
+function clear-kubeconfig() {
+  export KUBECONFIG=${KUBECONFIG:-$DEFAULT_KUBECONFIG}
+  OVERRIDE_CONTEXT=${OVERRIDE_CONTEXT:-}
 
-# Verify that the right utilities and such are installed for building Kube. Set
-# up some dynamic constants.
-# Args:
-#   $1 - boolean of whether to require functioning docker (default true)
+  if [[ "$OVERRIDE_CONTEXT" != "" ]];then
+      CONTEXT=$OVERRIDE_CONTEXT
+  fi
+
+  local kubectl="${KUBE_ROOT}/build/kubectl.sh"
+  # Unset the current-context before we delete it, as otherwise kubectl errors.
+  local cc
+  cc=$("${kubectl}" config view -o jsonpath='{.current-context}')
+  if [[ "${cc}" == "${CONTEXT}" ]]; then
+    "${kubectl}" config unset current-context
+  fi
+  "${kubectl}" config unset "clusters.${CONTEXT}"
+  "${kubectl}" config unset "users.${CONTEXT}"
+  "${kubectl}" config unset "users.${CONTEXT}-basic-auth"
+  "${kubectl}" config unset "contexts.${CONTEXT}"
+
+  echo "Cleared config for ${CONTEXT} from ${KUBECONFIG}"
+}
+
+# Gets username, password for the current-context in kubeconfig, if they exist.
+# Assumed vars:
+#   KUBECONFIG  # if unset, defaults to global
+#   KUBE_CONTEXT  # if unset, defaults to current-context
 #
 # Vars set:
-#   KUBE_ROOT_HASH
-#   KUBE_BUILD_IMAGE_TAG_BASE
-#   KUBE_BUILD_IMAGE_TAG
-#   KUBE_BUILD_IMAGE
-#   KUBE_BUILD_CONTAINER_NAME_BASE
-#   KUBE_BUILD_CONTAINER_NAME
-#   KUBE_DATA_CONTAINER_NAME_BASE
-#   KUBE_DATA_CONTAINER_NAME
-#   KUBE_RSYNC_CONTAINER_NAME_BASE
-#   KUBE_RSYNC_CONTAINER_NAME
-#   DOCKER_MOUNT_ARGS
-#   LOCAL_OUTPUT_BUILD_CONTEXT
-# shellcheck disable=SC2120 # optional parameters
-function kube::build::verify_prereqs() {
-  local -r require_docker=${1:-true}
-  kube::log::status "Verifying Prerequisites...."
-  kube::build::ensure_tar || return 1
-  kube::build::ensure_rsync || return 1
-  if ${require_docker}; then
-    kube::build::ensure_docker_in_path || return 1
-    if kube::build::is_osx; then
-        kube::build::docker_available_on_osx || return 1
-    fi
-    kube::util::ensure_docker_daemon_connectivity || return 1
+#   KUBE_USER
+#   KUBE_PASSWORD
+#
+# KUBE_USER,KUBE_PASSWORD will be empty if no current-context is set, or
+# the current-context user does not exist or contain basicauth entries.
+function get-kubeconfig-basicauth() {
+  export KUBECONFIG=${KUBECONFIG:-$DEFAULT_KUBECONFIG}
 
-    if (( KUBE_VERBOSE > 6 )); then
-      kube::log::status "Docker Version:"
-      "${DOCKER[@]}" version | kube::log::info_from_stdin
-    fi
+  local cc
+  cc=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.current-context}")
+  if [[ -n "${KUBE_CONTEXT:-}" ]]; then
+    cc="${KUBE_CONTEXT}"
   fi
+  local user
+  user=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.contexts[?(@.name == \"${cc}\")].context.user}")
+  get-kubeconfig-user-basicauth "${user}"
 
-  KUBE_GIT_BRANCH=$(git symbolic-ref --short -q HEAD 2>/dev/null || true)
-  KUBE_ROOT_HASH=$(kube::build::short_hash "${HOSTNAME:-}:${KUBE_ROOT}:${KUBE_GIT_BRANCH}")
-  KUBE_BUILD_IMAGE_TAG_BASE="build-${KUBE_ROOT_HASH}"
-  KUBE_BUILD_IMAGE_TAG="${KUBE_BUILD_IMAGE_TAG_BASE}-${KUBE_BUILD_IMAGE_VERSION}"
-  KUBE_BUILD_IMAGE="${KUBE_BUILD_IMAGE_REPO}:${KUBE_BUILD_IMAGE_TAG}"
-  KUBE_BUILD_CONTAINER_NAME_BASE="kube-build-${KUBE_ROOT_HASH}"
-  KUBE_BUILD_CONTAINER_NAME="${KUBE_BUILD_CONTAINER_NAME_BASE}-${KUBE_BUILD_IMAGE_VERSION}"
-  KUBE_RSYNC_CONTAINER_NAME_BASE="kube-rsync-${KUBE_ROOT_HASH}"
-  KUBE_RSYNC_CONTAINER_NAME="${KUBE_RSYNC_CONTAINER_NAME_BASE}-${KUBE_BUILD_IMAGE_VERSION}"
-  KUBE_DATA_CONTAINER_NAME_BASE="kube-build-data-${KUBE_ROOT_HASH}"
-  KUBE_DATA_CONTAINER_NAME="${KUBE_DATA_CONTAINER_NAME_BASE}-${KUBE_BUILD_IMAGE_VERSION}"
-  DOCKER_MOUNT_ARGS=(--volumes-from "${KUBE_DATA_CONTAINER_NAME}")
-  LOCAL_OUTPUT_BUILD_CONTEXT="${LOCAL_OUTPUT_IMAGE_STAGING}/${KUBE_BUILD_IMAGE}"
-
-  kube::version::get_version_vars
-  kube::version::save_version_vars "${KUBE_ROOT}/.dockerized-kube-version-defs"
-
-  # Without this, the user's umask can leak through.
-  umask 0022
-}
-
-# ---------------------------------------------------------------------------
-# Utility functions
-
-function kube::build::docker_available_on_osx() {
-  if [[ -z "${DOCKER_HOST}" ]]; then
-    if [[ -S "/var/run/docker.sock" ]] || [[ -S "$(docker context inspect --format  '{{.Endpoints.docker.Host}}' | awk -F 'unix://' '{print $2}')" ]]; then
-      kube::log::status "Using docker on macOS"
-      return 0
-    fi
-
-    kube::log::status "No docker host is set."
-    kube::log::status "It looks like you're running Mac OS X, but Docker for Mac cannot be found."
-    kube::log::status "See: https://docs.docker.com/engine/installation/mac/ for installation instructions."
-    return 1
+  if [[ -z "${KUBE_USER:-}" || -z "${KUBE_PASSWORD:-}" ]]; then
+    # kube-up stores username/password in a an additional kubeconfig section
+    # suffixed with "-basic-auth". Cloudproviders like GKE store in directly
+    # in the top level section along with the other credential information.
+    # TODO: Handle this uniformly, either get rid of "basic-auth" or
+    # consolidate its usage into a function across scripts in cluster/
+    get-kubeconfig-user-basicauth "${user}-basic-auth"
   fi
 }
 
-function kube::build::is_osx() {
-  [[ "$(uname)" == "Darwin" ]]
+# Sets KUBE_USER and KUBE_PASSWORD to the username and password specified in
+# the kubeconfig section corresponding to $1.
+#
+# Args:
+#   $1 kubeconfig section to look for basic auth (eg: user or user-basic-auth).
+# Assumed vars:
+#   KUBE_ROOT
+# Vars set:
+#   KUBE_USER
+#   KUBE_PASSWORD
+function get-kubeconfig-user-basicauth() {
+  KUBE_USER=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.users[?(@.name == \"$1\")].user.username}")
+  KUBE_PASSWORD=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.users[?(@.name == \"$1\")].user.password}")
 }
 
-function kube::build::is_gnu_sed() {
-  [[ $(sed --version 2>&1) == *GNU* ]]
+# Generate basic auth user and password.
+
+# Vars set:
+#   KUBE_USER
+#   KUBE_PASSWORD
+function gen-kube-basicauth() {
+    KUBE_USER='admin'
+    KUBE_PASSWORD=$(python3 -c 'import string,random; print("".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(16)))')
 }
 
-function kube::build::ensure_rsync() {
-  if [[ -z "$(which rsync)" ]]; then
-    kube::log::error "Can't find 'rsync' in PATH, please fix and retry."
-    return 1
+# Get the bearer token for the current-context in kubeconfig if one exists.
+# Assumed vars:
+#   KUBECONFIG  # if unset, defaults to global
+#   KUBE_CONTEXT  # if unset, defaults to current-context
+#
+# Vars set:
+#   KUBE_BEARER_TOKEN
+#
+# KUBE_BEARER_TOKEN will be empty if no current-context is set, or the
+# current-context user does not exist or contain a bearer token entry.
+function get-kubeconfig-bearertoken() {
+  export KUBECONFIG=${KUBECONFIG:-$DEFAULT_KUBECONFIG}
+
+  local cc
+  cc=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.current-context}")
+  if [[ -n "${KUBE_CONTEXT:-}" ]]; then
+    cc="${KUBE_CONTEXT}"
+  fi
+  local user
+  user=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.contexts[?(@.name == \"${cc}\")].context.user}")
+  KUBE_BEARER_TOKEN=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.users[?(@.name == \"${user}\")].user.token}")
+}
+
+# Generate bearer token.
+#
+# Vars set:
+#   KUBE_BEARER_TOKEN
+function gen-kube-bearertoken() {
+    KUBE_BEARER_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
+}
+
+function load-or-gen-kube-basicauth() {
+  if [[ -n "${KUBE_CONTEXT:-}" ]]; then
+    get-kubeconfig-basicauth
+  fi
+
+  if [[ -z "${KUBE_USER:-}" || -z "${KUBE_PASSWORD:-}" ]]; then
+    gen-kube-basicauth
+  fi
+
+  # Make sure they don't contain any funny characters.
+  if ! [[ "${KUBE_USER}" =~ ^[-._@a-zA-Z0-9]+$ ]]; then
+    echo "Bad KUBE_USER string."
+    exit 1
+  fi
+  if ! [[ "${KUBE_PASSWORD}" =~ ^[-._@#%/a-zA-Z0-9]+$ ]]; then
+    echo "Bad KUBE_PASSWORD string."
+    exit 1
   fi
 }
 
-function kube::build::ensure_docker_in_path() {
-  if [[ -z "$(which docker)" ]]; then
-    kube::log::error "Can't find 'docker' in PATH, please fix and retry."
-    kube::log::error "See https://docs.docker.com/installation/#installation for installation instructions."
-    return 1
-  fi
-}
-
-function kube::build::ensure_tar() {
-  if [[ -n "${TAR:-}" ]]; then
-    return
-  fi
-
-  # Find gnu tar if it is available, bomb out if not.
-  TAR=tar
-  if which gtar &>/dev/null; then
-      TAR=gtar
+# Sets KUBE_VERSION variable to the proper version number (e.g. "v1.0.6",
+# "v1.2.0-alpha.1.881+376438b69c7612") or a version' publication of the form
+# <path>/<version> (e.g. "release/stable",' "ci/latest-1").
+#
+# See the docs on getting builds for more information about version
+# publication.
+#
+# Args:
+#   $1 version string from command line
+# Vars set and exported for external reference:
+#   KUBE_VERSION
+function set_binary_version() {
+  if [[ "${1}" =~ "/" ]]; then
+    KUBE_VERSION=$(curl -sL "https://dl.k8s.io/${1}.txt")
   else
-      if which gnutar &>/dev/null; then
-	  TAR=gnutar
-      fi
+    KUBE_VERSION=${1}
   fi
-  if ! "${TAR}" --version | grep -q GNU; then
-    echo "  !!! Cannot find GNU tar. Build on Linux or install GNU tar"
-    echo "      on Mac OS X (brew install gnu-tar)."
-    return 1
+  export KUBE_VERSION
+}
+
+# Search for the specified tarball in the various known output locations,
+# echoing the location if found.
+#
+# Assumed vars:
+#   KUBE_ROOT
+#
+# Args:
+#   $1 name of tarball to search for
+function find-tar() {
+  local -r tarball=$1
+  locations=(
+    "${KUBE_ROOT}/node/${tarball}"
+    "${KUBE_ROOT}/server/${tarball}"
+    "${KUBE_ROOT}/kubernetes/node/${tarball}"
+    "${KUBE_ROOT}/kubernetes/server/${tarball}"    
+    "${KUBE_ROOT}/_output/release-tars/${tarball}"
+  )
+  location=$( (ls -t "${locations[@]}" 2>/dev/null || true) | head -1 )
+
+  if [[ ! -f "${location}" ]]; then
+    echo "!!! Cannot find ${tarball}" >&2
+    exit 1
   fi
+  echo "${location}"
 }
 
-function kube::build::has_docker() {
-  which docker &> /dev/null
-}
-
-function kube::build::has_ip() {
-  which ip &> /dev/null && ip -Version | grep 'iproute2' &> /dev/null
-}
-
-# Detect if a specific image exists
+# Verify and find the various tar files that we are going to use on the server.
 #
-# $1 - image repo name
-# $2 - image tag
-function kube::build::docker_image_exists() {
-  [[ -n $1 && -n $2 ]] || {
-    kube::log::error "Internal error. Image not specified in docker_image_exists."
-    exit 2
-  }
+# Assumed vars:
+#   KUBE_ROOT
+# Vars set and exported:
+#   NODE_BINARY_TAR
+#   SERVER_BINARY_TAR
+#   KUBE_MANIFESTS_TAR
+function find-release-tars() {
+  # Use first item in KUBE_BUILD_PLATFORMS as server platform
+  KUBE_BUILD_PLATFORMS=${KUBE_BUILD_PLATFORMS:-"linux/amd64"}
+  SERVER_PLATFORM=$(cut -d' ' -f1 <<< "${KUBE_BUILD_PLATFORMS}")
+  OS=$(cut -d'/' -f1 <<< "${SERVER_PLATFORM}")
+  ARCH=$(cut -d'/' -f2 <<< "${SERVER_PLATFORM}")
+  SERVER_BINARY_TAR=$(find-tar kubernetes-server-"${OS}"-"${ARCH}".tar.gz)
+  if [[ -z "${SERVER_BINARY_TAR}" ]]; then
+	  exit 1
+  fi
+  export SERVER_BINARY_TAR
 
-  [[ $("${DOCKER[@]}" images -q "${1}:${2}") ]]
-}
-
-# Delete all images that match a tag prefix except for the "current" version
-#
-# $1: The image repo/name
-# $2: The tag base. We consider any image that matches $2*
-# $3: The current image not to delete if provided
-function kube::build::docker_delete_old_images() {
-  # In Docker 1.12, we can replace this with
-  #    docker images "$1" --format "{{.Tag}}"
-  for tag in $("${DOCKER[@]}" images "${1}" | tail -n +2 | awk '{print $2}') ; do
-    if [[ "${tag}" != "${2}"* ]] ; then
-      V=3 kube::log::status "Keeping image ${1}:${tag}"
-      continue
-    fi
-
-    if [[ -z "${3:-}" || "${tag}" != "${3}" ]] ; then
-      V=2 kube::log::status "Deleting image ${1}:${tag}"
-      "${DOCKER[@]}" rmi "${1}:${tag}" >/dev/null
+  local find_result
+  if [[ "${NUM_WINDOWS_NODES}" -gt "0" ]]; then
+    if NODE_BINARY_TAR=$(find-tar kubernetes-node-windows-"${ARCH}".tar.gz); then
+      find_result=0
     else
-      V=3 kube::log::status "Keeping image ${1}:${tag}"
+      find_result=1
     fi
-  done
-}
+    export NODE_BINARY_TAR
+  fi
 
-# Stop and delete all containers that match a pattern
-#
-# $1: The base container prefix
-# $2: The current container to keep, if provided
-function kube::build::docker_delete_old_containers() {
-  # In Docker 1.12 we can replace this line with
-  #   docker ps -a --format="{{.Names}}"
-  for container in $("${DOCKER[@]}" ps -a | tail -n +2 | awk '{print $NF}') ; do
-    if [[ "${container}" != "${1}"* ]] ; then
-      V=3 kube::log::status "Keeping container ${container}"
-      continue
-    fi
-    if [[ -z "${2:-}" || "${container}" != "${2}" ]] ; then
-      V=2 kube::log::status "Deleting container ${container}"
-      kube::build::destroy_container "${container}"
+  # This tarball is used by GCI, Ubuntu Trusty, and Container Linux.
+  KUBE_MANIFESTS_TAR=
+  if [[ "${MASTER_OS_DISTRIBUTION:-}" == "trusty" || "${MASTER_OS_DISTRIBUTION:-}" == "gci" || "${MASTER_OS_DISTRIBUTION:-}" == "ubuntu" ]] || \
+     [[ "${NODE_OS_DISTRIBUTION:-}" == "trusty" || "${NODE_OS_DISTRIBUTION:-}" == "gci" || "${NODE_OS_DISTRIBUTION:-}" == "ubuntu" || "${NODE_OS_DISTRIBUTION:-}" == "custom" ]] ; then
+    if KUBE_MANIFESTS_TAR=$(find-tar kubernetes-manifests.tar.gz); then
+      find_result=0
     else
-      V=3 kube::log::status "Keeping container ${container}"
+      find_result=1
     fi
-  done
-}
+    export KUBE_MANIFESTS_TAR
+  fi
 
-# Takes $1 and computes a short has for it. Useful for unique tag generation
-function kube::build::short_hash() {
-  [[ $# -eq 1 ]] || {
-    kube::log::error "Internal error.  No data based to short_hash."
-    exit 2
-  }
-
-  local short_hash
-  if which md5 >/dev/null 2>&1; then
-    short_hash=$(md5 -q -s "$1")
+  # the function result is used in function `verify-release-tars`
+  if [[ $find_result == 0 ]]; then
+    return 0
   else
-    short_hash=$(echo -n "$1" | md5sum)
-  fi
-  echo "${short_hash:0:10}"
-}
-
-# Pedantically kill, wait-on and remove a container. The -f -v options
-# to rm don't actually seem to get the job done, so force kill the
-# container, wait to ensure it's stopped, then try the remove. This is
-# a workaround for bug https://github.com/docker/docker/issues/3968.
-function kube::build::destroy_container() {
-  "${DOCKER[@]}" kill "$1" >/dev/null 2>&1 || true
-  if [[ $("${DOCKER[@]}" version --format '{{.Server.Version}}') = 17.06.0* ]]; then
-    # Workaround https://github.com/moby/moby/issues/33948.
-    # TODO: remove when 17.06.0 is not relevant anymore
-    DOCKER_API_VERSION=v1.29 "${DOCKER[@]}" wait "$1" >/dev/null 2>&1 || true
-  else
-    "${DOCKER[@]}" wait "$1" >/dev/null 2>&1 || true
-  fi
-  "${DOCKER[@]}" rm -f -v "$1" >/dev/null 2>&1 || true
-}
-
-# ---------------------------------------------------------------------------
-# Building
-
-
-function kube::build::clean() {
-  if kube::build::has_docker ; then
-    kube::build::docker_delete_old_containers "${KUBE_BUILD_CONTAINER_NAME_BASE}"
-    kube::build::docker_delete_old_containers "${KUBE_RSYNC_CONTAINER_NAME_BASE}"
-    kube::build::docker_delete_old_containers "${KUBE_DATA_CONTAINER_NAME_BASE}"
-    kube::build::docker_delete_old_images "${KUBE_BUILD_IMAGE_REPO}" "${KUBE_BUILD_IMAGE_TAG_BASE}"
-
-    V=2 kube::log::status "Cleaning all untagged docker images"
-    "${DOCKER[@]}" rmi "$("${DOCKER[@]}" images -q --filter 'dangling=true')" 2> /dev/null || true
-  fi
-
-  if [[ -d "${LOCAL_OUTPUT_ROOT}" ]]; then
-    kube::log::status "Removing _output directory"
-    # this ensures we can clean _output/local/go/cache which is not rw by default
-    chmod -R +w "${LOCAL_OUTPUT_ROOT}"
-    rm -rf "${LOCAL_OUTPUT_ROOT}"
+    return 1
   fi
 }
 
-# Set up the context directory for the kube-build image and build it.
-function kube::build::build_image() {
-  mkdir -p "${LOCAL_OUTPUT_BUILD_CONTEXT}"
-  # Make sure the context directory owned by the right user for syncing sources to container.
-  chown -R "${USER_ID}":"${GROUP_ID}" "${LOCAL_OUTPUT_BUILD_CONTEXT}"
+# Run the cfssl command to generates certificate files for etcd service, the
+# certificate files will save in $1 directory.
+#
+# Optional vars:
+#   GEN_ETCD_CA_CERT (CA cert encode with base64 and ZIP compression)
+#   GEN_ETCD_CA_KEY (CA key encode with base64)
+#   ca_cert (require when GEN_ETCD_CA_CERT and GEN_ETCD_CA_KEY is set)
+#   ca_key (require when GEN_ETCD_CA_CERT and GEN_ETCD_CA_KEY is set)
+# If GEN_ETCD_CA_CERT or GEN_ETCD_CA_KEY is not specified, it will generates certs for CA.
+#
+# Args:
+#   $1 (the directory that certificate files to save)
+#   $2 (the ip of etcd member)
+#   $3 (the type of etcd certificates, must be one of client, server, peer)
+#   $4 (the prefix of the certificate filename, default is $3)
+function generate-etcd-cert() {
+  local cert_dir=${1}
+  local member_ip=${2}
+  local type_cert=${3}
+  local prefix=${4:-"${type_cert}"}
 
-  cp /etc/localtime "${LOCAL_OUTPUT_BUILD_CONTEXT}/"
-  chmod u+w "${LOCAL_OUTPUT_BUILD_CONTEXT}/localtime"
+  local GEN_ETCD_CA_CERT=${GEN_ETCD_CA_CERT:-}
+  local GEN_ETCD_CA_KEY=${GEN_ETCD_CA_KEY:-}
 
-  cp "${KUBE_ROOT}/build/build-image/Dockerfile" "${LOCAL_OUTPUT_BUILD_CONTEXT}/Dockerfile"
-  cp "${KUBE_ROOT}/build/build-image/rsyncd.sh" "${LOCAL_OUTPUT_BUILD_CONTEXT}/"
-  dd if=/dev/urandom bs=512 count=1 2>/dev/null | LC_ALL=C tr -dc 'A-Za-z0-9' | dd bs=32 count=1 2>/dev/null > "${LOCAL_OUTPUT_BUILD_CONTEXT}/rsyncd.password"
-  chmod go= "${LOCAL_OUTPUT_BUILD_CONTEXT}/rsyncd.password"
+  mkdir -p "${cert_dir}"
+  pushd "${cert_dir}"
 
-  kube::build::docker_build "${KUBE_BUILD_IMAGE}" "${LOCAL_OUTPUT_BUILD_CONTEXT}" 'false' "--build-arg=KUBE_CROSS_IMAGE=${KUBE_CROSS_IMAGE} --build-arg=KUBE_CROSS_VERSION=${KUBE_CROSS_VERSION}"
+  kube::util::ensure-cfssl .
 
-  # Clean up old versions of everything
-  kube::build::docker_delete_old_containers "${KUBE_BUILD_CONTAINER_NAME_BASE}" "${KUBE_BUILD_CONTAINER_NAME}"
-  kube::build::docker_delete_old_containers "${KUBE_RSYNC_CONTAINER_NAME_BASE}" "${KUBE_RSYNC_CONTAINER_NAME}"
-  kube::build::docker_delete_old_containers "${KUBE_DATA_CONTAINER_NAME_BASE}" "${KUBE_DATA_CONTAINER_NAME}"
-  kube::build::docker_delete_old_images "${KUBE_BUILD_IMAGE_REPO}" "${KUBE_BUILD_IMAGE_TAG_BASE}" "${KUBE_BUILD_IMAGE_TAG}"
-
-  kube::build::ensure_data_container
-  kube::build::sync_to_container
+  if [ ! -r "ca-config.json" ]; then
+    cat >ca-config.json <<EOF
+{
+    "signing": {
+        "default": {
+            "expiry": "43800h"
+        },
+        "profiles": {
+            "server": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            },
+            "client": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "client auth"
+                ]
+            },
+            "peer": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            }
+        }
+    }
 }
-
-# Build a docker image from a Dockerfile.
-# $1 is the name of the image to build
-# $2 is the location of the "context" directory, with the Dockerfile at the root.
-# $3 is the value to set the --pull flag for docker build; true by default
-# $4 is the set of --build-args for docker.
-function kube::build::docker_build() {
-  kube::util::ensure-docker-buildx
-
-  local -r image=$1
-  local -r context_dir=$2
-  local -r pull="${3:-true}"
-  local build_args
-  IFS=" " read -r -a build_args <<< "$4"
-  readonly build_args
-  local -ra build_cmd=("${DOCKER[@]}" buildx build --load -t "${image}" "--pull=${pull}" "${build_args[@]}" "${context_dir}")
-
-  kube::log::status "Building Docker image ${image}"
-  local docker_output
-  docker_output=$(DOCKER_CLI_EXPERIMENTAL=enabled "${build_cmd[@]}" 2>&1) || {
-    cat <<EOF >&2
-+++ Docker build command failed for ${image}
-
-${docker_output}
-
-To retry manually, run:
-
-DOCKER_CLI_EXPERIMENTAL=enabled ${build_cmd[*]}
-
 EOF
-    return 1
-  }
+  fi
+
+  if [ ! -r "ca-csr.json" ]; then
+    cat >ca-csr.json <<EOF
+{
+    "CN": "Kubernetes",
+    "key": {
+        "algo": "ecdsa",
+        "size": 256
+    },
+    "names": [
+        {
+            "C": "US",
+            "L": "CA",
+            "O": "kubernetes.io"
+        }
+    ]
+}
+EOF
+  fi
+
+  if [[ -n "${GEN_ETCD_CA_CERT}" && -n "${GEN_ETCD_CA_KEY}" ]]; then
+    # ca_cert and ca_key are optional external vars supplied in cluster/gce/util.sh,
+    # so it's ok to disable shellcheck here
+    # shellcheck disable=SC2154
+    echo "${ca_cert}" | base64 --decode | gunzip > ca.pem
+    # shellcheck disable=SC2154
+    echo "${ca_key}" | base64 --decode > ca-key.pem
+  fi
+
+  if [[ ! -r "ca.pem" || ! -r "ca-key.pem" ]]; then
+    ${CFSSL_BIN} gencert -initca ca-csr.json | ${CFSSLJSON_BIN} -bare ca -
+  fi
+
+  case "${type_cert}" in
+    client)
+      echo "Generate client certificates..."
+      echo '{"CN":"client","hosts":["*"],"key":{"algo":"ecdsa","size":256}}' \
+       | ${CFSSL_BIN} gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client - \
+       | ${CFSSLJSON_BIN} -bare "${prefix}"
+      ;;
+    server)
+      echo "Generate server certificates..."
+      echo '{"CN":"'"${member_ip}"'","hosts":[""],"key":{"algo":"ecdsa","size":256}}' \
+       | ${CFSSL_BIN} gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server -hostname="${member_ip},127.0.0.1" - \
+       | ${CFSSLJSON_BIN} -bare "${prefix}"
+      ;;
+    peer)
+      echo "Generate peer certificates..."
+      echo '{"CN":"'"${member_ip}"'","hosts":[""],"key":{"algo":"ecdsa","size":256}}' \
+       | ${CFSSL_BIN} gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=peer -hostname="${member_ip},127.0.0.1" - \
+       | ${CFSSLJSON_BIN} -bare "${prefix}"
+      ;;
+    *)
+      echo "Unknow, unsupported etcd certs type: ${type_cert}" >&2
+      echo "Supported type: client, server, peer" >&2
+      exit 2
+  esac
+
+  # the popd will access `directory stack`, no `real` parameters is actually needed
+  # shellcheck disable=SC2119
+  popd
 }
 
-function kube::build::ensure_data_container() {
-  # If the data container exists AND exited successfully, we can use it.
-  # Otherwise nuke it and start over.
-  local ret=0
-  local code=0
-
-  code=$(docker inspect \
-      -f '{{.State.ExitCode}}' \
-      "${KUBE_DATA_CONTAINER_NAME}" 2>/dev/null) || ret=$?
-  if [[ "${ret}" == 0 && "${code}" != 0 ]]; then
-    kube::build::destroy_container "${KUBE_DATA_CONTAINER_NAME}"
-    ret=1
-  fi
-  if [[ "${ret}" != 0 ]]; then
-    kube::log::status "Creating data container ${KUBE_DATA_CONTAINER_NAME}"
-    # We have to ensure the directory exists, or else the docker run will
-    # create it as root.
-    mkdir -p "${LOCAL_OUTPUT_GOPATH}"
-    # We want this to run as root to be able to chown, so non-root users can
-    # later use the result as a data container.  This run both creates the data
-    # container and chowns the GOPATH.
-    #
-    # The data container creates volumes for all of the directories that store
-    # intermediates for the Go build. This enables incremental builds across
-    # Docker sessions. The *_cgo paths are re-compiled versions of the go std
-    # libraries for true static building.
-    local -ra docker_cmd=(
-      "${DOCKER[@]}" run
-      --volume "${REMOTE_ROOT}"   # white-out the whole output dir
-      --volume /usr/local/go/pkg/linux_386_cgo
-      --volume /usr/local/go/pkg/linux_amd64_cgo
-      --volume /usr/local/go/pkg/linux_arm_cgo
-      --volume /usr/local/go/pkg/linux_arm64_cgo
-      --volume /usr/local/go/pkg/linux_ppc64le_cgo
-      --volume /usr/local/go/pkg/darwin_amd64_cgo
-      --volume /usr/local/go/pkg/darwin_386_cgo
-      --volume /usr/local/go/pkg/windows_amd64_cgo
-      --volume /usr/local/go/pkg/windows_386_cgo
-      --name "${KUBE_DATA_CONTAINER_NAME}"
-      --hostname "${HOSTNAME}"
-      "${KUBE_BUILD_IMAGE}"
-      chown -R "${USER_ID}":"${GROUP_ID}"
-        "${REMOTE_ROOT}"
-        /usr/local/go/pkg/
-    )
-    "${docker_cmd[@]}"
-  fi
-}
-
-# Run a command in the kube-build image.  This assumes that the image has
-# already been built.
-function kube::build::run_build_command() {
-  kube::log::status "Running build command..."
-  kube::build::run_build_command_ex "${KUBE_BUILD_CONTAINER_NAME}" -- "$@"
-}
-
-# Run a command in the kube-build image.  This assumes that the image has
-# already been built.
-#
-# Arguments are in the form of
-#  <container name> <extra docker args> -- <command>
-function kube::build::run_build_command_ex() {
-  [[ $# != 0 ]] || { echo "Invalid input - please specify a container name." >&2; return 4; }
-  local container_name="${1}"
-  shift
-
-  local -a docker_run_opts=(
-    "--name=${container_name}"
-    "--user=$(id -u):$(id -g)"
-    "--hostname=${HOSTNAME}"
-    "-e=GOPROXY=${GOPROXY}"
-    "${DOCKER_MOUNT_ARGS[@]}"
-  )
-
-  local detach=false
-
-  [[ $# != 0 ]] || { echo "Invalid input - please specify docker arguments followed by --." >&2; return 4; }
-  # Everything before "--" is an arg to docker
-  until [ -z "${1-}" ] ; do
-    if [[ "$1" == "--" ]]; then
-      shift
-      break
-    fi
-    docker_run_opts+=("$1")
-    if [[ "$1" == "-d" || "$1" == "--detach" ]] ; then
-      detach=true
-    fi
-    shift
-  done
-
-  # Everything after "--" is the command to run
-  [[ $# != 0 ]] || { echo "Invalid input - please specify a command to run." >&2; return 4; }
-  local -a cmd=()
-  until [ -z "${1-}" ] ; do
-    cmd+=("$1")
-    shift
-  done
-
-  docker_run_opts+=(
-    --env "KUBE_FASTBUILD=${KUBE_FASTBUILD:-false}"
-    --env "KUBE_BUILDER_OS=${OSTYPE:-notdetected}"
-    --env "KUBE_VERBOSE=${KUBE_VERBOSE}"
-    --env "KUBE_BUILD_WITH_COVERAGE=${KUBE_BUILD_WITH_COVERAGE:-}"
-    --env "KUBE_BUILD_PLATFORMS=${KUBE_BUILD_PLATFORMS:-}"
-    --env "KUBE_CGO_OVERRIDES=' ${KUBE_CGO_OVERRIDES[*]:-} '"
-    --env "KUBE_STATIC_OVERRIDES=' ${KUBE_STATIC_OVERRIDES[*]:-} '"
-    --env "FORCE_HOST_GO=${FORCE_HOST_GO:-}"
-    --env "GO_VERSION=${GO_VERSION:-}"
-    --env "GOTOOLCHAIN=${GOTOOLCHAIN:-}"
-    --env "GOFLAGS=${GOFLAGS:-}"
-    --env "GOGCFLAGS=${GOGCFLAGS:-}"
-    --env "SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-}"
-  )
-
-  # use GOLDFLAGS only if it is set explicitly.
-  if [[ -v GOLDFLAGS ]]; then
-    docker_run_opts+=(
-      --env "GOLDFLAGS=${GOLDFLAGS:-}"
-    )
-  fi
-
-  if [[ -n "${DOCKER_CGROUP_PARENT:-}" ]]; then
-    kube::log::status "Using ${DOCKER_CGROUP_PARENT} as container cgroup parent"
-    docker_run_opts+=(--cgroup-parent "${DOCKER_CGROUP_PARENT}")
-  fi
-
-  # If we have stdin we can run interactive.  This allows things like 'shell.sh'
-  # to work.  However, if we run this way and don't have stdin, then it ends up
-  # running in a daemon-ish mode.  So if we don't have a stdin, we explicitly
-  # attach stderr/stdout but don't bother asking for a tty.
-  if [[ -t 0 ]]; then
-    docker_run_opts+=(--interactive --tty)
-  elif [[ "${detach}" == false ]]; then
-    docker_run_opts+=("--attach=stdout" "--attach=stderr")
-  fi
-
-  local -ra docker_cmd=(
-    "${DOCKER[@]}" run "${docker_run_opts[@]}" "${KUBE_BUILD_IMAGE}")
-
-  # Clean up container from any previous run
-  kube::build::destroy_container "${container_name}"
-  "${docker_cmd[@]}" "${cmd[@]}"
-  if [[ "${detach}" == false ]]; then
-    kube::build::destroy_container "${container_name}"
+# Check whether required binaries exist, prompting to download
+# if missing.
+# If KUBERNETES_SKIP_CONFIRM is set to y, we'll automatically download binaries
+# without prompting.
+function verify-kube-binaries() {
+  if ! "${KUBE_ROOT}/build/kubectl.sh" version --client >&/dev/null; then
+    echo "!!! kubectl appears to be broken or missing"
+    download-release-binaries
   fi
 }
 
-function kube::build::rsync_probe {
-  # Wait until rsync is up and running.
-  local tries=20
-  while (( tries > 0 )) ; do
-    if rsync "rsync://k8s@${1}:${2}/" \
-         --password-file="${LOCAL_OUTPUT_BUILD_CONTEXT}/rsyncd.password" \
-         &> /dev/null ; then
-      return 0
-    fi
-    tries=$(( tries - 1))
-    sleep 0.1
-  done
-
-  return 1
+# Check whether required release artifacts exist, prompting to download
+# if missing.
+# If KUBERNETES_SKIP_CONFIRM is set to y, we'll automatically download binaries
+# without prompting.
+function verify-release-tars() {
+  if ! find-release-tars; then
+    download-release-binaries
+  fi
 }
 
-# Start up the rsync container in the background. This should be explicitly
-# stopped with kube::build::stop_rsyncd_container.
-#
-# This will set the global var KUBE_RSYNC_ADDR to the effective port that the
-# rsync daemon can be reached out.
-function kube::build::start_rsyncd_container() {
-  IPTOOL=ifconfig
-  if kube::build::has_ip ; then
-    IPTOOL="ip address"
+# Download release artifacts.
+function download-release-binaries() {
+  get_binaries_script="${KUBE_ROOT}/cluster/get-kube-binaries.sh"
+  local resp="y"
+  if [[ ! "${KUBERNETES_SKIP_CONFIRM:-n}" =~ ^[yY]$ ]]; then
+    echo "Required release artifacts appear to be missing. Do you wish to download them? [Y/n]"
+    read -r resp
   fi
-  kube::build::stop_rsyncd_container
-  V=3 kube::log::status "Starting rsyncd container"
-  kube::build::run_build_command_ex \
-    "${KUBE_RSYNC_CONTAINER_NAME}" -p 127.0.0.1:"${KUBE_RSYNC_PORT}":"${KUBE_CONTAINER_RSYNC_PORT}" -d \
-    -e ALLOW_HOST="$(${IPTOOL} | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')" \
-    -- /rsyncd.sh >/dev/null
-
-  local mapped_port
-  if ! mapped_port=$("${DOCKER[@]}" port "${KUBE_RSYNC_CONTAINER_NAME}" ${KUBE_CONTAINER_RSYNC_PORT} 2> /dev/null | cut -d: -f 2) ; then
-    kube::log::error "Could not get effective rsync port"
-    return 1
+  if [[ "${resp}" =~ ^[nN]$ ]]; then
+    echo "You must download release artifacts to continue. You can use "
+    echo "  ${get_binaries_script}"
+    echo "to do this for your automatically."
+    exit 1
   fi
-
-  local container_ip
-  container_ip=$("${DOCKER[@]}" inspect --format '{{ .NetworkSettings.IPAddress }}' "${KUBE_RSYNC_CONTAINER_NAME}")
-
-  # Sometimes we can reach rsync through localhost and a NAT'd port.  Other
-  # times (when we are running in another docker container on the Jenkins
-  # machines) we have to talk directly to the container IP.  There is no one
-  # strategy that works in all cases so we test to figure out which situation we
-  # are in.
-  if kube::build::rsync_probe 127.0.0.1 "${mapped_port}"; then
-    KUBE_RSYNC_ADDR="127.0.0.1:${mapped_port}"
-    return 0
-  elif kube::build::rsync_probe "${container_ip}" ${KUBE_CONTAINER_RSYNC_PORT}; then
-    KUBE_RSYNC_ADDR="${container_ip}:${KUBE_CONTAINER_RSYNC_PORT}"
-    return 0
-  fi
-
-  kube::log::error "Could not connect to rsync container."
-  return 1
+  "${get_binaries_script}"
 }
 
-function kube::build::stop_rsyncd_container() {
-  V=3 kube::log::status "Stopping any currently running rsyncd container"
-  unset KUBE_RSYNC_ADDR
-  kube::build::destroy_container "${KUBE_RSYNC_CONTAINER_NAME}"
+# Run pushd without stack output
+function pushd() {
+  command pushd "$@" > /dev/null
 }
 
-function kube::build::rsync {
-  local -a rsync_opts=(
-    --archive
-    "--password-file=${LOCAL_OUTPUT_BUILD_CONTEXT}/rsyncd.password"
-  )
-  if (( KUBE_VERBOSE >= 6 )); then
-    rsync_opts+=("-iv")
-  fi
-  if (( KUBE_RSYNC_COMPRESS > 0 )); then
-     rsync_opts+=("--compress-level=${KUBE_RSYNC_COMPRESS}")
-  fi
-  V=3 kube::log::status "Running rsync"
-  rsync "${rsync_opts[@]}" "$@"
-}
-
-# This will launch rsyncd in a container and then sync the source tree to the
-# container over the local network.
-function kube::build::sync_to_container() {
-  kube::log::status "Syncing sources to container"
-
-  kube::build::start_rsyncd_container
-
-  # rsync filters are a bit confusing.  Here we are syncing everything except
-  # output only directories and things that are not necessary like the git
-  # directory and generated files. The '- /' filter prevents rsync
-  # from trying to set the uid/gid/perms on the root of the sync tree.
-  # As an exception, we need to sync generated files in staging/, because
-  # they will not be re-generated by 'make'. Note that the 'H' filtered files
-  # are hidden from rsync so they will be deleted in the target container if
-  # they exist. This will allow them to be re-created in the container if
-  # necessary.
-  kube::build::rsync \
-    --delete \
-    --filter='- /_tmp/' \
-    --filter='- /_output/' \
-    --filter='- /' \
-    "${KUBE_ROOT}/" "rsync://k8s@${KUBE_RSYNC_ADDR}/k8s/"
-
-  kube::build::stop_rsyncd_container
-}
-
-# Copy all build results back out.
-function kube::build::copy_output() {
-  kube::log::status "Syncing out of container"
-
-  kube::build::start_rsyncd_container
-
-  # The filter syntax for rsync is a little obscure. It filters on files and
-  # directories.  If you don't go in to a directory you won't find any files
-  # there.  Rules are evaluated in order.  The last two rules are a little
-  # magic. '+ */' says to go in to every directory and '- /**' says to ignore
-  # any file or directory that isn't already specifically allowed.
-  #
-  # We are looking to copy out all of the built binaries along with various
-  # generated files.
-  kube::build::rsync \
-    --prune-empty-dirs \
-    --filter='- /_temp/' \
-    --filter='+ /vendor/' \
-    --filter='+ /staging/***/Godeps/**' \
-    --filter='+ /_output/dockerized/bin/**' \
-    --filter='+ zz_generated.*' \
-    --filter='+ generated.proto' \
-    --filter='+ *.pb.go' \
-    --filter='+ types.go' \
-    --filter='+ */' \
-    --filter='- /**' \
-    "rsync://k8s@${KUBE_RSYNC_ADDR}/k8s/" "${KUBE_ROOT}"
-
-  kube::build::stop_rsyncd_container
+# Run popd without stack output
+# the popd will access `directory stack`, no `real` parameters is actually needed
+# shellcheck disable=SC2120
+function popd() {
+  command popd "$@" > /dev/null
 }

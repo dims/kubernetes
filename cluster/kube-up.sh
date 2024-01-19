@@ -30,7 +30,7 @@ if [ -f "${KUBE_ROOT}/cluster/env.sh" ]; then
     source "${KUBE_ROOT}/cluster/env.sh"
 fi
 
-source "${KUBE_ROOT}/cluster/kube-util.sh"
+source "${KUBE_ROOT}/build/kube-util.sh"
 
 if [ -z "${ZONE-}" ]; then
   echo "... Starting cluster using provider: ${KUBERNETES_PROVIDER}" >&2
@@ -73,7 +73,7 @@ if [[ "${ENABLE_PROXY:-}" == "true" ]]; then
 fi
 
 echo -e "Done, listing cluster services:\n" >&2
-"${KUBE_ROOT}/cluster/kubectl.sh" cluster-info
+"${KUBE_ROOT}/build/kubectl.sh" cluster-info
 echo
 
 exit 0

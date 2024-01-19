@@ -86,7 +86,7 @@ function setup() {
   if [[ -z "${use_custom_instance_list}" ]]; then
     : "${KUBE_CONFIG_FILE:=config-test.sh}"
     echo 'Sourcing kube-util.sh'
-    source "${KUBE_ROOT}/cluster/kube-util.sh"
+    source "${KUBE_ROOT}/build/kube-util.sh"
     echo 'Detecting project'
     detect-project 2>&1
   elif [[ "${KUBERNETES_PROVIDER}" == "gke" ]]; then
@@ -566,7 +566,7 @@ function dump_nodes_with_logexporter() {
   sed -i'' -e "s@{{.ExtraSystemdServices}}@${extra_systemd_services}@g" "${manifest_yaml}"
 
   # Create the logexporter namespace, service-account secret and the logexporter daemonset within that namespace.
-  KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
+  KUBECTL="${KUBE_ROOT}/build/kubectl.sh"
   if ! "${KUBECTL}" create -f "${manifest_yaml}"; then
     echo 'Failed to create logexporter daemonset.. falling back to logdump through SSH'
     "${KUBECTL}" delete namespace "${logexporter_namespace}" || true

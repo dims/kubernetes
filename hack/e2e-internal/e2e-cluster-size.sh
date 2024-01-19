@@ -20,12 +20,12 @@ set -o pipefail
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/../..
 
-: "${KUBECTL:=${KUBE_ROOT}/cluster/kubectl.sh}"
+: "${KUBECTL:=${KUBE_ROOT}/build/kubectl.sh}"
 : "${KUBE_CONFIG_FILE:="config-test.sh"}"
 
 export KUBECTL KUBE_CONFIG_FILE
 
-source "${KUBE_ROOT}/cluster/kube-util.sh"
+source "${KUBE_ROOT}/build/kube-util.sh"
 
 prepare-e2e
 

@@ -22,7 +22,7 @@ set -o nounset
 set -o pipefail
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-source "${KUBE_ROOT}/cluster/common.sh"
+source "${KUBE_ROOT}/build/common.sh"
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
 # Find the ginkgo binary build as part of the release.
@@ -51,24 +51,24 @@ GINKGO_TOLERATE_FLAKES=${GINKGO_TOLERATE_FLAKES:-n}
 # make DBG=1 WHAT=test/e2e/e2e.test
 E2E_TEST_DEBUG_TOOL=${E2E_TEST_DEBUG_TOOL:-}
 
-: "${KUBECTL:="${KUBE_ROOT}/cluster/kubectl.sh"}"
+: "${KUBECTL:="${KUBE_ROOT}/build/kubectl.sh"}"
 : "${KUBE_CONFIG_FILE:="config-test.sh"}"
 
 export KUBECTL KUBE_CONFIG_FILE
 
-source "${KUBE_ROOT}/cluster/kube-util.sh"
+source "${KUBE_ROOT}/build/kube-util.sh"
 
 function detect-master-from-kubeconfig() {
     export KUBECONFIG=${KUBECONFIG:-$DEFAULT_KUBECONFIG}
 
     local cc
-    cc=$("${KUBE_ROOT}/cluster/kubectl.sh" config view -o jsonpath="{.current-context}")
+    cc=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.current-context}")
     if [[ -n "${KUBE_CONTEXT:-}" ]]; then
       cc="${KUBE_CONTEXT}"
     fi
     local cluster
-    cluster=$("${KUBE_ROOT}/cluster/kubectl.sh" config view -o jsonpath="{.contexts[?(@.name == \"${cc}\")].context.cluster}")
-    KUBE_MASTER_URL=$("${KUBE_ROOT}/cluster/kubectl.sh" config view -o jsonpath="{.clusters[?(@.name == \"${cluster}\")].cluster.server}")
+    cluster=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.contexts[?(@.name == \"${cc}\")].context.cluster}")
+    KUBE_MASTER_URL=$("${KUBE_ROOT}/build/kubectl.sh" config view -o jsonpath="{.clusters[?(@.name == \"${cluster}\")].cluster.server}")
 }
 
 # ---- Do cloud-provider-specific setup

@@ -28,7 +28,7 @@ fi
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/../..
 source "${KUBE_ROOT}/hack/lib/util.sh"
-source "${KUBE_ROOT}/cluster/kube-util.sh"
+source "${KUBE_ROOT}/build/kube-util.sh"
 
 # Print the number of routes used for K8s cluster node connectivity.
 #

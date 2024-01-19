@@ -29,7 +29,7 @@ set -o pipefail
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
-source "${KUBE_ROOT}/cluster/common.sh"
+source "${KUBE_ROOT}/build/common.sh"
 
 declare -r KUBE_RELEASE_BUCKET_URL="https://dl.k8s.io/"
 declare -r KUBE_DEV_RELEASE_BUCKET_URL="https://storage.googleapis.com/k8s-release-dev"

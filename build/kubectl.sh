@@ -31,7 +31,7 @@ set -o pipefail
 
 
 KUBE_ROOT=${KUBE_ROOT:-$(dirname "${BASH_SOURCE[0]}")/..}
-source "${KUBE_ROOT}/cluster/kube-util.sh"
+source "${KUBE_ROOT}/build/kube-util.sh"
 source "${KUBE_ROOT}/hack/lib/util.sh"
 source "${KUBE_ROOT}/hack/lib/logging.sh"
 
