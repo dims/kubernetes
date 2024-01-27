@@ -22,6 +22,13 @@ import (
 	"os/exec"
 )
 
+type gceImage struct {
+	CreationTimestamp string `json:"creationTimestamp"`
+	Family            string `json:"family"`
+	Id                string `json:"id"`
+	Name              string `json:"name"`
+}
+
 type gceMetadata struct {
 	Fingerprint string             `json:"fingerprint"`
 	Kind        string             `json:"kind"`
@@ -117,4 +124,12 @@ func getGCEInstance(host string) (*gceInstance, error) {
 		return nil, fmt.Errorf("failed to parse instance: %w", err)
 	}
 	return &gceHost, nil
+}
+
+func (g *GCERunner) getSerialOutput(host string) (string, error) {
+	data, err := runGCPCommandWithZone("compute", "instances", "get-serial-port-output", "--port=1", host)
+	if err != nil {
+		return "", fmt.Errorf("failed to describe instance in project %q: %w", project, err)
+	}
+	return string(data), nil
 }

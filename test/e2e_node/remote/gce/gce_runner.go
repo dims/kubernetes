@@ -187,18 +187,11 @@ type GCEImage struct {
 
 // Returns an image name based on regex and given GCE project.
 func (g *GCERunner) getGCEImage(imageRegex, imageFamily string, project string) (string, error) {
-	type image struct {
-		CreationTimestamp string `json:"creationTimestamp"`
-		Family            string `json:"family"`
-		Id                string `json:"id"`
-		Name              string `json:"name"`
-	}
-
 	data, err := runGCPCommand("compute", "images", "list", "--format=json")
 	if err != nil {
 		return "", fmt.Errorf("failed to list images in project %q: %w", project, err)
 	}
-	var images []image
+	var images []gceImage
 	err = json.Unmarshal(data, &images)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse images: %w", err)
@@ -474,6 +467,8 @@ func (g *GCERunner) testGCEImage(suite remote.TestSuite, archivePath string, ima
 		ExitOK: exitOk,
 	}
 
+	// This is a temporary solution to collect serial node serial log. Only port 1 contains useful information.
+	// TODO(random-liu): Extract out and unify log collection logic with cluste e2e.
 	contents, err := g.getSerialOutput(host)
 	logFilename := "serial-1.log"
 	err = remote.WriteLog(host, logFilename, contents)
@@ -481,14 +476,6 @@ func (g *GCERunner) testGCEImage(suite remote.TestSuite, archivePath string, ima
 		klog.Errorf("Failed to write serial Output from node %q to %q: %v", host, logFilename, err)
 	}
 	return &result
-}
-
-func (g *GCERunner) getSerialOutput(host string) (string, error) {
-	data, err := runGCPCommandWithZone("compute", "instances", "get-serial-port-output", "--port=1", host)
-	if err != nil {
-		return "", fmt.Errorf("failed to describe instance in project %q: %w", project, err)
-	}
-	return string(data), nil
 }
 
 // Provision a gce instance using image
