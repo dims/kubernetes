@@ -97,13 +97,6 @@ func NewGCERunner(cfg remote.Config) remote.Runner {
 	return &GCERunner{cfg: cfg}
 }
 
-func NewGCERunner2(cfg remote.Config) *GCERunner {
-	if cfg.InstanceNamePrefix == "" {
-		cfg.InstanceNamePrefix = "tmp-node-e2e-" + uuid.New().String()[:8]
-	}
-	return &GCERunner{cfg: cfg}
-}
-
 func (g *GCERunner) Validate() error {
 	if len(g.cfg.Hosts) == 0 && g.cfg.ImageConfigFile == "" && len(g.cfg.Images) == 0 {
 		klog.Fatalf("Must specify one of --image-config-file, --hosts, --images.")
@@ -125,10 +118,9 @@ func (g *GCERunner) StartTests(suite remote.TestSuite, archivePath string, resul
 		imageConfig := g.gceImages.images[shortName]
 		numTests++
 		fmt.Printf("Initializing e2e tests using image %s/%s/%s.\n", shortName, imageConfig.project, imageConfig.image)
-		//go func(image *internalGCEImage, junitFileName string) {
-		//	results <- g.testGCEImage(suite, archivePath, image, junitFileName)
-		//}(&imageConfig, shortName)
-		g.testGCEImage(suite, archivePath, &imageConfig, shortName)
+		go func(image *internalGCEImage, junitFileName string) {
+			results <- g.testGCEImage(suite, archivePath, image, junitFileName)
+		}(&imageConfig, shortName)
 	}
 	return
 }
@@ -194,7 +186,7 @@ type GCEImage struct {
 }
 
 // Returns an image name based on regex and given GCE project.
-func (g *GCERunner) GetGCEImage(imageRegex, imageFamily string, project string) (string, error) {
+func (g *GCERunner) getGCEImage(imageRegex, imageFamily string, project string) (string, error) {
 	type image struct {
 		CreationTimestamp string `json:"creationTimestamp"`
 		Family            string `json:"family"`
@@ -268,7 +260,7 @@ func (g *GCERunner) prepareGceImages() (*internalGCEImageConfig, error) {
 		for shortName, imageConfig := range externalImageConfig.Images {
 			var image string
 			if (imageConfig.ImageRegex != "" || imageConfig.ImageFamily != "") && imageConfig.Image == "" {
-				image, err = g.GetGCEImage(imageConfig.ImageRegex, imageConfig.ImageFamily, imageConfig.Project)
+				image, err = g.getGCEImage(imageConfig.ImageRegex, imageConfig.ImageFamily, imageConfig.Project)
 				if err != nil {
 					return nil, fmt.Errorf("Could not retrieve a image based on image regex %q and family %q: %v",
 						imageConfig.ImageRegex, imageConfig.ImageFamily, err)
@@ -440,7 +432,7 @@ func ignitionInjectGCEPublicKey(path string, content string) string {
 func (g *GCERunner) testGCEImage(suite remote.TestSuite, archivePath string, imageConfig *internalGCEImage, junitFileName string) *remote.TestResult {
 	ginkgoFlagsStr := g.cfg.GinkgoFlags
 
-	host, err := g.CreateGCEInstance(imageConfig)
+	host, err := g.createGCEInstance(imageConfig)
 	if g.cfg.DeleteInstances {
 		defer g.DeleteGCEInstance(host)
 	}
@@ -454,7 +446,7 @@ func (g *GCERunner) testGCEImage(suite remote.TestSuite, archivePath string, ima
 	// If we are going to delete the instance, don't bother with cleaning up the files
 	deleteFiles := !g.cfg.DeleteInstances && g.cfg.Cleanup
 
-	if err = g.RegisterGceHostIP(host); err != nil {
+	if err = g.registerGceHostIP(host); err != nil {
 		return &remote.TestResult{
 			Err:    err,
 			Host:   host,
@@ -482,7 +474,7 @@ func (g *GCERunner) testGCEImage(suite remote.TestSuite, archivePath string, ima
 		ExitOK: exitOk,
 	}
 
-	contents, err := g.GetSerialOutput(host)
+	contents, err := g.getSerialOutput(host)
 	logFilename := "serial-1.log"
 	err = remote.WriteLog(host, logFilename, contents)
 	if err != nil {
@@ -491,7 +483,7 @@ func (g *GCERunner) testGCEImage(suite remote.TestSuite, archivePath string, ima
 	return &result
 }
 
-func (g *GCERunner) GetSerialOutput(host string) (string, error) {
+func (g *GCERunner) getSerialOutput(host string) (string, error) {
 	data, err := runGCPCommandWithZone("compute", "instances", "get-serial-port-output", "--port=1", host)
 	if err != nil {
 		return "", fmt.Errorf("failed to describe instance in project %q: %w", project, err)
@@ -500,7 +492,7 @@ func (g *GCERunner) GetSerialOutput(host string) (string, error) {
 }
 
 // Provision a gce instance using image
-func (g *GCERunner) CreateGCEInstance(imageConfig *internalGCEImage) (string, error) {
+func (g *GCERunner) createGCEInstance(imageConfig *internalGCEImage) (string, error) {
 	data, err := runGCPCommand("compute", "project-info", "describe", "--format=json", "--project="+*project)
 	if err != nil {
 		return "", fmt.Errorf("failed to get project info for %q: %w", project, err)
@@ -649,7 +641,7 @@ func (g *GCERunner) imageToInstanceName(imageConfig *internalGCEImage) string {
 	return imageConfig.machine + "-" + imageConfig.image + "-" + uuid.New().String()[:8]
 }
 
-func (g *GCERunner) RegisterGceHostIP(host string) error {
+func (g *GCERunner) registerGceHostIP(host string) error {
 	gceHost, err := getGCEInstance(host)
 	if err != nil {
 		return err
