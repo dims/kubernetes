@@ -17,10 +17,6 @@ limitations under the License.
 package bugs
 
 import (
-	"bytes"
-	"testing"
-
-	"github.com/onsi/ginkgo/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/internal/unittests/bugs/features"
 )
@@ -157,15 +153,3 @@ ERROR: some/relative/path/buggy.go:200: with spaces
 
 `
 )
-
-func GetGinkgoOutput(t *testing.T) string {
-	var buffer bytes.Buffer
-	ginkgo.GinkgoWriter.TeeTo(&buffer)
-	t.Cleanup(ginkgo.GinkgoWriter.ClearTeeWriters)
-
-	suiteConfig, reporterConfig := framework.CreateGinkgoConfig()
-	fakeT := &testing.T{}
-	ginkgo.RunSpecs(fakeT, "Buggy Suite", suiteConfig, reporterConfig)
-
-	return buffer.String()
-}

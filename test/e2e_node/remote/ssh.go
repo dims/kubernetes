@@ -75,13 +75,6 @@ var sshKeyOverrides = struct {
 	m map[string]string
 }{m: make(map[string]string)}
 
-// AddSSHKey adds a <hosrtname,path to SSH private key> pair into the sshKeyOverrides map
-func AddSSHKey(hostname, keyFilePath string) {
-	sshKeyOverrides.Lock()
-	defer sshKeyOverrides.Unlock()
-	sshKeyOverrides.m[hostname] = keyFilePath
-}
-
 // GetSSHUser returns the ssh-user CLI flag, the KUBE_SSH_USER environment variable, or the default ssh user
 // for the ssh environment in that order
 func GetSSHUser() string {

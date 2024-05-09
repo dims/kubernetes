@@ -82,11 +82,6 @@ func RegisterScorePlugin(pluginName string, pluginNewFunc runtime.PluginFactory,
 	return RegisterPluginAsExtensionsWithWeight(pluginName, weight, pluginNewFunc, "Score")
 }
 
-// RegisterPreScorePlugin returns a function to register a Score Plugin to a given registry.
-func RegisterPreScorePlugin(pluginName string, pluginNewFunc runtime.PluginFactory) RegisterPluginFunc {
-	return RegisterPluginAsExtensions(pluginName, pluginNewFunc, "PreScore")
-}
-
 // RegisterBindPlugin returns a function to register a Bind Plugin to a given registry.
 func RegisterBindPlugin(pluginName string, pluginNewFunc runtime.PluginFactory) RegisterPluginFunc {
 	return RegisterPluginAsExtensions(pluginName, pluginNewFunc, "Bind")

@@ -81,17 +81,6 @@ type Results struct {
 	NodeAllocTime  []NodeDuration // assignment time by node name
 }
 
-// NewObserver creates a new observer given a handle to the Clientset
-func NewObserver(clientSet *clientset.Clientset, numNodes int) *Observer {
-	o := &Observer{
-		timing:    map[string]*nodeTime{},
-		numNodes:  numNodes,
-		clientSet: clientSet,
-		stopChan:  make(chan struct{}),
-	}
-	return o
-}
-
 // StartObserving starts an asynchronous loop to monitor for node changes.
 // Call Results() to get the test results after starting observer.
 func (o *Observer) StartObserving() error {

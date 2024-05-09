@@ -38,21 +38,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// NewTransport creates a transport which uses the port forward dialer.
-// URLs must use <namespace>.<pod>:<port> as host.
-func NewTransport(client kubernetes.Interface, restConfig *rest.Config) *http.Transport {
-	return &http.Transport{
-		DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
-			dialer := NewDialer(client, restConfig)
-			a, err := ParseAddr(addr)
-			if err != nil {
-				return nil, err
-			}
-			return dialer.DialContainerPort(ctx, *a)
-		},
-	}
-}
-
 // NewDialer creates a dialer that supports connecting to container ports.
 func NewDialer(client kubernetes.Interface, restConfig *rest.Config) *Dialer {
 	return &Dialer{

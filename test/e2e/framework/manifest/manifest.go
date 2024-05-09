@@ -34,24 +34,6 @@ import (
 	e2etestfiles "k8s.io/kubernetes/test/e2e/framework/testfiles"
 )
 
-// PodFromManifest reads a .json/yaml file and returns the pod in it.
-func PodFromManifest(filename string) (*v1.Pod, error) {
-	var pod v1.Pod
-	data, err := e2etestfiles.Read(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	json, err := utilyaml.ToJSON(data)
-	if err != nil {
-		return nil, err
-	}
-	if err := runtime.DecodeInto(scheme.Codecs.UniversalDecoder(), json, &pod); err != nil {
-		return nil, err
-	}
-	return &pod, nil
-}
-
 // SvcFromManifest reads a .json/yaml file and returns the service in it.
 func SvcFromManifest(fileName string) (*v1.Service, error) {
 	var svc v1.Service

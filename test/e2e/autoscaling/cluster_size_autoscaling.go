@@ -1385,12 +1385,6 @@ func ReserveMemoryWithPriority(ctx context.Context, f *framework.Framework, id s
 	return reserveMemory(ctx, f, id, replicas, megabytes, expectRunning, timeout, nil, nil, priorityClassName, "")
 }
 
-// ReserveMemoryWithSelectorAndTolerations creates a replication controller with pods with node selector that, in summation,
-// request the specified amount of memory.
-func ReserveMemoryWithSelectorAndTolerations(ctx context.Context, f *framework.Framework, id string, replicas, megabytes int, expectRunning bool, timeout time.Duration, selector map[string]string, tolerations []v1.Toleration) func() error {
-	return reserveMemory(ctx, f, id, replicas, megabytes, expectRunning, timeout, selector, tolerations, "", "")
-}
-
 // ReserveMemoryWithSchedulerName creates a replication controller with pods with scheduler name that, in summation,
 // request the specified amount of memory.
 func ReserveMemoryWithSchedulerName(ctx context.Context, f *framework.Framework, id string, replicas, megabytes int, expectRunning bool, timeout time.Duration, schedulerName string) func() error {

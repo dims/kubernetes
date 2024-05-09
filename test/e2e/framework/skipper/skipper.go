@@ -121,17 +121,6 @@ func SkipUnlessMultizone(ctx context.Context, c clientset.Interface) {
 	}
 }
 
-// SkipIfMultizone skips if the cluster has multizone.
-func SkipIfMultizone(ctx context.Context, c clientset.Interface) {
-	zones, err := e2enode.GetClusterZones(ctx, c)
-	if err != nil {
-		skipInternalf(1, "Error listing cluster zones")
-	}
-	if zones.Len() > 1 {
-		skipInternalf(1, "Requires at most one zone")
-	}
-}
-
 // SkipUnlessMasterOSDistroIs skips if the master OS distro is not included in the supportedMasterOsDistros.
 func SkipUnlessMasterOSDistroIs(supportedMasterOsDistros ...string) {
 	if !framework.MasterOSDistroIs(supportedMasterOsDistros...) {

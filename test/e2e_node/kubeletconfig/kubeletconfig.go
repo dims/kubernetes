@@ -38,8 +38,6 @@ import (
 	kubeletconfigcodec "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/codec"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
-
-	"sigs.k8s.io/yaml"
 )
 
 func getKubeletConfigFilePath() (string, error) {
@@ -50,39 +48,6 @@ func getKubeletConfigFilePath() (string, error) {
 
 	// DO NOT name this file "kubelet" - you will overwrite the kubelet binary and be very confused :)
 	return filepath.Join(cwd, "kubelet-config"), nil
-}
-
-// GetCurrentKubeletConfigFromFile returns the current kubelet configuration under the filesystem.
-// This method should only run together with e2e node tests, meaning the test executor and the cluster nodes is the
-// same machine
-func GetCurrentKubeletConfigFromFile() (*kubeletconfig.KubeletConfiguration, error) {
-	kubeletConfigFilePath, err := getKubeletConfigFilePath()
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := os.ReadFile(kubeletConfigFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get the kubelet config from the file %q: %w", kubeletConfigFilePath, err)
-	}
-
-	var kubeletConfigV1Beta1 kubeletconfigv1beta1.KubeletConfiguration
-	if err := yaml.Unmarshal(data, &kubeletConfigV1Beta1); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal the kubelet config: %w", err)
-	}
-
-	scheme, _, err := kubeletconfigscheme.NewSchemeAndCodecs()
-	if err != nil {
-		return nil, err
-	}
-
-	kubeletConfig := kubeletconfig.KubeletConfiguration{}
-	err = scheme.Convert(&kubeletConfigV1Beta1, &kubeletConfig, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &kubeletConfig, nil
 }
 
 // WriteKubeletConfigFile updates the kubelet configuration under the filesystem

@@ -620,56 +620,6 @@ func testRejectedUDP(ctx context.Context, host string, port int, timeout time.Du
 	}
 }
 
-// TestHTTPHealthCheckNodePort tests a HTTP connection by the given request to the given host and port.
-func TestHTTPHealthCheckNodePort(ctx context.Context, host string, port int, request string, timeout time.Duration, expectSucceed bool, threshold int) error {
-	count := 0
-	condition := func(ctx context.Context) (bool, error) {
-		success, _ := testHTTPHealthCheckNodePort(host, port, request)
-		if success && expectSucceed ||
-			!success && !expectSucceed {
-			count++
-		}
-		if count >= threshold {
-			return true, nil
-		}
-		return false, nil
-	}
-
-	if err := wait.PollUntilContextTimeout(ctx, time.Second, timeout, true, condition); err != nil {
-		return fmt.Errorf("error waiting for healthCheckNodePort: expected at least %d succeed=%v on %v%v, got %d", threshold, expectSucceed, host, port, count)
-	}
-	return nil
-}
-
-func testHTTPHealthCheckNodePort(ip string, port int, request string) (bool, error) {
-	ipPort := net.JoinHostPort(ip, strconv.Itoa(port))
-	url := fmt.Sprintf("http://%s%s", ipPort, request)
-	if ip == "" || port == 0 {
-		framework.Failf("Got empty IP for reachability check (%s)", url)
-		return false, fmt.Errorf("invalid input ip or port")
-	}
-	framework.Logf("Testing HTTP health check on %v", url)
-	resp, err := httpGetNoConnectionPoolTimeout(url, 5*time.Second)
-	if err != nil {
-		framework.Logf("Got error testing for reachability of %s: %v", url, err)
-		return false, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if err != nil {
-		framework.Logf("Got error reading response from %s: %v", url, err)
-		return false, err
-	}
-	// HealthCheck responder returns 503 for no local endpoints
-	if resp.StatusCode == 503 {
-		return false, nil
-	}
-	// HealthCheck responder returns 200 for non-zero local endpoints
-	if resp.StatusCode == 200 {
-		return true, nil
-	}
-	return false, fmt.Errorf("unexpected HTTP response code %s from health check responder at %s", resp.Status, url)
-}
-
 func testHTTPHealthCheckNodePortFromTestContainer(ctx context.Context, config *e2enetwork.NetworkingTestConfig, host string, port int, timeout time.Duration, expectSucceed bool, threshold int) error {
 	count := 0
 	pollFn := func(ctx context.Context) (bool, error) {

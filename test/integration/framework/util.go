@@ -75,29 +75,6 @@ func waitListAllNodes(c clientset.Interface) (*v1.NodeList, error) {
 	return nodes, nil
 }
 
-// Filter filters nodes in NodeList in place, removing nodes that do not
-// satisfy the given condition
-func Filter(nodeList *v1.NodeList, fn func(node v1.Node) bool) {
-	var l []v1.Node
-
-	for _, node := range nodeList.Items {
-		if fn(node) {
-			l = append(l, node)
-		}
-	}
-	nodeList.Items = l
-}
-
-// IsNodeSchedulable returns true if:
-// 1) doesn't have "unschedulable" field set
-// 2) it also returns true from IsNodeReady
-func IsNodeSchedulable(node *v1.Node) bool {
-	if node == nil {
-		return false
-	}
-	return !node.Spec.Unschedulable && IsNodeReady(node)
-}
-
 // IsNodeReady returns true if:
 // 1) it's Ready condition is set to true
 // 2) doesn't have NetworkUnavailable condition set to true

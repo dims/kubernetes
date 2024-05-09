@@ -37,8 +37,6 @@ const (
 	FileTypeFile FileType = "File"
 	// FileTypeSocket defines a constant for the socket FileType.
 	FileTypeSocket FileType = "Socket"
-	// FileTypeUnknown defines a constant for an unknown FileType.
-	FileTypeUnknown FileType = ""
 )
 
 var (

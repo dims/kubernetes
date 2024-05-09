@@ -110,17 +110,6 @@ func AssertCertificateHasClientAuthUsage(t *testing.T, cert *x509.Certificate) {
 	t.Error("cert has not ClientAuth usage as expected")
 }
 
-// AssertCertificateHasServerAuthUsage is a utility function for kubeadm testing that asserts if a given certificate has
-// the expected ExtKeyUsageServerAuth
-func AssertCertificateHasServerAuthUsage(t *testing.T, cert *x509.Certificate) {
-	for i := range cert.ExtKeyUsage {
-		if cert.ExtKeyUsage[i] == x509.ExtKeyUsageServerAuth {
-			return
-		}
-	}
-	t.Error("cert is not a ServerAuth")
-}
-
 // AssertCertificateHasDNSNames is a utility function for kubeadm testing that asserts if a given certificate has
 // the expected DNSNames
 func AssertCertificateHasDNSNames(t *testing.T, cert *x509.Certificate, DNSNames ...string) {

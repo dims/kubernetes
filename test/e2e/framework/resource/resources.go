@@ -235,16 +235,3 @@ func WaitForControlledPodsRunning(ctx context.Context, c clientset.Interface, ns
 	}
 	return nil
 }
-
-// WaitForControlledPods waits up to podListTimeout for getting pods of the specified controller name and return them.
-func WaitForControlledPods(ctx context.Context, c clientset.Interface, ns, name string, kind schema.GroupKind) (pods *v1.PodList, err error) {
-	rtObject, err := GetRuntimeObjectForKind(ctx, c, kind, ns, name)
-	if err != nil {
-		return nil, err
-	}
-	selector, err := GetSelectorFromRuntimeObject(rtObject)
-	if err != nil {
-		return nil, err
-	}
-	return e2epod.WaitForPodsWithLabel(ctx, c, ns, selector)
-}

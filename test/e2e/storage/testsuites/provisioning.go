@@ -924,53 +924,6 @@ func PVWriteReadSingleNodeCheck(ctx context.Context, client clientset.Interface,
 	return e2evolume
 }
 
-// PVMultiNodeCheck checks that a PV retains data when moved between nodes.
-//
-// It starts these pods:
-// - The first pod writes 'hello word' to the /mnt/test (= the volume) on one node.
-// - The second pod runs grep 'hello world' on /mnt/test on another node.
-//
-// The first node is selected by Kubernetes when scheduling the first pod. The second pod uses the same criteria, except that a special anti-affinity
-// for the first node gets added. This test can only pass if the cluster has more than one
-// suitable node. The caller has to ensure that.
-//
-// If all succeeds, Kubernetes actually allocated something that is
-// persistent across pods and across nodes.
-//
-// This is a common test that can be called from a StorageClassTest.PvCheck.
-func PVMultiNodeCheck(ctx context.Context, client clientset.Interface, timeouts *framework.TimeoutContext, claim *v1.PersistentVolumeClaim, node e2epod.NodeSelection) {
-	gomega.Expect(node.Name).To(gomega.BeZero(), "this test only works when not locked onto a single node")
-
-	var pod *v1.Pod
-	defer func() {
-		// passing pod = nil is okay.
-		StopPod(ctx, client, pod)
-	}()
-
-	ginkgo.By(fmt.Sprintf("checking the created volume is writable on node %+v", node))
-	command := "echo 'hello world' > /mnt/test/data"
-	pod = StartInPodWithVolume(ctx, client, claim.Namespace, claim.Name, "pvc-writer-node1", command, node)
-	framework.ExpectNoError(e2epod.WaitForPodSuccessInNamespaceTimeout(ctx, client, pod.Name, pod.Namespace, timeouts.PodStartSlow))
-	runningPod, err := client.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-	framework.ExpectNoError(err, "get pod")
-	actualNodeName := runningPod.Spec.NodeName
-	StopPod(ctx, client, pod)
-	pod = nil // Don't stop twice.
-
-	// Add node-anti-affinity.
-	secondNode := node
-	e2epod.SetAntiAffinity(&secondNode, actualNodeName)
-	ginkgo.By(fmt.Sprintf("checking the created volume is readable and retains data on another node %+v", secondNode))
-	command = "grep 'hello world' /mnt/test/data"
-	pod = StartInPodWithVolume(ctx, client, claim.Namespace, claim.Name, "pvc-reader-node2", command, secondNode)
-	framework.ExpectNoError(e2epod.WaitForPodSuccessInNamespaceTimeout(ctx, client, pod.Name, pod.Namespace, timeouts.PodStartSlow))
-	runningPod, err = client.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-	framework.ExpectNoError(err, "get pod")
-	gomega.Expect(runningPod.Spec.NodeName).ToNot(gomega.Equal(actualNodeName), "second pod should have run on a different node")
-	StopPod(ctx, client, pod)
-	pod = nil
-}
-
 // TestBindingWaitForFirstConsumerMultiPVC tests the binding with WaitForFirstConsumer mode
 func (t StorageClassTest) TestBindingWaitForFirstConsumerMultiPVC(ctx context.Context, claims []*v1.PersistentVolumeClaim, nodeSelector map[string]string, expectUnschedulable bool) ([]*v1.PersistentVolume, *v1.Node) {
 	var err error

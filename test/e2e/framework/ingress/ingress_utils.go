@@ -62,8 +62,6 @@ import (
 	e2etestfiles "k8s.io/kubernetes/test/e2e/framework/testfiles"
 	testutils "k8s.io/kubernetes/test/utils"
 	imageutils "k8s.io/kubernetes/test/utils/image"
-
-	"github.com/onsi/ginkgo/v2"
 )
 
 const (
@@ -198,94 +196,6 @@ func PollURL(ctx context.Context, route, host string, timeout time.Duration, int
 	return nil
 }
 
-// CreateIngressComformanceTests generates an slice of sequential test cases:
-// a simple http ingress, ingress with HTTPS, ingress HTTPS with a modified hostname,
-// ingress https with a modified URLMap
-func CreateIngressComformanceTests(ctx context.Context, jig *TestJig, ns string, annotations map[string]string) []ConformanceTests {
-	manifestPath := filepath.Join(IngressManifestPath, "http")
-	// These constants match the manifests used in IngressManifestPath
-	tlsHost := "foo.bar.com"
-	tlsSecretName := "foo"
-	updatedTLSHost := "foobar.com"
-	updateURLMapHost := "bar.baz.com"
-	updateURLMapPath := "/testurl"
-	prefixPathType := networkingv1.PathTypeImplementationSpecific
-	// Platform agnostic list of tests that must be satisfied by all controllers
-	tests := []ConformanceTests{
-		{
-			fmt.Sprintf("should create a basic HTTP ingress"),
-			func() { jig.CreateIngress(ctx, manifestPath, ns, annotations, annotations) },
-			fmt.Sprintf("waiting for urls on basic HTTP ingress"),
-		},
-		{
-			fmt.Sprintf("should terminate TLS for host %v", tlsHost),
-			func() { jig.SetHTTPS(ctx, tlsSecretName, tlsHost) },
-			fmt.Sprintf("waiting for HTTPS updates to reflect in ingress"),
-		},
-		{
-			fmt.Sprintf("should update url map for host %v to expose a single url: %v", updateURLMapHost, updateURLMapPath),
-			func() {
-				var pathToFail string
-				jig.Update(ctx, func(ing *networkingv1.Ingress) {
-					newRules := []networkingv1.IngressRule{}
-					for _, rule := range ing.Spec.Rules {
-						if rule.Host != updateURLMapHost {
-							newRules = append(newRules, rule)
-							continue
-						}
-						existingPath := rule.IngressRuleValue.HTTP.Paths[0]
-						pathToFail = existingPath.Path
-						newRules = append(newRules, networkingv1.IngressRule{
-							Host: updateURLMapHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{
-										{
-											Path:     updateURLMapPath,
-											PathType: &prefixPathType,
-											Backend:  existingPath.Backend,
-										},
-									},
-								},
-							},
-						})
-					}
-					ing.Spec.Rules = newRules
-				})
-				ginkgo.By("Checking that " + pathToFail + " is not exposed by polling for failure")
-				route := fmt.Sprintf("http://%v%v", jig.Address, pathToFail)
-				framework.ExpectNoError(PollURL(ctx, route, updateURLMapHost, e2eservice.LoadBalancerCleanupTimeout, jig.PollInterval, &http.Client{Timeout: IngressReqTimeout}, true))
-			},
-			fmt.Sprintf("Waiting for path updates to reflect in L7"),
-		},
-	}
-	// Skip the Update TLS cert test for kubemci: https://github.com/GoogleCloudPlatform/k8s-multicluster-ingress/issues/141.
-	if jig.Class != MulticlusterIngressClassValue {
-		tests = append(tests, ConformanceTests{
-			fmt.Sprintf("should update SSL certificate with modified hostname %v", updatedTLSHost),
-			func() {
-				jig.Update(ctx, func(ing *networkingv1.Ingress) {
-					newRules := []networkingv1.IngressRule{}
-					for _, rule := range ing.Spec.Rules {
-						if rule.Host != tlsHost {
-							newRules = append(newRules, rule)
-							continue
-						}
-						newRules = append(newRules, networkingv1.IngressRule{
-							Host:             updatedTLSHost,
-							IngressRuleValue: rule.IngressRuleValue,
-						})
-					}
-					ing.Spec.Rules = newRules
-				})
-				jig.SetHTTPS(ctx, tlsSecretName, updatedTLSHost)
-			},
-			fmt.Sprintf("Waiting for updated certificates to accept requests for host %v", updatedTLSHost),
-		})
-	}
-	return tests
-}
-
 // GenerateRSACerts generates a basic self signed certificate using a key length
 // of rsaBits, valid for validFor time.
 func GenerateRSACerts(host string, isCA bool) ([]byte, []byte, error) {
@@ -364,12 +274,6 @@ func buildTransportWithCA(serverName string, rootCA []byte) (*http.Transport, er
 	}), nil
 }
 
-// BuildInsecureClient returns an insecure http client. Can be used for "curl -k".
-func BuildInsecureClient(timeout time.Duration) *http.Client {
-	t := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	return &http.Client{Timeout: timeout, Transport: utilnet.SetTransportDefaults(t)}
-}
-
 // createTLSSecret creates a secret containing TLS certificates.
 // If a secret with the same name already pathExists in the namespace of the
 // Ingress, it's updated.
@@ -416,16 +320,6 @@ type TestJig struct {
 
 	// The interval used to poll urls
 	PollInterval time.Duration
-}
-
-// NewIngressTestJig instantiates struct with client
-func NewIngressTestJig(c clientset.Interface) *TestJig {
-	return &TestJig{
-		Client:       c,
-		RootCAs:      map[string][]byte{},
-		PollInterval: e2eservice.LoadBalancerPollInterval,
-		Logger:       &E2ELogger{},
-	}
 }
 
 // CreateIngress creates the Ingress and associated service/rc.

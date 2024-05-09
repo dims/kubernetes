@@ -21,8 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -184,42 +182,6 @@ type HTTPError struct {
 func (he *HTTPError) Error() string {
 	return fmt.Sprintf("http status code: %d while fetching url %s",
 		he.StatusCode, he.URL)
-}
-
-// ReadURL read contents from given url
-func ReadURL(url string, client *http.Client, header *http.Header) (body []byte, err error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	if header != nil {
-		req.Header = *header
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		klog.V(2).InfoS("Failed to read URL", "statusCode", resp.StatusCode, "URL", url)
-		return nil, &HTTPError{
-			StatusCode: resp.StatusCode,
-			URL:        url,
-		}
-	}
-
-	limitedReader := &io.LimitedReader{R: resp.Body, N: maxReadLength}
-	contents, err := io.ReadAll(limitedReader)
-	if err != nil {
-		return nil, err
-	}
-
-	if limitedReader.N <= 0 {
-		return nil, errors.New("the read limit is reached")
-	}
-
-	return contents, nil
 }
 
 // ReadDockerConfigFileFromBytes read a docker config file from the given bytes

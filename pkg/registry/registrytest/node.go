@@ -36,18 +36,6 @@ type NodeRegistry struct {
 	sync.Mutex
 }
 
-// MakeNodeList constructs api.NodeList from list of node names and a NodeResource.
-func MakeNodeList(nodes []string, nodeResources api.ResourceList) *api.NodeList {
-	list := api.NodeList{
-		Items: make([]api.Node, len(nodes)),
-	}
-	for i := range nodes {
-		list.Items[i].Name = nodes[i]
-		list.Items[i].Status.Capacity = nodeResources
-	}
-	return &list
-}
-
 func (r *NodeRegistry) SetError(err error) {
 	r.Lock()
 	defer r.Unlock()

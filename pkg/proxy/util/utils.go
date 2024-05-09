@@ -77,15 +77,6 @@ func IsZeroCIDR(cidr string) bool {
 	return false
 }
 
-// IsLoopBack checks if a given IP address is a loopback address.
-func IsLoopBack(ip string) bool {
-	netIP := netutils.ParseIPSloppy(ip)
-	if netIP != nil {
-		return netIP.IsLoopback()
-	}
-	return false
-}
-
 // GetLocalAddrs returns a list of all network addresses on the local system
 func GetLocalAddrs() ([]net.IP, error) {
 	var localAddrs []net.IP
@@ -105,21 +96,6 @@ func GetLocalAddrs() ([]net.IP, error) {
 	}
 
 	return localAddrs, nil
-}
-
-// GetLocalAddrSet return a local IPSet.
-// If failed to get local addr, will assume no local ips.
-func GetLocalAddrSet() netutils.IPSet {
-	localAddrs, err := GetLocalAddrs()
-	if err != nil {
-		klog.ErrorS(err, "Failed to get local addresses assuming no local IPs")
-	} else if len(localAddrs) == 0 {
-		klog.InfoS("No local addresses were found")
-	}
-
-	localAddrSet := netutils.IPSet{}
-	localAddrSet.Insert(localAddrs...)
-	return localAddrSet
 }
 
 // ShouldSkipService checks if a given service should skip proxying

@@ -223,23 +223,6 @@ func CreateStorageClassWithRetries(c clientset.Interface, obj *storage.StorageCl
 	return RetryWithExponentialBackOff(createFunc)
 }
 
-func CreateResourceQuotaWithRetries(c clientset.Interface, namespace string, obj *v1.ResourceQuota) error {
-	if obj == nil {
-		return fmt.Errorf("object provided to create is empty")
-	}
-	createFunc := func() (bool, error) {
-		_, err := c.CoreV1().ResourceQuotas(namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
-		if isGenerateNameConflict(obj.ObjectMeta, err) {
-			return false, nil
-		}
-		if err == nil || apierrors.IsAlreadyExists(err) {
-			return true, nil
-		}
-		return false, fmt.Errorf("failed to create object with non-retriable error: %v", err)
-	}
-	return RetryWithExponentialBackOff(createFunc)
-}
-
 func CreatePersistentVolumeWithRetries(c clientset.Interface, obj *v1.PersistentVolume) error {
 	if obj == nil {
 		return fmt.Errorf("object provided to create is empty")

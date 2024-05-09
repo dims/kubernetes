@@ -130,12 +130,6 @@ func LookForStringInLogWithoutKubectl(ctx context.Context, client clientset.Inte
 	})
 }
 
-// CreateEmptyFileOnPod creates empty file at given path on the pod.
-func CreateEmptyFileOnPod(namespace string, podName string, filePath string) error {
-	_, err := e2ekubectl.RunKubectl(namespace, "exec", podName, "--", "/bin/sh", "-c", fmt.Sprintf("touch %s", filePath))
-	return err
-}
-
 // DumpDebugInfo dumps debug info of tests.
 func DumpDebugInfo(ctx context.Context, c clientset.Interface, ns string) {
 	sl, _ := c.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: labels.Everything().String()})

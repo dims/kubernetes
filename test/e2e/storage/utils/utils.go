@@ -318,51 +318,6 @@ func TestVolumeUnmapsFromForceDeletedPod(ctx context.Context, c clientset.Interf
 	TestVolumeUnmapsFromDeletedPodWithForceOption(ctx, c, f, clientPod, true, devicePath)
 }
 
-// RunInPodWithVolume runs a command in a pod with given claim mounted to /mnt directory.
-func RunInPodWithVolume(ctx context.Context, c clientset.Interface, t *framework.TimeoutContext, ns, claimName, command string) {
-	pod := &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "pvc-volume-tester-",
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:    "volume-tester",
-					Image:   imageutils.GetE2EImage(imageutils.BusyBox),
-					Command: []string{"/bin/sh"},
-					Args:    []string{"-c", command},
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "my-volume",
-							MountPath: "/mnt/test",
-						},
-					},
-				},
-			},
-			RestartPolicy: v1.RestartPolicyNever,
-			Volumes: []v1.Volume{
-				{
-					Name: "my-volume",
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: claimName,
-							ReadOnly:  false,
-						},
-					},
-				},
-			},
-		},
-	}
-	pod, err := c.CoreV1().Pods(ns).Create(ctx, pod, metav1.CreateOptions{})
-	framework.ExpectNoError(err, "Failed to create pod: %v", err)
-	ginkgo.DeferCleanup(e2epod.DeletePodOrFail, c, ns, pod.Name)
-	framework.ExpectNoError(e2epod.WaitForPodSuccessInNamespaceTimeout(ctx, c, pod.Name, pod.Namespace, t.PodStartSlow))
-}
-
 // StartExternalProvisioner create external provisioner pod
 func StartExternalProvisioner(ctx context.Context, c clientset.Interface, ns string, externalPluginName string) *v1.Pod {
 	podClient := c.CoreV1().Pods(ns)

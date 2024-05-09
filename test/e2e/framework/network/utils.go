@@ -114,11 +114,6 @@ func EndpointsUseHostNetwork(config *NetworkingTestConfig) {
 	config.EndpointsHostNetwork = true
 }
 
-// PreferExternalAddresses prefer node External Addresses for the tests
-func PreferExternalAddresses(config *NetworkingTestConfig) {
-	config.PreferExternalAddresses = true
-}
-
 // NewNetworkingTestConfig creates and sets up a new test config helper.
 func NewNetworkingTestConfig(ctx context.Context, f *framework.Framework, setters ...Option) *NetworkingTestConfig {
 	// default options

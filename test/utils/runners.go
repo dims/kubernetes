@@ -30,7 +30,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1002,13 +1001,6 @@ type LabelNodePrepareStrategy struct {
 
 var _ PrepareNodeStrategy = &LabelNodePrepareStrategy{}
 
-func NewLabelNodePrepareStrategy(labelKey string, labelValues ...string) *LabelNodePrepareStrategy {
-	return &LabelNodePrepareStrategy{
-		LabelKey:    labelKey,
-		LabelValues: labelValues,
-	}
-}
-
 func (s *LabelNodePrepareStrategy) PreparePatch(*v1.Node) []byte {
 	labelString := fmt.Sprintf("{\"%v\":\"%v\"}", s.LabelKey, s.LabelValues[s.roundRobinIdx])
 	patch := fmt.Sprintf(`{"metadata":{"labels":%v}}`, labelString)
@@ -1048,14 +1040,6 @@ type NodeAllocatableStrategy struct {
 }
 
 var _ PrepareNodeStrategy = &NodeAllocatableStrategy{}
-
-func NewNodeAllocatableStrategy(nodeAllocatable map[v1.ResourceName]string, csiNodeAllocatable map[string]*storagev1.VolumeNodeResources, migratedPlugins []string) *NodeAllocatableStrategy {
-	return &NodeAllocatableStrategy{
-		NodeAllocatable:    nodeAllocatable,
-		CsiNodeAllocatable: csiNodeAllocatable,
-		MigratedPlugins:    migratedPlugins,
-	}
-}
 
 func (s *NodeAllocatableStrategy) PreparePatch(node *v1.Node) []byte {
 	newNode := node.DeepCopy()
@@ -1180,12 +1164,6 @@ type UniqueNodeLabelStrategy struct {
 
 var _ PrepareNodeStrategy = &UniqueNodeLabelStrategy{}
 
-func NewUniqueNodeLabelStrategy(labelKey string) *UniqueNodeLabelStrategy {
-	return &UniqueNodeLabelStrategy{
-		LabelKey: labelKey,
-	}
-}
-
 func (s *UniqueNodeLabelStrategy) PreparePatch(*v1.Node) []byte {
 	labelString := fmt.Sprintf("{\"%v\":\"%v\"}", s.LabelKey, string(uuid.NewUUID()))
 	patch := fmt.Sprintf(`{"metadata":{"labels":%v}}`, labelString)
@@ -1238,46 +1216,6 @@ func DoPrepareNode(ctx context.Context, client clientset.Interface, node *v1.Nod
 	}
 	if err != nil {
 		return fmt.Errorf("too many conflicts when creating objects for node %s: %s", node.Name, err)
-	}
-	return nil
-}
-
-func DoCleanupNode(ctx context.Context, client clientset.Interface, nodeName string, strategy PrepareNodeStrategy) error {
-	var err error
-	for attempt := 0; attempt < retries; attempt++ {
-		var node *v1.Node
-		node, err = client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("skipping cleanup of Node: failed to get Node %v: %v", nodeName, err)
-		}
-		updatedNode := strategy.CleanupNode(ctx, node)
-		if apiequality.Semantic.DeepEqual(node, updatedNode) {
-			return nil
-		}
-		if _, err = client.CoreV1().Nodes().Update(ctx, updatedNode, metav1.UpdateOptions{}); err == nil {
-			break
-		}
-		if !apierrors.IsConflict(err) {
-			return fmt.Errorf("error when updating Node %v: %v", nodeName, err)
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if err != nil {
-		return fmt.Errorf("too many conflicts when trying to cleanup Node %v: %s", nodeName, err)
-	}
-
-	for attempt := 0; attempt < retries; attempt++ {
-		err = strategy.CleanupDependentObjects(ctx, nodeName, client)
-		if err == nil {
-			break
-		}
-		if !apierrors.IsConflict(err) {
-			return fmt.Errorf("error when cleaning up Node %v objects: %v", nodeName, err)
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if err != nil {
-		return fmt.Errorf("too many conflicts when trying to cleanup Node %v objects: %s", nodeName, err)
 	}
 	return nil
 }
@@ -1510,58 +1448,6 @@ func makeUnboundPersistentVolumeClaim(storageClass string) *v1.PersistentVolumeC
 				},
 			},
 		},
-	}
-}
-
-func NewCreatePodWithPersistentVolumeWithFirstConsumerStrategy(factory volumeFactory, podTemplate *v1.Pod) TestPodCreateStrategy {
-	return func(ctx context.Context, client clientset.Interface, namespace string, podCount int) error {
-		volumeBindingMode := storagev1.VolumeBindingWaitForFirstConsumer
-		storageClass := &storagev1.StorageClass{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "storagev1-class-1",
-			},
-			Provisioner:       "kubernetes.io/gce-pd",
-			VolumeBindingMode: &volumeBindingMode,
-		}
-		claimTemplate := makeUnboundPersistentVolumeClaim(storageClass.Name)
-
-		if err := CreateStorageClassWithRetries(client, storageClass); err != nil {
-			return fmt.Errorf("failed to create storagev1 class: %v", err)
-		}
-
-		factoryWithStorageClass := func(i int) *v1.PersistentVolume {
-			pv := factory(i)
-			pv.Spec.StorageClassName = storageClass.Name
-			return pv
-		}
-
-		return CreatePodWithPersistentVolume(ctx, client, namespace, claimTemplate, factoryWithStorageClass, podTemplate, podCount, false /* bindVolume */)
-	}
-}
-
-func NewSimpleCreatePodStrategy() TestPodCreateStrategy {
-	basePod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "simple-pod-",
-		},
-		Spec: MakePodSpec(),
-	}
-	return NewCustomCreatePodStrategy(basePod)
-}
-
-func NewSimpleWithControllerCreatePodStrategy(controllerName string) TestPodCreateStrategy {
-	return func(ctx context.Context, client clientset.Interface, namespace string, podCount int) error {
-		basePod := &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: controllerName + "-pod-",
-				Labels:       map[string]string{"name": controllerName},
-			},
-			Spec: MakePodSpec(),
-		}
-		if err := createController(client, controllerName, namespace, podCount, basePod); err != nil {
-			return err
-		}
-		return CreatePod(ctx, client, namespace, podCount, basePod)
 	}
 }
 

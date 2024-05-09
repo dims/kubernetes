@@ -82,10 +82,6 @@ func NewFakeVolumeHost(t *testing.T, rootDir string, kubeClient clientset.Interf
 	return newFakeVolumeHost(t, rootDir, kubeClient, plugins, nil, "", nil, nil)
 }
 
-func NewFakeVolumeHostWithCloudProvider(t *testing.T, rootDir string, kubeClient clientset.Interface, plugins []VolumePlugin) FakeVolumeHost {
-	return newFakeVolumeHost(t, rootDir, kubeClient, plugins, nil, "", nil, nil)
-}
-
 func NewFakeVolumeHostWithCSINodeName(t *testing.T, rootDir string, kubeClient clientset.Interface, plugins []VolumePlugin, nodeName string, driverLister storagelistersv1.CSIDriverLister, volumeAttachLister storagelistersv1.VolumeAttachmentLister) FakeVolumeHost {
 	return newFakeVolumeHost(t, rootDir, kubeClient, plugins, nil, nodeName, driverLister, volumeAttachLister)
 }

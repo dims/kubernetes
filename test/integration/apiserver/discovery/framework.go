@@ -578,10 +578,6 @@ func FetchV1DiscoveryGroups(ctx context.Context, client testClient) (metav1.APIG
 	return FetchV1DiscoveryGroupsAtPath(ctx, client, "/apis")
 }
 
-func FetchV1DiscoveryLegacyGroups(ctx context.Context, client testClient) (metav1.APIGroupList, error) {
-	return FetchV1DiscoveryGroupsAtPath(ctx, client, "/api")
-}
-
 func FetchV1DiscoveryGroupsAtPath(ctx context.Context, client testClient, path string) (metav1.APIGroupList, error) {
 	result, err := client.
 		Discovery().
@@ -626,20 +622,6 @@ func FetchV1DiscoveryResource(ctx context.Context, client testClient, gv metav1.
 	}
 
 	return groupList, nil
-}
-
-func WaitForGroupsAbsent(ctx context.Context, client testClient, groups ...string) error {
-	return WaitForResultWithCondition(ctx, client, func(groupList apidiscoveryv2.APIGroupDiscoveryList) bool {
-		for _, searchGroup := range groups {
-			for _, docGroup := range groupList.Items {
-				if docGroup.Name == searchGroup {
-					return false
-				}
-			}
-		}
-		return true
-	})
-
 }
 
 func WaitForRootPaths(t *testing.T, ctx context.Context, client testClient, requirePaths, forbidPaths sets.Set[string]) error {

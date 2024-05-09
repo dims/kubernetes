@@ -19,7 +19,6 @@ package utils
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -687,15 +686,6 @@ func (*customResourceDefinitionFactory) Create(ctx context.Context, f *framework
 	return func(ctx context.Context) error {
 		return f.DynamicClient.Resource(gvr).Delete(ctx, item.GetName(), metav1.DeleteOptions{})
 	}, nil
-}
-
-// PrettyPrint returns a human-readable representation of an item.
-func PrettyPrint(item interface{}) string {
-	data, err := json.MarshalIndent(item, "", "  ")
-	if err == nil {
-		return string(data)
-	}
-	return fmt.Sprintf("%+v", item)
 }
 
 // patchContainerImages replaces the specified Container Registry with a custom

@@ -678,14 +678,6 @@ func createPDWithRetry(ctx context.Context, zone string) (string, error) {
 	}
 }
 
-func CreateShare() (string, string, string, error) {
-	return framework.TestContext.CloudConfig.Provider.CreateShare()
-}
-
-func DeleteShare(accountName, shareName string) error {
-	return framework.TestContext.CloudConfig.Provider.DeleteShare(accountName, shareName)
-}
-
 // CreatePDWithRetry creates PD with retry.
 func CreatePDWithRetry(ctx context.Context) (string, error) {
 	return createPDWithRetry(ctx, "")

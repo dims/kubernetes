@@ -72,11 +72,6 @@ func CreateUnschedulablePod(ctx context.Context, client clientset.Interface, nam
 	return pod, nil
 }
 
-// CreateClientPod defines and creates a pod with a mounted PV. Pod runs infinite loop until killed.
-func CreateClientPod(ctx context.Context, c clientset.Interface, ns string, pvc *v1.PersistentVolumeClaim) (*v1.Pod, error) {
-	return CreatePod(ctx, c, ns, nil, []*v1.PersistentVolumeClaim{pvc}, admissionapi.LevelPrivileged, "")
-}
-
 // CreatePod with given claims based on node selector
 func CreatePod(ctx context.Context, client clientset.Interface, namespace string, nodeSelector map[string]string, pvclaims []*v1.PersistentVolumeClaim, securityLevel admissionapi.Level, command string) (*v1.Pod, error) {
 	pod := MakePod(namespace, nodeSelector, pvclaims, securityLevel, command)

@@ -24,13 +24,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 // GetServicesProxyRequest returns a request for a service proxy.
@@ -117,17 +115,6 @@ func GetServiceLoadBalancerPropagationTimeout(ctx context.Context, cs clientset.
 		return loadBalancerPropagationTimeoutLarge
 	}
 	return loadBalancerPropagationTimeoutDefault
-}
-
-// CreateServiceForSimpleAppWithPods is a convenience wrapper to create a service and its matching pods all at once.
-func CreateServiceForSimpleAppWithPods(ctx context.Context, c clientset.Interface, contPort int, svcPort int, namespace, appName string, podSpec func(n v1.Node) v1.PodSpec, count int, block bool) (*v1.Service, error) {
-	var err error
-	theService := CreateServiceForSimpleApp(ctx, c, contPort, svcPort, namespace, appName)
-	e2enode.CreatePodsPerNodeForSimpleApp(ctx, c, namespace, appName, podSpec, count)
-	if block {
-		err = testutils.WaitForPodsWithLabelRunning(c, namespace, labels.SelectorFromSet(labels.Set(theService.Spec.Selector)))
-	}
-	return theService, err
 }
 
 // CreateServiceForSimpleApp returns a service that selects/exposes pods (send -1 ports if no exposure needed) with an app label.

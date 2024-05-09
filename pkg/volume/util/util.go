@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"time"
 
@@ -46,7 +45,6 @@ import (
 	"k8s.io/kubernetes/pkg/volume/util/types"
 	"k8s.io/kubernetes/pkg/volume/util/volumepathhandler"
 	"k8s.io/mount-utils"
-	utilexec "k8s.io/utils/exec"
 	"k8s.io/utils/io"
 	utilstrings "k8s.io/utils/strings"
 )
@@ -109,22 +107,6 @@ func SetReady(dir string) {
 		return
 	}
 	file.Close()
-}
-
-// GetSecretForPod locates secret by name in the pod's namespace and returns secret map
-func GetSecretForPod(pod *v1.Pod, secretName string, kubeClient clientset.Interface) (map[string]string, error) {
-	secret := make(map[string]string)
-	if kubeClient == nil {
-		return secret, fmt.Errorf("cannot get kube client")
-	}
-	secrets, err := kubeClient.CoreV1().Secrets(pod.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
-	if err != nil {
-		return secret, err
-	}
-	for name, data := range secrets.Data {
-		secret[name] = string(data)
-	}
-	return secret, nil
 }
 
 // GetSecretForPV locates secret by name and namespace, verifies the secret type, and returns secret map
@@ -698,25 +680,6 @@ func HasMountRefs(mountPath string, mountRefs []string) bool {
 		}
 	}
 	return false
-}
-
-// WriteVolumeCache flush disk data given the specified mount path
-func WriteVolumeCache(deviceMountPath string, exec utilexec.Interface) error {
-	// If runtime os is windows, execute Write-VolumeCache powershell command on the disk
-	if runtime.GOOS == "windows" {
-		cmdString := "Get-Volume -FilePath $env:mountpath | Write-Volumecache"
-		cmd := exec.Command("powershell", "/c", cmdString)
-		env := append(os.Environ(), fmt.Sprintf("mountpath=%s", deviceMountPath))
-		cmd.SetEnv(env)
-		klog.V(8).Infof("Executing command: %q", cmdString)
-		output, err := cmd.CombinedOutput()
-		klog.Infof("command (%q) execeuted: %v, output: %q", cmdString, err, string(output))
-		if err != nil {
-			return fmt.Errorf("command (%q) failed: %v, output: %q", cmdString, err, string(output))
-		}
-	}
-	// For linux runtime, it skips because unmount will automatically flush disk data
-	return nil
 }
 
 // IsMultiAttachAllowed checks if attaching this volume to multiple nodes is definitely not allowed/possible.

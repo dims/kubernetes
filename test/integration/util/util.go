@@ -459,19 +459,6 @@ func NodeTainted(cs clientset.Interface, nodeName string, taints []v1.Taint) wai
 	}
 }
 
-// NodeReadyStatus returns the status of first condition with type NodeReady.
-// If none of the condition is of type NodeReady, returns an error.
-func NodeReadyStatus(conditions []v1.NodeCondition) (v1.ConditionStatus, error) {
-	for _, c := range conditions {
-		if c.Type != v1.NodeReady {
-			continue
-		}
-		// Just return the first condition with type NodeReady
-		return c.Status, nil
-	}
-	return v1.ConditionFalse, errors.New("None of the conditions is of type NodeReady")
-}
-
 // GetTolerationSeconds gets the period of time the toleration
 func GetTolerationSeconds(tolerations []v1.Toleration) (int64, error) {
 	for _, t := range tolerations {
@@ -480,23 +467,6 @@ func GetTolerationSeconds(tolerations []v1.Toleration) (int64, error) {
 		}
 	}
 	return 0, fmt.Errorf("cannot find toleration")
-}
-
-// NodeCopyWithConditions duplicates the ode object with conditions
-func NodeCopyWithConditions(node *v1.Node, conditions []v1.NodeCondition) *v1.Node {
-	copy := node.DeepCopy()
-	copy.ResourceVersion = "0"
-	copy.Status.Conditions = conditions
-	for i := range copy.Status.Conditions {
-		copy.Status.Conditions[i].LastHeartbeatTime = metav1.Now()
-	}
-	return copy
-}
-
-// UpdateNodeStatus updates the status of node.
-func UpdateNodeStatus(cs clientset.Interface, node *v1.Node) error {
-	_, err := cs.CoreV1().Nodes().UpdateStatus(context.TODO(), node, metav1.UpdateOptions{})
-	return err
 }
 
 // InitTestAPIServer initializes a test environment and creates an API server with default
@@ -1154,24 +1124,6 @@ func NextPodOrDie(t *testing.T, testCtx *TestContext) *schedulerframework.Queued
 		podInfo, _ = testCtx.Scheduler.NextPod(logger)
 	}); err != nil {
 		t.Fatalf("Timed out waiting for the Pod to be popped: %v", err)
-	}
-	return podInfo
-}
-
-// NextPod returns the next Pod in the scheduler queue, with a 5 seconds timeout.
-// Note that this function leaks goroutines in the case of timeout; even after this function returns after timeout,
-// the goroutine made by this function keep waiting to pop a pod from the queue.
-func NextPod(t *testing.T, testCtx *TestContext) *schedulerframework.QueuedPodInfo {
-	t.Helper()
-
-	var podInfo *schedulerframework.QueuedPodInfo
-	logger := klog.FromContext(testCtx.Ctx)
-	// NextPod() is a blocking operation. Wrap it in timeout() to avoid relying on
-	// default go testing timeout (10m) to abort.
-	if err := timeout(testCtx.Ctx, time.Second*5, func() {
-		podInfo, _ = testCtx.Scheduler.NextPod(logger)
-	}); err != nil {
-		return nil
 	}
 	return podInfo
 }

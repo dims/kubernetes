@@ -83,17 +83,6 @@ var (
 	SyncFromCluster NodeSyncMode = "SyncFromCluster"
 )
 
-// IsValidMode returns true if the given mode is valid.
-func IsValidMode(m NodeSyncMode) bool {
-	switch m {
-	case SyncFromCloud:
-	case SyncFromCluster:
-	default:
-		return false
-	}
-	return true
-}
-
 // NodeSync synchronizes the state for a single node in the cluster.
 type NodeSync struct {
 	c          controller
