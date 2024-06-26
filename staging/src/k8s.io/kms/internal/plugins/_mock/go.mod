@@ -9,7 +9,6 @@ require (
 
 require (
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/miekg/pkcs11 v1.0.3-0.20190429190417-a667d056470f // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
@@ -23,4 +22,4 @@ require (
 
 replace k8s.io/kms => ../../../../kms
 
-replace google.golang.org/grpc => github.com/grpc/grpc-go v1.61.2
+replace google.golang.org/grpc => github.com/grpc/grpc-go v1.63.0

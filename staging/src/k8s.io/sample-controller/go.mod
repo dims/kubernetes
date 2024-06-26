@@ -5,7 +5,7 @@ module k8s.io/sample-controller
 go 1.22.0
 
 require (
-	golang.org/x/time v0.3.0
+	golang.org/x/time v0.5.0
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v0.0.0

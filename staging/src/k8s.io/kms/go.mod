@@ -10,7 +10,6 @@ require (
 )
 
 require (
-	github.com/golang/protobuf v1.5.4 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
@@ -19,6 +18,6 @@ require (
 )
 
 replace (
-	google.golang.org/grpc => github.com/grpc/grpc-go v1.61.2
+	google.golang.org/grpc => github.com/grpc/grpc-go v1.63.0
 	k8s.io/kms => ../kms
 )

@@ -39,7 +39,7 @@ require (
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -57,4 +57,4 @@ replace (
 	k8s.io/client-go => ../../client-go
 )
 
-replace google.golang.org/grpc => github.com/grpc/grpc-go v1.61.2
+replace google.golang.org/grpc => github.com/grpc/grpc-go v1.63.0
