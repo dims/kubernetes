@@ -18,6 +18,6 @@ require (
 )
 
 replace (
-	google.golang.org/grpc => github.com/grpc/grpc-go v1.63.2
+	google.golang.org/grpc => github.com/grpc/grpc-go v1.64.0
 	k8s.io/kms => ../kms
 )
