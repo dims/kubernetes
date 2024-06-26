@@ -82,7 +82,7 @@ func (c *client) Start(context.Context) error {
 	if c.conn == nil {
 		// If the caller did not provide a ClientConn when the client was
 		// created, create one using the configuration they did provide.
-		conn, err := grpc.NewClient(c.endpoint, c.dialOpts...)
+		conn, err := grpc.Dial(c.endpoint, c.dialOpts...)
 		if err != nil {
 			return err
 		}

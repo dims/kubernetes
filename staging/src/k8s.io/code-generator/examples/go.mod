@@ -56,3 +56,5 @@ replace (
 	k8s.io/apimachinery => ../../apimachinery
 	k8s.io/client-go => ../../client-go
 )
+
+replace google.golang.org/grpc => github.com/grpc/grpc-go v1.59.0
