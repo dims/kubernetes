@@ -57,4 +57,4 @@ replace (
 	k8s.io/client-go => ../../client-go
 )
 
-replace google.golang.org/grpc => github.com/grpc/grpc-go v1.59.0
+replace google.golang.org/grpc => github.com/grpc/grpc-go v1.61.2

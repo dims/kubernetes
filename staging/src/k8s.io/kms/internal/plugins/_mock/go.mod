@@ -23,4 +23,4 @@ require (
 
 replace k8s.io/kms => ../../../../kms
 
-replace google.golang.org/grpc => github.com/grpc/grpc-go v1.59.0
+replace google.golang.org/grpc => github.com/grpc/grpc-go v1.61.2
