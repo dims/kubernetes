@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opencontainers/runc/libcontainer/apparmor"
 	v1 "k8s.io/api/core/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -93,7 +92,7 @@ func validateHost() error {
 	}
 
 	// Check kernel support.
-	if !apparmor.IsEnabled() {
+	if !IsEnabled() {
 		return errors.New("AppArmor is not enabled on the host")
 	}
 
