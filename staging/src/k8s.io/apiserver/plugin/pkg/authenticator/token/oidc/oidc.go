@@ -42,7 +42,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/go-oidc"
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types/ref"
 
@@ -58,6 +57,7 @@ import (
 	authenticationcel "k8s.io/apiserver/pkg/authentication/cel"
 	authenticationtokenjwt "k8s.io/apiserver/pkg/authentication/token/jwt"
 	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/third_party/forked/go-oidc"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/klog/v2"
 )

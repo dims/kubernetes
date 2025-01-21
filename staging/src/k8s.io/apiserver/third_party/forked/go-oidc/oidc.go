@@ -17,22 +17,6 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-	jose "gopkg.in/square/go-jose.v2"
-)
-
-const (
-	// ScopeOpenID is the mandatory scope for all OpenID Connect OAuth2 requests.
-	ScopeOpenID = "openid"
-
-	// ScopeOfflineAccess is an optional scope defined by OpenID Connect for requesting
-	// OAuth2 refresh tokens.
-	//
-	// Support for this scope differs between OpenID Connect providers. For instance
-	// Google rejects it, favoring appending "access_type=offline" as part of the
-	// authorization request instead.
-	//
-	// See: https://openid.net/specs/openid-connect-core-1_0.html#OfflineAccess
-	ScopeOfflineAccess = "offline_access"
 )
 
 var (
@@ -75,11 +59,6 @@ type Provider struct {
 	rawClaims []byte
 
 	remoteKeySet KeySet
-}
-
-type cachedKeys struct {
-	keys   []jose.JSONWebKey
-	expiry time.Time
 }
 
 type providerJSON struct {

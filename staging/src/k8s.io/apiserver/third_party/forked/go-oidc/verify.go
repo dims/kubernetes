@@ -7,13 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
-	jose "gopkg.in/square/go-jose.v2"
+	jose "gopkg.in/go-jose/go-jose.v2"
 )
 
 const (
@@ -136,53 +133,6 @@ func contains(sli []string, ele string) bool {
 		}
 	}
 	return false
-}
-
-// Returns the Claims from the distributed JWT token
-func resolveDistributedClaim(ctx context.Context, verifier *IDTokenVerifier, src claimSource) ([]byte, error) {
-	req, err := http.NewRequest("GET", src.Endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("malformed request: %v", err)
-	}
-	if src.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+src.AccessToken)
-	}
-
-	resp, err := doRequest(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("oidc: Request to endpoint failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read response body: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("oidc: request failed: %v", resp.StatusCode)
-	}
-
-	token, err := verifier.Verify(ctx, string(body))
-	if err != nil {
-		return nil, fmt.Errorf("malformed response body: %v", err)
-	}
-
-	return token.claims, nil
-}
-
-func parseClaim(raw []byte, name string, v interface{}) error {
-	var parsed map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &parsed); err != nil {
-		return err
-	}
-
-	val, ok := parsed[name]
-	if !ok {
-		return fmt.Errorf("claim doesn't exist: %s", name)
-	}
-
-	return json.Unmarshal([]byte(val), v)
 }
 
 // Verify parses a raw ID Token, verifies it's been signed by the provider, preforms
@@ -327,10 +277,4 @@ func (v *IDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*IDTok
 	}
 
 	return t, nil
-}
-
-// Nonce returns an auth code option which requires the ID Token created by the
-// OpenID Connect provider to contain the specified nonce.
-func Nonce(nonce string) oauth2.AuthCodeOption {
-	return oauth2.SetAuthURLParam("nonce", nonce)
 }
