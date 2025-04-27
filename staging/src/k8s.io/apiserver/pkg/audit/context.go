@@ -350,3 +350,10 @@ func GetAuditIDTruncated(ctx context.Context) string {
 
 	return string(auditID)
 }
+
+func DeepcopyInternalEvent(ac *AuditContext) *auditinternal.Event {
+	ac.lock.Lock()
+	defer ac.lock.Unlock()
+
+	return ac.event.DeepCopy()
+}

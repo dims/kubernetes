@@ -193,9 +193,7 @@ func processAuditEvent(ctx context.Context, stage auditinternal.Stage, sink audi
 	}
 
 	audit.ObserveEvent(ctx)
-	return ac.Invoke(func(e *auditinternal.Event) bool {
-		return sink.ProcessEvents(e)
-	})
+	return sink.ProcessEvents(audit.DeepcopyInternalEvent(ac))
 }
 
 func decorateResponseWriter(ctx context.Context, responseWriter http.ResponseWriter, sink audit.Sink, omitStages []auditinternal.Stage) http.ResponseWriter {
