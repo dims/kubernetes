@@ -59,8 +59,7 @@ func WithAudit(handler http.Handler, sink audit.Sink, policy audit.PolicyRuleEva
 		ctx := req.Context()
 		omitStages := ac.RequestAuditConfig.OmitStages
 
-		ac.SetEventStage(auditinternal.StageRequestReceived)
-		if processed := processAuditEvent(ctx, sink, omitStages); !processed {
+		if processed := processAuditEvent(ctx, auditinternal.StageRequestReceived, sink, omitStages); !processed {
 			audit.ApiserverAuditDroppedCounter.WithContext(ctx).Inc()
 			responsewriters.InternalError(w, req, errors.New("failed to store audit event"))
 			return
@@ -81,14 +80,13 @@ func WithAudit(handler http.Handler, sink audit.Sink, policy audit.PolicyRuleEva
 		defer func() {
 			if r := recover(); r != nil {
 				defer panic(r)
-				ac.SetEventStage(auditinternal.StagePanic)
 				ac.SetEventResponseStatus(&metav1.Status{
 					Code:    http.StatusInternalServerError,
 					Status:  metav1.StatusFailure,
 					Reason:  metav1.StatusReasonInternalError,
 					Message: fmt.Sprintf("APIServer panic'd: %v", r),
 				})
-				processAuditEvent(ctx, sink, omitStages)
+				processAuditEvent(ctx, auditinternal.StagePanic, sink, omitStages)
 				return
 			}
 
@@ -101,15 +99,13 @@ func WithAudit(handler http.Handler, sink audit.Sink, policy audit.PolicyRuleEva
 			}
 			if ac.GetEventResponseStatus() == nil && longRunningSink != nil {
 				ac.SetEventResponseStatus(fakedSuccessStatus)
-				ac.SetEventStage(auditinternal.StageResponseStarted)
-				processAuditEvent(ctx, longRunningSink, omitStages)
+				processAuditEvent(ctx, auditinternal.StageResponseStarted, longRunningSink, omitStages)
 			}
 
-			ac.SetEventStage(auditinternal.StageResponseComplete)
 			if ac.GetEventResponseStatus() == nil {
 				ac.SetEventResponseStatus(fakedSuccessStatus)
 			}
-			processAuditEvent(ctx, sink, omitStages)
+			processAuditEvent(ctx, auditinternal.StageResponseComplete, sink, omitStages)
 		}()
 		handler.ServeHTTP(respWriter, req)
 	})
@@ -177,18 +173,19 @@ func writeLatencyToAnnotation(ctx context.Context) {
 	audit.AddAuditAnnotationsMap(ctx, layerLatencies)
 }
 
-func processAuditEvent(ctx context.Context, sink audit.Sink, omitStages []auditinternal.Stage) bool {
+func processAuditEvent(ctx context.Context, stage auditinternal.Stage, sink audit.Sink, omitStages []auditinternal.Stage) bool {
 	ac := audit.AuditContextFrom(ctx)
-	for _, stage := range omitStages {
-		if ac.GetEventStage() == stage {
+	ac.SetEventStage(stage)
+	for _, omitStage := range omitStages {
+		if stage == omitStage {
 			return true
 		}
 	}
 
 	switch {
-	case ac.GetEventStage() == auditinternal.StageRequestReceived:
+	case stage == auditinternal.StageRequestReceived:
 		ac.SetEventStageTimestamp(metav1.NewMicroTime(ac.GetEventRequestReceivedTimestamp().Time))
-	case ac.GetEventStage() == auditinternal.StageResponseComplete:
+	case stage == auditinternal.StageResponseComplete:
 		ac.SetEventStageTimestamp(metav1.NewMicroTime(time.Now()))
 		writeLatencyToAnnotation(ctx)
 	default:
@@ -236,10 +233,9 @@ func (a *auditResponseWriter) processCode(code int) {
 			ac.SetEventResponseStatus(&metav1.Status{})
 		}
 		ac.GetEventResponseStatus().Code = int32(code)
-		ac.SetEventStage(auditinternal.StageResponseStarted)
 
 		if a.sink != nil {
-			processAuditEvent(a.ctx, a.sink, a.omitStages)
+			processAuditEvent(a.ctx, auditinternal.StageResponseStarted, a.sink, a.omitStages)
 		}
 	})
 }

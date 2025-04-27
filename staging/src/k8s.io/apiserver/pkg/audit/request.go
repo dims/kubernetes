@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	authnv1 "k8s.io/api/authentication/v1"
 	"net/http"
 	"time"
 
@@ -44,7 +45,41 @@ func LogRequestMetadata(ctx context.Context, req *http.Request, requestReceivedT
 	if !ac.Enabled() {
 		return
 	}
-	ac.LogRequestMetadata(req.URL.RequestURI(), maybeTruncateUserAgent(req), utilnet.SourceIPs(req), requestReceivedTimestamp, level, attribs)
+
+	ac.visitEvent(func(ev *auditinternal.Event) {
+		ev.RequestReceivedTimestamp = metav1.NewMicroTime(requestReceivedTimestamp)
+		ev.Verb = attribs.GetVerb()
+		ev.RequestURI = req.URL.RequestURI()
+		ev.UserAgent = maybeTruncateUserAgent(req)
+		ev.Level = level
+
+		ips := utilnet.SourceIPs(req)
+		ev.SourceIPs = make([]string, len(ips))
+		for i := range ips {
+			ev.SourceIPs[i] = ips[i].String()
+		}
+
+		if user := attribs.GetUser(); user != nil {
+			ev.User.Username = user.GetName()
+			ev.User.Extra = map[string]authnv1.ExtraValue{}
+			for k, v := range user.GetExtra() {
+				ev.User.Extra[k] = authnv1.ExtraValue(v)
+			}
+			ev.User.Groups = user.GetGroups()
+			ev.User.UID = user.GetUID()
+		}
+
+		if attribs.IsResourceRequest() {
+			ev.ObjectRef = &auditinternal.ObjectReference{
+				Namespace:   attribs.GetNamespace(),
+				Name:        attribs.GetName(),
+				Resource:    attribs.GetResource(),
+				Subresource: attribs.GetSubresource(),
+				APIGroup:    attribs.GetAPIGroup(),
+				APIVersion:  attribs.GetAPIVersion(),
+			}
+		}
+	})
 }
 
 // LogImpersonatedUser fills in the impersonated user attributes into an audit event.
@@ -53,7 +88,7 @@ func LogImpersonatedUser(ctx context.Context, user user.Info) {
 	if !ac.Enabled() {
 		return
 	}
-	if ac.EventIsNil() || ac.Level().Less(auditinternal.LevelMetadata) {
+	if ac.Level().Less(auditinternal.LevelMetadata) {
 		return
 	}
 	ac.LogImpersonatedUser(user)
@@ -66,7 +101,7 @@ func LogRequestObject(ctx context.Context, obj runtime.Object, objGV schema.Grou
 	if !ac.Enabled() {
 		return
 	}
-	if ac.EventIsNil() || ac.Level().Less(auditinternal.LevelMetadata) {
+	if ac.Level().Less(auditinternal.LevelMetadata) {
 		return
 	}
 
@@ -89,13 +124,48 @@ func LogRequestObject(ctx context.Context, obj runtime.Object, objGV schema.Grou
 		klog.ErrorS(err, "Encoding failed of request object", "auditID", ac.AuditID(), "gvr", gvr.String(), "obj", obj)
 		return
 	}
-	ac.LogRequestObject(objMeta, gvr, subresource, requestObject)
+
+	ac.visitEvent(func(ae *auditinternal.Event) {
+		if ae.ObjectRef == nil {
+			ae.ObjectRef = &auditinternal.ObjectReference{}
+		}
+
+		if objMeta != nil {
+			if len(ae.ObjectRef.Namespace) == 0 {
+				ae.ObjectRef.Namespace = objMeta.GetNamespace()
+			}
+			if len(ae.ObjectRef.Name) == 0 {
+				ae.ObjectRef.Name = objMeta.GetName()
+			}
+			if len(ae.ObjectRef.UID) == 0 {
+				ae.ObjectRef.UID = objMeta.GetUID()
+			}
+			if len(ae.ObjectRef.ResourceVersion) == 0 {
+				ae.ObjectRef.ResourceVersion = objMeta.GetResourceVersion()
+			}
+		}
+		if len(ae.ObjectRef.APIVersion) == 0 {
+			ae.ObjectRef.APIGroup = gvr.Group
+			ae.ObjectRef.APIVersion = gvr.Version
+		}
+		if len(ae.ObjectRef.Resource) == 0 {
+			ae.ObjectRef.Resource = gvr.Resource
+		}
+		if len(ae.ObjectRef.Subresource) == 0 {
+			ae.ObjectRef.Subresource = subresource
+		}
+
+		if ae.Level.Less(auditinternal.LevelRequest) {
+			return
+		}
+		ae.RequestObject = requestObject
+	})
 }
 
 // LogRequestPatch fills in the given patch as the request object into an audit event.
 func LogRequestPatch(ctx context.Context, patch []byte) {
 	ac := AuditContextFrom(ctx)
-	if ac.EventIsNil() || ac.Level().Less(auditinternal.LevelRequest) {
+	if ac.Level().Less(auditinternal.LevelRequest) {
 		return
 	}
 	ac.LogRequestPatch(patch)
@@ -105,7 +175,7 @@ func LogRequestPatch(ctx context.Context, patch []byte) {
 // will be converted to the given gv.
 func LogResponseObject(ctx context.Context, obj runtime.Object, gv schema.GroupVersion, s runtime.NegotiatedSerializer) {
 	ac := AuditContextFrom(WithAuditContext(ctx))
-	if ac.EventIsNil() || ac.Level().Less(auditinternal.LevelMetadata) {
+	if ac.Level().Less(auditinternal.LevelMetadata) {
 		return
 	}
 

@@ -18,21 +18,16 @@ package audit
 
 import (
 	"context"
-	"maps"
-	"net"
-	"sync"
-	"time"
-
 	authnv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	auditinternal "k8s.io/apiserver/pkg/apis/audit"
 	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/apiserver/pkg/authorization/authorizer"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog/v2"
+	"maps"
+	"sync"
 )
 
 // The key type is unexported to prevent collisions
@@ -52,7 +47,10 @@ type AuditContext struct {
 
 	// event is the audit Event object that is being captured to be written in
 	// the API audit log.
-	event *auditinternal.Event
+	event auditinternal.Event
+
+	// unguarded copy of auditID from the event
+	auditID types.UID
 }
 
 // Enabled checks whether auditing is enabled for this audit context.
@@ -66,84 +64,29 @@ func (ac *AuditContext) Enabled() bool {
 // Null value level can also be compared.
 func (ac *AuditContext) Level() auditinternal.Level {
 	var ret auditinternal.Level
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		ret = event.Level
 	})
 	return ret
 }
 
 func (ac *AuditContext) AuditID() types.UID {
-	var ret types.UID
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
-		ret = event.AuditID
-	})
-	return ret
+	// return the unguarded copy of the auditID
+	return ac.auditID
 }
 
-func (ac *AuditContext) EventIsNil() bool {
-	var result bool
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
-		result = event == nil
-	})
-	return result
-}
-
-func (ac *AuditContext) visitEventIfNotNil(f func(event *auditinternal.Event)) {
+func (ac *AuditContext) visitEvent(f func(event *auditinternal.Event)) {
 	ac.lock.Lock()
 	defer ac.lock.Unlock()
-	if ac.event == nil {
-		return
-	}
-	f(ac.event)
+	ac.visitEventLocked(f)
 }
 
-func (ac *AuditContext) visitEventIfNotNilLocked(f func(event *auditinternal.Event)) {
-	if ac.event == nil {
-		return
-	}
-	f(ac.event)
-}
-
-func (ac *AuditContext) LogRequestObject(objMeta metav1.Object, gvr schema.GroupVersionResource, subresource string, obj *runtime.Unknown) {
-	ac.visitEventIfNotNil(func(ae *auditinternal.Event) {
-		if ae.ObjectRef == nil {
-			ae.ObjectRef = &auditinternal.ObjectReference{}
-		}
-
-		if objMeta != nil {
-			if len(ae.ObjectRef.Namespace) == 0 {
-				ae.ObjectRef.Namespace = objMeta.GetNamespace()
-			}
-			if len(ae.ObjectRef.Name) == 0 {
-				ae.ObjectRef.Name = objMeta.GetName()
-			}
-			if len(ae.ObjectRef.UID) == 0 {
-				ae.ObjectRef.UID = objMeta.GetUID()
-			}
-			if len(ae.ObjectRef.ResourceVersion) == 0 {
-				ae.ObjectRef.ResourceVersion = objMeta.GetResourceVersion()
-			}
-		}
-		if len(ae.ObjectRef.APIVersion) == 0 {
-			ae.ObjectRef.APIGroup = gvr.Group
-			ae.ObjectRef.APIVersion = gvr.Version
-		}
-		if len(ae.ObjectRef.Resource) == 0 {
-			ae.ObjectRef.Resource = gvr.Resource
-		}
-		if len(ae.ObjectRef.Subresource) == 0 {
-			ae.ObjectRef.Subresource = subresource
-		}
-
-		if ae.Level.Less(auditinternal.LevelRequest) {
-			return
-		}
-		ae.RequestObject = obj
-	})
+func (ac *AuditContext) visitEventLocked(f func(event *auditinternal.Event)) {
+	f(&ac.event)
 }
 
 func (ac *AuditContext) LogImpersonatedUser(user user.Info) {
-	ac.visitEventIfNotNil(func(ev *auditinternal.Event) {
+	ac.visitEvent(func(ev *auditinternal.Event) {
 		if ev == nil || ev.Level.Less(auditinternal.LevelMetadata) {
 			return
 		}
@@ -159,45 +102,8 @@ func (ac *AuditContext) LogImpersonatedUser(user user.Info) {
 	})
 }
 
-func (ac *AuditContext) LogRequestMetadata(uri string, agent string, sourceIps []net.IP, requestReceivedTimestamp time.Time, level auditinternal.Level, attribs authorizer.Attributes) {
-	ac.visitEventIfNotNil(func(ev *auditinternal.Event) {
-		ev.RequestReceivedTimestamp = metav1.NewMicroTime(requestReceivedTimestamp)
-		ev.Verb = attribs.GetVerb()
-		ev.RequestURI = uri
-		ev.UserAgent = agent
-		ev.Level = level
-
-		ips := sourceIps
-		ev.SourceIPs = make([]string, len(ips))
-		for i := range ips {
-			ev.SourceIPs[i] = ips[i].String()
-		}
-
-		if user := attribs.GetUser(); user != nil {
-			ev.User.Username = user.GetName()
-			ev.User.Extra = map[string]authnv1.ExtraValue{}
-			for k, v := range user.GetExtra() {
-				ev.User.Extra[k] = authnv1.ExtraValue(v)
-			}
-			ev.User.Groups = user.GetGroups()
-			ev.User.UID = user.GetUID()
-		}
-
-		if attribs.IsResourceRequest() {
-			ev.ObjectRef = &auditinternal.ObjectReference{
-				Namespace:   attribs.GetNamespace(),
-				Name:        attribs.GetName(),
-				Resource:    attribs.GetResource(),
-				Subresource: attribs.GetSubresource(),
-				APIGroup:    attribs.GetAPIGroup(),
-				APIVersion:  attribs.GetAPIVersion(),
-			}
-		}
-	})
-}
-
 func (ac *AuditContext) LogResponseObject(status *metav1.Status, obj *runtime.Unknown) {
-	ac.visitEventIfNotNil(func(ae *auditinternal.Event) {
+	ac.visitEvent(func(ae *auditinternal.Event) {
 		if status != nil {
 			// selectively copy the bounded fields.
 			ae.ResponseStatus = &metav1.Status{
@@ -217,7 +123,7 @@ func (ac *AuditContext) LogResponseObject(status *metav1.Status, obj *runtime.Un
 
 // LogRequestPatch fills in the given patch as the request object into an audit event.
 func (ac *AuditContext) LogRequestPatch(patch []byte) {
-	ac.visitEventIfNotNil(func(ae *auditinternal.Event) {
+	ac.visitEvent(func(ae *auditinternal.Event) {
 		ae.RequestObject = &runtime.Unknown{
 			Raw:         patch,
 			ContentType: runtime.ContentTypeJSON,
@@ -228,7 +134,7 @@ func (ac *AuditContext) LogRequestPatch(patch []byte) {
 func (ac *AuditContext) GetEventAnnotation(key string) (string, bool) {
 	var val string
 	var ok bool
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		val, ok = event.Annotations[key]
 	})
 	return val, ok
@@ -236,41 +142,41 @@ func (ac *AuditContext) GetEventAnnotation(key string) (string, bool) {
 
 func (ac *AuditContext) GetEventLevel() auditinternal.Level {
 	var level auditinternal.Level
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		level = event.Level
 	})
 	return level
 }
 
 func (ac *AuditContext) SetEventLevel(level auditinternal.Level) {
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		event.Level = level
 	})
 }
 
 func (ac *AuditContext) SetEventStage(stage auditinternal.Stage) {
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		event.Stage = stage
 	})
 }
 
 func (ac *AuditContext) GetEventStage() auditinternal.Stage {
 	var stage auditinternal.Stage
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		stage = event.Stage
 	})
 	return stage
 }
 
 func (ac *AuditContext) SetEventStageTimestamp(timestamp metav1.MicroTime) {
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		event.StageTimestamp = timestamp
 	})
 }
 
 func (ac *AuditContext) GetEventResponseStatus() *metav1.Status {
 	var status *metav1.Status
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		status = event.ResponseStatus
 	})
 	return status
@@ -278,7 +184,7 @@ func (ac *AuditContext) GetEventResponseStatus() *metav1.Status {
 
 func (ac *AuditContext) GetEventRequestReceivedTimestamp() metav1.MicroTime {
 	var timestamp metav1.MicroTime
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		timestamp = event.RequestReceivedTimestamp
 	})
 	return timestamp
@@ -286,21 +192,21 @@ func (ac *AuditContext) GetEventRequestReceivedTimestamp() metav1.MicroTime {
 
 func (ac *AuditContext) GetEventStageTimestamp() metav1.MicroTime {
 	var timestamp metav1.MicroTime
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		timestamp = event.StageTimestamp
 	})
 	return timestamp
 }
 
 func (ac *AuditContext) SetEventResponseStatus(status *metav1.Status) {
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		event.ResponseStatus = status
 	})
 }
 
 func (ac *AuditContext) GetEventAnnotations() map[string]string {
 	var annotations map[string]string
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+	ac.visitEvent(func(event *auditinternal.Event) {
 		annotations = maps.Clone(event.Annotations)
 	})
 	return annotations
@@ -308,8 +214,8 @@ func (ac *AuditContext) GetEventAnnotations() map[string]string {
 
 func (ac *AuditContext) Invoke(f func(e *auditinternal.Event) bool) bool {
 	var done bool
-	ac.visitEventIfNotNil(func(event *auditinternal.Event) {
-		done = f(ac.event)
+	ac.visitEvent(func(event *auditinternal.Event) {
+		done = f(&ac.event)
 	})
 	return done
 }
@@ -371,7 +277,7 @@ func AddAuditAnnotationsMap(ctx context.Context, annotations map[string]string) 
 
 // addAuditAnnotationLocked records the audit annotation on the event.
 func addAuditAnnotationLocked(ac *AuditContext, key, value string) {
-	ac.visitEventIfNotNilLocked(func(ae *auditinternal.Event) {
+	ac.visitEventLocked(func(ae *auditinternal.Event) {
 		if ae.Annotations == nil {
 			ae.Annotations = make(map[string]string)
 		}
@@ -390,7 +296,7 @@ func WithAuditContext(parent context.Context) context.Context {
 	}
 
 	return genericapirequest.WithValue(parent, auditKey, &AuditContext{
-		event: &auditinternal.Event{},
+		event: auditinternal.Event{},
 	})
 }
 
@@ -409,7 +315,8 @@ func WithAuditID(ctx context.Context, auditID types.UID) {
 		return
 	}
 	if ac := AuditContextFrom(ctx); ac != nil {
-		ac.visitEventIfNotNil(func(event *auditinternal.Event) {
+		ac.auditID = auditID
+		ac.visitEvent(func(event *auditinternal.Event) {
 			event.AuditID = auditID
 		})
 	}
@@ -419,11 +326,7 @@ func WithAuditID(ctx context.Context, auditID types.UID) {
 // auditing is enabled.
 func AuditIDFrom(ctx context.Context) (types.UID, bool) {
 	if ac := AuditContextFrom(ctx); ac != nil {
-		var ret types.UID
-		ac.visitEventIfNotNil(func(event *auditinternal.Event) {
-			ret = event.AuditID
-		})
-		return ret, true
+		return ac.auditID, true
 	}
 	return "", false
 }
