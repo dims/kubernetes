@@ -20,10 +20,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	authnv1 "k8s.io/api/authentication/v1"
 	"net/http"
 	"time"
 
+	authnv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -88,9 +88,6 @@ func LogImpersonatedUser(ctx context.Context, user user.Info) {
 	if !ac.Enabled() {
 		return
 	}
-	if ac.Level().Less(auditinternal.LevelMetadata) {
-		return
-	}
 	ac.LogImpersonatedUser(user)
 }
 
@@ -101,7 +98,7 @@ func LogRequestObject(ctx context.Context, obj runtime.Object, objGV schema.Grou
 	if !ac.Enabled() {
 		return
 	}
-	if ac.Level().Less(auditinternal.LevelMetadata) {
+	if ac.GetEventLevel().Less(auditinternal.LevelMetadata) {
 		return
 	}
 
@@ -165,7 +162,7 @@ func LogRequestObject(ctx context.Context, obj runtime.Object, objGV schema.Grou
 // LogRequestPatch fills in the given patch as the request object into an audit event.
 func LogRequestPatch(ctx context.Context, patch []byte) {
 	ac := AuditContextFrom(ctx)
-	if ac.Level().Less(auditinternal.LevelRequest) {
+	if ac.GetEventLevel().Less(auditinternal.LevelRequest) {
 		return
 	}
 	ac.LogRequestPatch(patch)
@@ -175,7 +172,7 @@ func LogRequestPatch(ctx context.Context, patch []byte) {
 // will be converted to the given gv.
 func LogResponseObject(ctx context.Context, obj runtime.Object, gv schema.GroupVersion, s runtime.NegotiatedSerializer) {
 	ac := AuditContextFrom(WithAuditContext(ctx))
-	if ac.Level().Less(auditinternal.LevelMetadata) {
+	if ac.GetEventLevel().Less(auditinternal.LevelMetadata) {
 		return
 	}
 

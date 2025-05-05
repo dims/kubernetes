@@ -18,6 +18,9 @@ package audit
 
 import (
 	"context"
+	"maps"
+	"sync"
+
 	authnv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,8 +29,6 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog/v2"
-	"maps"
-	"sync"
 )
 
 // The key type is unexported to prevent collisions
@@ -60,16 +61,6 @@ func (ac *AuditContext) Enabled() bool {
 	return ac != nil && ac.RequestAuditConfig.Level != auditinternal.LevelNone
 }
 
-// Level Get the level of the event.
-// Null value level can also be compared.
-func (ac *AuditContext) Level() auditinternal.Level {
-	var ret auditinternal.Level
-	ac.visitEvent(func(event *auditinternal.Event) {
-		ret = event.Level
-	})
-	return ret
-}
-
 func (ac *AuditContext) AuditID() types.UID {
 	// return the unguarded copy of the auditID
 	return ac.auditID
@@ -78,10 +69,6 @@ func (ac *AuditContext) AuditID() types.UID {
 func (ac *AuditContext) visitEvent(f func(event *auditinternal.Event)) {
 	ac.lock.Lock()
 	defer ac.lock.Unlock()
-	ac.visitEventLocked(f)
-}
-
-func (ac *AuditContext) visitEventLocked(f func(event *auditinternal.Event)) {
 	f(&ac.event)
 }
 
@@ -212,12 +199,26 @@ func (ac *AuditContext) GetEventAnnotations() map[string]string {
 	return annotations
 }
 
-func (ac *AuditContext) Invoke(f func(e *auditinternal.Event) bool) bool {
-	var done bool
+// Invoke allows a function to safely access and modify the audit event
+// associated with the current `AuditContext`. The provided function `f`
+// is executed with a pointer to the `auditinternal.Event`.
+//
+// This method ensures thread-safe access to the audit event by acquiring
+// a lock before invoking the provided function. The lock prevents concurrent
+// modifications to the event, ensuring data consistency.
+//
+// Parameters:
+//   - f: A function that takes a pointer to an `auditinternal.Event`.
+//        This function can read or modify the event as needed.
+//
+// Example usage:
+//   ac.Invoke(func(e *auditinternal.Event) {
+//       e.Annotations["key"] = "value"
+//   })
+func (ac *AuditContext) Invoke(f func(e *auditinternal.Event)) {
 	ac.visitEvent(func(event *auditinternal.Event) {
-		done = f(&ac.event)
+		f(&ac.event)
 	})
-	return done
 }
 
 // AddAuditAnnotation sets the audit annotation for the given key, value pair.
@@ -277,16 +278,15 @@ func AddAuditAnnotationsMap(ctx context.Context, annotations map[string]string) 
 
 // addAuditAnnotationLocked records the audit annotation on the event.
 func addAuditAnnotationLocked(ac *AuditContext, key, value string) {
-	ac.visitEventLocked(func(ae *auditinternal.Event) {
-		if ae.Annotations == nil {
-			ae.Annotations = make(map[string]string)
-		}
-		if v, ok := ae.Annotations[key]; ok && v != value {
-			klog.Warningf("Failed to set annotations[%q] to %q for audit:%q, it has already been set to %q", key, value, ae.AuditID, ae.Annotations[key])
-			return
-		}
-		ae.Annotations[key] = value
-	})
+	ae := &ac.event
+	if ae.Annotations == nil {
+		ae.Annotations = make(map[string]string)
+	}
+	if v, ok := ae.Annotations[key]; ok && v != value {
+		klog.Warningf("Failed to set annotations[%q] to %q for audit:%q, it has already been set to %q", key, value, ae.AuditID, ae.Annotations[key])
+		return
+	}
+	ae.Annotations[key] = value
 }
 
 // WithAuditContext returns a new context that stores the AuditContext.
