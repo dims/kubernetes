@@ -155,7 +155,7 @@ func writeLatencyToAnnotation(ctx context.Context) {
 	// traces in rest/handlers for create, delete, update,
 	// get, list, and deletecollection.
 	const threshold = 500 * time.Millisecond
-	latency := ac.GetEventStageTimestamp().Time.Sub(ac.GetEventRequestReceivedTimestamp().Time)
+	latency := ac.GetEventStageTimestamp().Sub(ac.GetEventRequestReceivedTimestamp().Time)
 	if latency <= threshold {
 		return
 	}

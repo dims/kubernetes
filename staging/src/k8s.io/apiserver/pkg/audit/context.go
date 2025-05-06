@@ -209,12 +209,13 @@ func (ac *AuditContext) GetEventAnnotations() map[string]string {
 //
 // Parameters:
 //   - f: A function that takes a pointer to an `auditinternal.Event`.
-//        This function can read or modify the event as needed.
+//     This function can read or modify the event as needed.
 //
 // Example usage:
-//   ac.Invoke(func(e *auditinternal.Event) {
-//       e.Annotations["key"] = "value"
-//   })
+//
+//	ac.Invoke(func(e *auditinternal.Event) {
+//	    e.Annotations["key"] = "value"
+//	})
 func (ac *AuditContext) Invoke(f func(e *auditinternal.Event)) {
 	ac.visitEvent(func(event *auditinternal.Event) {
 		f(&ac.event)

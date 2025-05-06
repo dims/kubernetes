@@ -431,11 +431,11 @@ func TestWithFailedRequestAudit(t *testing.T) {
 				auditEventFromSink := fakeSink.events[0]
 				eventFromAuditContext := getAuditContextEvent(auditContext)
 
-		        if diff := cmp.Diff(eventFromAuditContext, auditEventFromSink, cmp.FilterPath(func(p cmp.Path) bool {
-		                return p.String() == "StageTimestamp"
-		        }, cmp.Ignore())); diff != "" {
-		               t.Errorf("expected the audit event from the request context to be written to the audit sink, but got diffs: %s", diff)
-		        }
+				if diff := cmp.Diff(eventFromAuditContext, auditEventFromSink, cmp.FilterPath(func(p cmp.Path) bool {
+					return p.String() == "StageTimestamp"
+				}, cmp.Ignore())); diff != "" {
+					t.Errorf("expected the audit event from the request context to be written to the audit sink, but got diffs: %s", diff)
+				}
 			}
 		})
 	}
