@@ -191,6 +191,15 @@ func (ac *AuditContext) SetEventResponseStatus(status *metav1.Status) {
 	})
 }
 
+func (ac *AuditContext) SetEventResponseStatusCode(statusCode int32) {
+	ac.visitEvent(func(event *auditinternal.Event) {
+		if event.ResponseStatus == nil {
+			event.ResponseStatus = &metav1.Status{}
+		}
+		event.ResponseStatus.Code = statusCode
+	})
+}
+
 func (ac *AuditContext) GetEventAnnotations() map[string]string {
 	var annotations map[string]string
 	ac.visitEvent(func(event *auditinternal.Event) {

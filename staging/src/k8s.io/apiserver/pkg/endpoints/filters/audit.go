@@ -228,11 +228,7 @@ func (a *auditResponseWriter) Unwrap() http.ResponseWriter {
 func (a *auditResponseWriter) processCode(code int) {
 	a.once.Do(func() {
 		ac := audit.AuditContextFrom(a.ctx)
-		if status := ac.GetEventResponseStatus(); status == nil {
-			ac.SetEventResponseStatus(&metav1.Status{Code: int32(code)})
-		} else {
-			status.Code = int32(code)
-		}
+		ac.SetEventResponseStatusCode(int32(code))
 		if a.sink != nil {
 			processAuditEvent(a.ctx, auditinternal.StageResponseStarted, a.sink, a.omitStages)
 		}
