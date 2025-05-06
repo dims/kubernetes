@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -430,12 +429,13 @@ func TestWithFailedRequestAudit(t *testing.T) {
 					t.Fatalf("expected audit sink to have 1 event, but got: %d", len(fakeSink.events))
 				}
 				auditEventFromSink := fakeSink.events[0]
-				auditContext.Invoke(func(eventFromAuditContext *auditinternal.Event) bool {
-					if !reflect.DeepEqual(eventFromAuditContext, auditEventFromSink) {
-						t.Errorf("expected the audit event from the request context to be written to the audit sink, but got diffs: %s", cmp.Diff(auditContext, auditEventFromSink))
-					}
-					return true
-				})
+				eventFromAuditContext := getAuditContextEvent(auditContext)
+
+		        if diff := cmp.Diff(eventFromAuditContext, auditEventFromSink, cmp.FilterPath(func(p cmp.Path) bool {
+		                return p.String() == "StageTimestamp"
+		        }, cmp.Ignore())); diff != "" {
+		               t.Errorf("expected the audit event from the request context to be written to the audit sink, but got diffs: %s", diff)
+		        }
 			}
 		})
 	}

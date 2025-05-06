@@ -174,26 +174,27 @@ func writeLatencyToAnnotation(ctx context.Context) {
 }
 
 func processAuditEvent(ctx context.Context, stage auditinternal.Stage, sink audit.Sink, omitStages []auditinternal.Stage) bool {
-	ac := audit.AuditContextFrom(ctx)
-	ac.SetEventStage(stage)
 	for _, omitStage := range omitStages {
 		if stage == omitStage {
 			return true
 		}
 	}
 
-	switch {
-	case stage == auditinternal.StageRequestReceived:
-		ac.SetEventStageTimestamp(metav1.NewMicroTime(ac.GetEventRequestReceivedTimestamp().Time))
-	case stage == auditinternal.StageResponseComplete:
-		ac.SetEventStageTimestamp(metav1.NewMicroTime(time.Now()))
+	if stage == auditinternal.StageResponseComplete {
 		writeLatencyToAnnotation(ctx)
-	default:
-		ac.SetEventStageTimestamp(metav1.NewMicroTime(time.Now()))
+	}
+	ac := audit.AuditContextFrom(ctx)
+	event := audit.DeepcopyInternalEvent(ac)
+
+	event.Stage = stage
+	if stage == auditinternal.StageRequestReceived {
+		event.StageTimestamp = event.RequestReceivedTimestamp
+	} else {
+		event.StageTimestamp = metav1.NewMicroTime(time.Now())
 	}
 
 	audit.ObserveEvent(ctx)
-	return sink.ProcessEvents(audit.DeepcopyInternalEvent(ac))
+	return sink.ProcessEvents(event)
 }
 
 func decorateResponseWriter(ctx context.Context, responseWriter http.ResponseWriter, sink audit.Sink, omitStages []auditinternal.Stage) http.ResponseWriter {
@@ -227,11 +228,11 @@ func (a *auditResponseWriter) Unwrap() http.ResponseWriter {
 func (a *auditResponseWriter) processCode(code int) {
 	a.once.Do(func() {
 		ac := audit.AuditContextFrom(a.ctx)
-		if ac.GetEventResponseStatus() == nil {
-			ac.SetEventResponseStatus(&metav1.Status{})
+		if status := ac.GetEventResponseStatus(); status == nil {
+			ac.SetEventResponseStatus(&metav1.Status{Code: int32(code)})
+		} else {
+			status.Code = int32(code)
 		}
-		ac.GetEventResponseStatus().Code = int32(code)
-
 		if a.sink != nil {
 			processAuditEvent(a.ctx, auditinternal.StageResponseStarted, a.sink, a.omitStages)
 		}

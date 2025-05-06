@@ -296,7 +296,9 @@ func WithAuditContext(parent context.Context) context.Context {
 	}
 
 	return genericapirequest.WithValue(parent, auditKey, &AuditContext{
-		event: auditinternal.Event{},
+		event: auditinternal.Event{
+			Stage: auditinternal.StageResponseStarted,
+		},
 	})
 }
 

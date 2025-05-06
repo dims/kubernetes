@@ -26,7 +26,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unsafe"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -178,12 +180,12 @@ func TestDecorateResponseWriterChannel(t *testing.T) {
 	t.Logf("Seen event with status %v", ev1.ResponseStatus)
 
 	auditContext := audit.AuditContextFrom(ctx)
-	auditContext.Invoke(func(ev *auditinternal.Event) bool {
-		if !reflect.DeepEqual(ev, ev1) {
-			t.Fatalf("ev1 and ev must be equal")
-		}
-		return true
-	})
+	ev := getAuditContextEvent(auditContext)
+	if diff := cmp.Diff(ev, ev1, cmp.FilterPath(func(p cmp.Path) bool {
+		return p.String() == "StageTimestamp"
+	}, cmp.Ignore())); diff != "" {
+		t.Fatalf("ev1 and ev must be equal, diff: %s", diff)
+	}
 
 	<-done
 	t.Log("Seen the go routine finished")
@@ -193,6 +195,20 @@ func TestDecorateResponseWriterChannel(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
+}
+
+func getAuditContextEvent(ac *audit.AuditContext) *auditinternal.Event {
+	// Get the reflect.Value of the AuditContext
+	val := reflect.ValueOf(ac).Elem()
+
+	// Access the unexported `event` field
+	eventField := val.FieldByName("event")
+
+	// Use unsafe to get a pointer to the field
+	eventPtr := unsafe.Pointer(eventField.UnsafeAddr())
+
+	// Cast the pointer to the correct type
+	return (*auditinternal.Event)(eventPtr)
 }
 
 type fakeHTTPHandler struct{}
@@ -865,11 +881,8 @@ func withTestContext(req *http.Request, user user.Info, ae *auditinternal.Event)
 		ctx = request.WithUser(ctx, user)
 	}
 	if ae != nil {
-		ac := audit.AuditContextFrom(ctx)
-		ac.Invoke(func(ev *auditinternal.Event) bool {
-			*ev = *ae
-			return true
-		})
+		ev := getAuditContextEvent(audit.AuditContextFrom(ctx))
+		*ev = *ae
 	}
 	if info, err := newTestRequestInfoResolver().NewRequestInfo(req); err == nil {
 		ctx = request.WithRequestInfo(ctx, info)
