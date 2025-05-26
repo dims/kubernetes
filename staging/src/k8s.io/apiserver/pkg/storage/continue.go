@@ -112,7 +112,15 @@ func PrepareContinueToken(keyLastItem, keyPrefix string, resourceVersion int64, 
 		// Instead of returning inaccurate count for non-empty selectors, we return nil.
 		// We only set remainingItemCount if the predicate is empty.
 		if opts.Predicate.Empty() {
-			remainingItems := itemsCount - opts.Predicate.Limit
+			// Fix for large limit values: ensure we don't return negative values
+			// when itemsCount is less than the limit (which can happen with large limits)
+			var remainingItems int64
+			if itemsCount > opts.Predicate.Limit {
+				remainingItems = itemsCount - opts.Predicate.Limit
+			} else {
+				// If we've fetched fewer items than the limit, there are no remaining items
+				remainingItems = 0
+			}
 			remainingItemCount = &remainingItems
 		}
 	}
