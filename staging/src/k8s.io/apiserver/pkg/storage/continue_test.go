@@ -21,6 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/fields"
 )
 
 func encodeContinueOrDie(apiVersion string, resourceVersion int64, nextKey string) string {
@@ -108,6 +111,88 @@ func Test_decodeContinue(t *testing.T) {
 			}
 			if gotRv != tt.wantRv {
 				t.Errorf("decodeContinue() gotRv = %v, want %v", gotRv, tt.wantRv)
+			}
+		})
+	}
+}
+
+func TestPrepareContinueToken(t *testing.T) {
+	emptyPredicate := SelectionPredicate{Limit: 5}
+	nonEmptyPredicate := SelectionPredicate{
+		Limit: 5,
+		Field: fields.SelectorFromSet(fields.Set{"metadata.name": "test"}),
+	}
+
+	tests := []struct {
+		name                 string
+		keyLastItem          string
+		keyPrefix            string
+		resourceVersion      int64
+		itemsCount           int64
+		hasMoreItems         bool
+		opts                 ListOptions
+		expectedContinueVal  bool // just check if empty or not
+		expectedRemainingCnt bool // just check if nil or not
+		expectedErr          bool
+	}{
+		{
+			name:                 "no more items",
+			keyLastItem:          "lastKey",
+			keyPrefix:            "lastKey",
+			resourceVersion:      1,
+			itemsCount:           10,
+			hasMoreItems:         false,
+			opts:                 ListOptions{},
+			expectedContinueVal:  false,
+			expectedRemainingCnt: false,
+			expectedErr:          false,
+		},
+		{
+			name:                 "has more items with empty predicate",
+			keyLastItem:          "lastKey",
+			keyPrefix:            "lastKey",
+			resourceVersion:      1,
+			itemsCount:           10,
+			hasMoreItems:         true,
+			opts:                 ListOptions{Predicate: emptyPredicate},
+			expectedContinueVal:  true,
+			expectedRemainingCnt: true,
+			expectedErr:          false,
+		},
+		{
+			name:                 "has more items with non-empty predicate",
+			keyLastItem:          "lastKey",
+			keyPrefix:            "lastKey",
+			resourceVersion:      1,
+			itemsCount:           10,
+			hasMoreItems:         true,
+			opts:                 ListOptions{Predicate: nonEmptyPredicate},
+			expectedContinueVal:  true,
+			expectedRemainingCnt: false,
+			expectedErr:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			continueVal, remainingCnt, err := PrepareContinueToken(tt.keyLastItem, tt.keyPrefix, tt.resourceVersion, tt.itemsCount, tt.hasMoreItems, tt.opts)
+
+			if tt.expectedErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+				if tt.expectedContinueVal {
+					assert.NotEmpty(t, continueVal)
+				} else {
+					assert.Empty(t, continueVal)
+				}
+
+				if tt.expectedRemainingCnt {
+					assert.NotNil(t, remainingCnt)
+				} else {
+					assert.Nil(t, remainingCnt)
+				}
 			}
 		})
 	}

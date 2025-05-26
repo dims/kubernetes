@@ -841,11 +841,17 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 		v.Set(reflect.MakeSlice(v.Type(), 0, 0))
 	}
 
-	continueValue, remainingItemCount, err := storage.PrepareContinueToken(string(lastKey), keyPrefix, withRev, getResp.Count, hasMore, opts)
-	if err != nil {
-		return err
+	// Preserve the exact original behavior
+	if hasMore {
+		continueValue, remainingItemCount, err := storage.PrepareContinueToken(string(lastKey), keyPrefix, withRev, getResp.Count, true, opts)
+		if err != nil {
+			return err
+		}
+		return s.versioner.UpdateList(listObj, uint64(withRev), continueValue, remainingItemCount)
 	}
-	return s.versioner.UpdateList(listObj, uint64(withRev), continueValue, remainingItemCount)
+
+	// No continuation - use the original behavior with no error handling
+	return s.versioner.UpdateList(listObj, uint64(withRev), "", nil)
 }
 
 func (s *store) getList(ctx context.Context, keyPrefix string, recursive bool, options kubernetes.ListOptions) (kubernetes.ListResponse, error) {

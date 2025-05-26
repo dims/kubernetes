@@ -926,3 +926,61 @@ func TestGetCurrentResourceVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, currentPodRV, podRV, "didn't expect to see the pod's RV changed")
 }
+
+// TestGetListErrorHandling tests that the error handling in GetList correctly preserves
+// the original behavior after refactoring to use PrepareContinueToken
+func TestGetListErrorHandling(t *testing.T) {
+	ctx, store, _ := testSetup(t)
+
+	// Create a test object
+	preset := []struct {
+		key string
+		obj *example.Pod
+	}{
+		{
+			key: "/pods/first/bar",
+			obj: &example.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "first", Name: "bar"}},
+		},
+	}
+
+	for i, ps := range preset {
+		preset[i].obj.Name = ps.obj.Name
+		err := store.Create(ctx, ps.key, ps.obj, nil, 0)
+		if err != nil {
+			t.Fatalf("Set failed: %v", err)
+		}
+	}
+
+	// Test with hasMore = false (no continuation case)
+	listObj := example.PodList{}
+	pred := storage.SelectionPredicate{
+		Label:    labels.Everything(),
+		Field:    fields.Everything(),
+		Limit:    1,
+		Continue: "",
+	}
+
+	err := store.GetList(ctx, "/pods", storage.ListOptions{
+		Predicate: pred,
+		Recursive: true,
+	}, &listObj)
+
+	if err != nil {
+		t.Errorf("GetList failed when it should succeed: %v", err)
+	}
+
+	// Verify we got the expected object
+	if len(listObj.Items) != 1 {
+		t.Errorf("Expected 1 item, got %d", len(listObj.Items))
+	}
+
+	// Verify continuation token behavior
+	if listObj.Continue != "" {
+		t.Errorf("Expected empty continuation token, got %q", listObj.Continue)
+	}
+
+	// Verify remaining count is nil when no more items
+	if listObj.RemainingItemCount != nil {
+		t.Errorf("Expected nil RemainingItemCount, got %v", *listObj.RemainingItemCount)
+	}
+}
