@@ -535,7 +535,9 @@ func (w *watchCache) list(ctx context.Context, resourceVersion uint64, key strin
 			}
 		}
 		// Legacy exact match
-		if opts.Predicate.Limit > 0 && len(opts.ResourceVersion) > 0 && opts.ResourceVersion != "0" && utilfeature.DefaultFeatureGate.Enabled(features.ListFromCacheSnapshot) {
+		if opts.Predicate.Limit > 0 && len(opts.ResourceVersion) > 0 && opts.ResourceVersion != "0" &&
+			// Only use listExactRV when the feature gate is enabled and we're not dealing with a negative resource version
+			utilfeature.DefaultFeatureGate.Enabled(features.ListFromCacheSnapshot) && resourceVersion > 0 {
 			return w.listExactRV(key, "", resourceVersion)
 		} else {
 			// Consistent Read - already handled via waitUntilFreshAndBlock
