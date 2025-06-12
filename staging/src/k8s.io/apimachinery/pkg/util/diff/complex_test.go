@@ -17,14 +17,40 @@ limitations under the License.
 package diff
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/pmezard/go-difflib/difflib"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
+
+func jsonToString(t *testing.T, data any) string {
+	jsonData, err := json.MarshalIndent(data, " ", "  ")
+	if err != nil {
+		t.Fatalf("error encoding data: %v", err)
+	}
+	return string(jsonData)
+}
+
+func mezardDiff(t *testing.T, a, b any) string {
+	diff := difflib.UnifiedDiff{
+		A:        difflib.SplitLines(jsonToString(t, a)),
+		B:        difflib.SplitLines(jsonToString(t, b)),
+		FromFile: "expected",
+		ToFile:   "got",
+		Context:  10,
+	}
+	diffstr, err := difflib.GetUnifiedDiffString(diff)
+	if err != nil {
+		t.Fatalf("error generating unified diff string: %v", err)
+	}
+	return diffstr
+}
 
 // TestDiffWithRealGoCmp is a comprehensive test that compares our Diff with the actual go-cmp Diff
 // across a variety of data structures and types to ensure compatibility.
@@ -47,8 +73,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				ourDiff := Diff(tc.a, tc.b)
 				goCmpDiff := cmp.Diff(tc.a, tc.b)
+				mezardCmpDiff := mezardDiff(t, tc.a, tc.b)
 
-				t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s", ourDiff, goCmpDiff)
+				t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s\n\nMezard diff:\n%s", ourDiff, goCmpDiff, mezardCmpDiff)
 
 				// Verify our diff contains the expected values
 				if !strings.Contains(ourDiff, fmt.Sprintf("%v", tc.a)) || !strings.Contains(ourDiff, fmt.Sprintf("%v", tc.b)) {
@@ -89,8 +116,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 
 		ourDiff := Diff(a, b)
 		goCmpDiff := cmp.Diff(a, b)
+		mezardDiff := mezardDiff(t, a, b)
 
-		t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s", ourDiff, goCmpDiff)
+		t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s\n\nMezard diff:\n%s", ourDiff, goCmpDiff, mezardDiff)
 
 		// Check that our diff contains key differences
 		keyDifferences := []string{
@@ -214,8 +242,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 
 		ourDiff := Diff(person1, person2)
 		goCmpDiff := cmp.Diff(person1, person2)
+		mezardDiff := mezardDiff(t, person1, person2)
 
-		t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s", ourDiff, goCmpDiff)
+		t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s\n\nMezard diff:\n%s", ourDiff, goCmpDiff, mezardDiff)
 
 		// Check that our diff contains key differences
 		keyDifferences := []string{
@@ -270,8 +299,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				ourDiff := Diff(tc.a, tc.b)
 				goCmpDiff := cmp.Diff(tc.a, tc.b)
+				mezardDiff := mezardDiff(t, tc.a, tc.b)
 
-				t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s", ourDiff, goCmpDiff)
+				t.Logf("Our diff:\n%s\n\nGo-cmp diff:\n%s\n\nMezard diff:\n%s", ourDiff, goCmpDiff, mezardDiff)
 
 				// Verify both diffs are non-empty
 				if ourDiff == "" || goCmpDiff == "" {
@@ -290,8 +320,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 
 		ourDiff := Diff(n1, n2)
 		goCmpDiff := cmp.Diff(n1, n2)
+		mezardDiff := mezardDiff(t, n1, n2)
 
-		t.Logf("Our diff (cyclic):\n%s\n\nGo-cmp diff (cyclic):\n%s", ourDiff, goCmpDiff)
+		t.Logf("Our diff (cyclic):\n%s\n\nGo-cmp diff (cyclic):\n%s\n\nMezard diff (cyclic):\n%s", ourDiff, goCmpDiff, mezardDiff)
 
 		// Check that our diff contains the value difference
 		if !strings.Contains(ourDiff, "1") || !strings.Contains(ourDiff, "2") {
@@ -345,8 +376,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 		ourDiff := Diff(a, b)
 		// Use cmpopts.IgnoreUnexported to ignore unexported fields in go-cmp
 		goCmpDiff := cmp.Diff(a, b, cmpopts.IgnoreUnexported(WithUnexported{}))
+		mezardDiff := mezardDiff(t, a, b)
 
-		t.Logf("Our diff (unexported):\n%s\n\nGo-cmp diff (unexported):\n%s", ourDiff, goCmpDiff)
+		t.Logf("Our diff (unexported):\n%s\n\nGo-cmp diff (unexported):\n%s\n\nMezard diff (unexported):\n%s", ourDiff, goCmpDiff, mezardDiff)
 
 		// Check that our diff contains only the exported field difference
 		if !strings.Contains(ourDiff, "Exported") || !strings.Contains(ourDiff, "1") || !strings.Contains(ourDiff, "3") {
@@ -375,8 +407,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 
 		ourDiff := Diff(a, b)
 		goCmpDiff := cmp.Diff(a, b)
+		mezardDiff := mezardDiff(t, a, b)
 
-		t.Logf("Our diff (embedded):\n%s\n\nGo-cmp diff (embedded):\n%s", ourDiff, goCmpDiff)
+		t.Logf("Our diff (embedded):\n%s\n\nGo-cmp diff (embedded):\n%s\n\nMezard diff (embedded):\n%s", ourDiff, goCmpDiff, mezardDiff)
 
 		// Check that our diff contains the container field difference
 		if !strings.Contains(ourDiff, "Extra") || !strings.Contains(ourDiff, "a") || !strings.Contains(ourDiff, "b") {
@@ -396,8 +429,9 @@ func TestDiffWithRealGoCmp(t *testing.T) {
 
 		ourDiff := Diff(c, d)
 		goCmpDiff := cmp.Diff(c, d)
+		mezardDiff := mezardDiff(t, c,d )
 
-		t.Logf("Our diff (interface same type):\n%s\n\nGo-cmp diff (interface same type):\n%s", ourDiff, goCmpDiff)
+		t.Logf("Our diff (interface same type):\n%s\n\nGo-cmp diff (interface same type):\n%s\n\nMezard diff (interface same type):\n%s", ourDiff, goCmpDiff, mezardDiff)
 
 		// Check that our diff contains the value difference
 		if !strings.Contains(ourDiff, "42") || !strings.Contains(ourDiff, "43") {
