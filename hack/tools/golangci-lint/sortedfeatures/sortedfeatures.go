@@ -41,6 +41,11 @@ var defaultTargetFiles = []string{
 	"test/e2e/environment/environment.go",
 }
 
+// DefaultTargetFiles returns the list of default files to check
+func DefaultTargetFiles() []string {
+	return defaultTargetFiles
+}
+
 // Config holds the configuration for the sortedfeatures analyzer
 type Config struct {
 	// Files contains files to check. If specified, only these files will be checked.
@@ -146,6 +151,11 @@ func isFeatureGateDeclaration(spec *ast.ValueSpec) bool {
 	}
 
 	return false
+}
+
+// IsFeatureGateDeclaration is an exported version of isFeatureGateDeclaration
+func IsFeatureGateDeclaration(spec *ast.ValueSpec) bool {
+	return isFeatureGateDeclaration(spec)
 }
 
 func checkSorting(pass *analysis.Pass, decl *ast.GenDecl) {
