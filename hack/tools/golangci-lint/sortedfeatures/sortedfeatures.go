@@ -230,7 +230,7 @@ func checkSorting(pass *analysis.Pass, decl *ast.GenDecl) {
 
 		diffText, err := difflib.GetUnifiedDiffString(diff)
 		if err != nil {
-			pass.Reportf(decl.Pos(), "feature gates are not sorted alphabetically (error creating diff: %v)", err)
+			pass.Reportf(decl.Pos(), "feature gates are not sorted alphabetically (error creating diff: %v)\nPlease run 'hack/update-sortfeatures.sh' to sort.", err)
 			return
 		}
 
