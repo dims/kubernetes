@@ -77,6 +77,9 @@ func run(pass *analysis.Pass, config Config) (interface{}, error) {
 	}
 
 	if !isTargetFile {
+		if config.Debug {
+			fmt.Printf("Skipping file: %s\n", filename)
+		}
 		return nil, nil
 	}
 
