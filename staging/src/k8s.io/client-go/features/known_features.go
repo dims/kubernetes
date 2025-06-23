@@ -16,6 +16,16 @@ limitations under the License.
 
 package features
 
+// Every feature gate should add method here following this template:
+//
+// // owner: @username
+// // alpha: v1.4
+// MyFeature featuregate.Feature = "MyFeature"
+//
+// Feature gates should be listed in alphabetical, case-sensitive
+// (upper before any lower case character) order. This reduces the risk
+// of code conflicts because changes are more likely to be scattered
+// across the file.
 const (
 	// Every feature gate should add method here following this template:
 	//

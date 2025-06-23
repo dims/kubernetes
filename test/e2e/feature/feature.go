@@ -22,9 +22,9 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
+// Please keep the list in alphabetical, case-sensitive
+// (upper before any lower case character) order.
 var (
-	// Please keep the list in alphabetical order.
-
 	// TODO: document the feature (owning SIG, when to use this feature for a test)
 	APIServerIdentity = framework.WithFeature(framework.ValidFeatures.Add("APIServerIdentity"))
 
