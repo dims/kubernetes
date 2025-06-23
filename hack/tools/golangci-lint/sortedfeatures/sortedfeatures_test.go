@@ -509,6 +509,54 @@ const (
 	}
 }
 
+func TestNonParenthesizedDeclarationsNotProcessed(t *testing.T) {
+	// Test with non-parenthesized declarations
+	src := `
+package test
+
+type Feature string
+
+// First feature
+const FeatureA Feature = "FeatureA"
+
+// Second feature
+const FeatureB Feature = "FeatureB"
+
+// Third feature
+const FeatureC Feature = "FeatureC"
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("Failed to parse test file: %v", err)
+	}
+
+	// Create a mock analysis.Pass
+	var reportCalled bool
+	pass := &analysis.Pass{
+		Fset:     fset,
+		Files:    []*ast.File{f},
+		ResultOf: make(map[*analysis.Analyzer]interface{}),
+		Report:   func(d analysis.Diagnostic) { reportCalled = true },
+	}
+
+	// Configure the analyzer to treat test.go as a target file
+	config := Config{
+		Files: []string{"test.go"},
+	}
+
+	// Run the analyzer
+	_, err = run(pass, config)
+	if err != nil {
+		t.Errorf("run returned an error: %v", err)
+	}
+
+	// Check that Report was NOT called, since non-parenthesized declarations are skipped
+	if reportCalled {
+		t.Errorf("Expected Report not to be called for non-parenthesized declarations")
+	}
+}
+
 // TestAnalyzerRunSimulatingGolangciLint is a test that simulates how golangci-lint would run the analyzer
 // by creating a mock analysis.Pass and calling the Run method directly. If you run this test from the root
 // of the repository, it will check all default target files defined in the analyzer's config without needing
