@@ -43,13 +43,13 @@ This tool parses specified files, finds var/const blocks containing feature decl
 sorts them alphabetically (case-sensitive), and updates the files if the order has changed.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// If no files are specified via the --files flag, use positional args
-			filesToProcess := append(files, args...)
+			files = append(files, args...)
 
-			if len(filesToProcess) == 0 {
+			if len(files) == 0 {
 				return fmt.Errorf("no files specified, use --files flag or provide file paths as arguments")
 			}
 
-			for _, filePath := range filesToProcess {
+			for _, filePath := range files {
 				if err := processFile(filePath); err != nil {
 					return err
 				}
@@ -79,14 +79,14 @@ func processFile(filePath string) error {
 	// Read the file content
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %v", err)
+		return fmt.Errorf("failed to read file: %w", err)
 	}
 
 	// Parse the file
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, filePath, content, parser.ParseComments)
 	if err != nil {
-		return fmt.Errorf("failed to parse file: %v", err)
+		return fmt.Errorf("failed to parse file: %w", err)
 	}
 
 	// Track if any changes were made
@@ -132,7 +132,7 @@ func processFile(filePath string) error {
 	// Write the updated file if changes were made
 	if fileChanged {
 		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
-			return fmt.Errorf("failed to write file: %v", err)
+			return fmt.Errorf("failed to write file: %w", err)
 		}
 		fmt.Printf("Updated %s\n", filePath)
 	} else {
