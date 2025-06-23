@@ -35,6 +35,17 @@ type settings struct {
 	Files []string `json:"files"`
 }
 
+// List of default files to check for feature gate sorting
+var defaultTargetFiles = []string{
+	"pkg/features/kube_features.go",
+	"staging/src/k8s.io/apiserver/pkg/features/kube_features.go",
+	"staging/src/k8s.io/client-go/features/known_features.go",
+	"staging/src/k8s.io/controller-manager/pkg/features/kube_features.go",
+	"staging/src/k8s.io/apiextensions-apiserver/pkg/features/kube_features.go",
+	"test/e2e/feature/feature.go",
+	"test/e2e/environment/environment.go",
+}
+
 // New is the entry point for golangci-lint plugin system
 func New(pluginSettings interface{}) ([]*analysis.Analyzer, error) {
 	// Create default config
@@ -58,6 +69,10 @@ func New(pluginSettings interface{}) ([]*analysis.Analyzer, error) {
 		// Apply settings to config
 		config.Debug = s.Debug
 		config.Files = append(config.Files, s.Files...)
+		if len(config.Files) == 0 {
+			// If no files are specified, use the default target files
+			config.Files = defaultTargetFiles
+		}
 
 		if config.Debug {
 			fmt.Printf("sortedfeatures settings: %+v\n", s)

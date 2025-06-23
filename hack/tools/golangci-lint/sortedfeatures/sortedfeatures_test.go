@@ -139,7 +139,7 @@ func TestRunWithSpecifiedFiles(t *testing.T) {
 		t.Fatalf("Failed to create temporary file: %v", err)
 	}
 	defer os.Remove(tmpFile.Name())
-	
+
 	// Write test content to the file
 	testContent := `
 package features
@@ -157,7 +157,7 @@ const (
 	if err := tmpFile.Close(); err != nil {
 		t.Fatalf("Failed to close temporary file: %v", err)
 	}
-	
+
 	// Test that the analyzer works with specified files
 	config := Config{
 		Files: []string{tmpFile.Name()},
@@ -218,19 +218,19 @@ const (
 	}
 
 	features := extractFeatures(foundDecl, f.Comments)
-	
+
 	if len(features) != 2 {
 		t.Errorf("Expected 2 features, got %d", len(features))
 	}
-	
+
 	if features[0].Name != "FeatureA" {
 		t.Errorf("Expected first feature to be FeatureA, got %s", features[0].Name)
 	}
-	
+
 	if features[1].Name != "FeatureB" {
 		t.Errorf("Expected second feature to be FeatureB, got %s", features[1].Name)
 	}
-	
+
 	if len(features[0].Comments) == 0 {
 		t.Errorf("Expected comments for FeatureA, got none")
 	}
@@ -242,17 +242,17 @@ func TestSortFeatures(t *testing.T) {
 		{Name: "FeatureA"},
 		{Name: "FeatureC"},
 	}
-	
+
 	sorted := sortFeatures(features)
-	
+
 	if sorted[0].Name != "FeatureA" {
 		t.Errorf("Expected first feature to be FeatureA, got %s", sorted[0].Name)
 	}
-	
+
 	if sorted[1].Name != "FeatureB" {
 		t.Errorf("Expected second feature to be FeatureB, got %s", sorted[1].Name)
 	}
-	
+
 	if sorted[2].Name != "FeatureC" {
 		t.Errorf("Expected third feature to be FeatureC, got %s", sorted[2].Name)
 	}
@@ -264,17 +264,17 @@ func TestHasOrderChanged(t *testing.T) {
 		{Name: "FeatureA"},
 		{Name: "FeatureC"},
 	}
-	
+
 	sorted := []Feature{
 		{Name: "FeatureA"},
 		{Name: "FeatureB"},
 		{Name: "FeatureC"},
 	}
-	
+
 	if !hasOrderChanged(original, sorted) {
 		t.Errorf("Expected hasOrderChanged to return true for different orders")
 	}
-	
+
 	if hasOrderChanged(sorted, sorted) {
 		t.Errorf("Expected hasOrderChanged to return false for same order")
 	}
@@ -286,13 +286,13 @@ func TestReportSortingIssue(t *testing.T) {
 		{Name: "FeatureA", Comments: []string{"// Comment for FeatureA"}},
 		{Name: "FeatureC", Comments: []string{"// Comment for FeatureC"}},
 	}
-	
+
 	sorted := []Feature{
 		{Name: "FeatureA", Comments: []string{"// Comment for FeatureA"}},
 		{Name: "FeatureB", Comments: []string{"// Comment for FeatureB"}},
 		{Name: "FeatureC", Comments: []string{"// Comment for FeatureC"}},
 	}
-	
+
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "test.go", `
 package test
@@ -319,7 +319,7 @@ const (
 	if foundDecl == nil {
 		t.Fatalf("Failed to find const declaration")
 	}
-	
+
 	var reportCalled bool
 	pass := &analysis.Pass{
 		Fset:     fset,
@@ -327,9 +327,9 @@ const (
 		ResultOf: make(map[*analysis.Analyzer]interface{}),
 		Report:   func(d analysis.Diagnostic) { reportCalled = true },
 	}
-	
+
 	reportSortingIssue(pass, foundDecl, current, sorted)
-	
+
 	if !reportCalled {
 		t.Errorf("Expected Report to be called")
 	}
@@ -370,10 +370,10 @@ const (
 
 	// Extract features
 	features := extractFeatures(foundDecl, f.Comments)
-	
+
 	// Sort features
 	sortedFeatures := sortFeatures(features)
-	
+
 	// Check if order changed
 	if hasOrderChanged(features, sortedFeatures) {
 		t.Errorf("Expected features to be already sorted")
@@ -415,10 +415,10 @@ const (
 
 	// Extract features
 	features := extractFeatures(foundDecl, f.Comments)
-	
+
 	// Sort features
 	sortedFeatures := sortFeatures(features)
-	
+
 	// Check if order changed
 	if !hasOrderChanged(features, sortedFeatures) {
 		t.Errorf("Expected features to be unsorted")
@@ -460,10 +460,10 @@ var (
 
 	// Extract features
 	features := extractFeatures(foundDecl, f.Comments)
-	
+
 	// Sort features
 	sortedFeatures := sortFeatures(features)
-	
+
 	// Check if order changed
 	if hasOrderChanged(features, sortedFeatures) {
 		t.Errorf("Expected features to be already sorted")
@@ -503,7 +503,7 @@ const (
 
 	// Extract features
 	features := extractFeatures(foundDecl, f.Comments)
-	
+
 	if len(features) != 1 {
 		t.Errorf("Expected 1 feature, got %d", len(features))
 	}
@@ -562,6 +562,15 @@ const FeatureC Feature = "FeatureC"
 // of the repository, it will check all default target files defined in the analyzer's config without needing
 // to run golangci-lint itself. If run from anywhere else, it will skip the test as the files won't be found.
 func TestAnalyzerRunSimulatingGolangciLint(t *testing.T) {
+	defaultTargetFiles := []string{
+		"pkg/features/kube_features.go",
+		"staging/src/k8s.io/apiserver/pkg/features/kube_features.go",
+		"staging/src/k8s.io/client-go/features/known_features.go",
+		"staging/src/k8s.io/controller-manager/pkg/features/kube_features.go",
+		"staging/src/k8s.io/apiextensions-apiserver/pkg/features/kube_features.go",
+		"test/e2e/feature/feature.go",
+		"test/e2e/environment/environment.go",
+	}
 	for _, filename := range defaultTargetFiles {
 		t.Run(filename, func(t *testing.T) {
 
@@ -589,7 +598,7 @@ func TestAnalyzerRunSimulatingGolangciLint(t *testing.T) {
 			}
 
 			// Get the analyzer
-			analyzer := NewAnalyzerWithConfig(Config{Debug: true})
+			analyzer := NewAnalyzerWithConfig(Config{Debug: true, Files: defaultTargetFiles})
 
 			// Call the Run method directly as golangci-lint would
 			result, err := analyzer.Run(pass)

@@ -30,17 +30,6 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// List of default files to check for feature gate sorting
-var defaultTargetFiles = []string{
-	"pkg/features/kube_features.go",
-	"staging/src/k8s.io/apiserver/pkg/features/kube_features.go",
-	"staging/src/k8s.io/client-go/features/known_features.go",
-	"staging/src/k8s.io/controller-manager/pkg/features/kube_features.go",
-	"staging/src/k8s.io/apiextensions-apiserver/pkg/features/kube_features.go",
-	"test/e2e/feature/feature.go",
-	"test/e2e/environment/environment.go",
-}
-
 // Config holds the configuration for the sortedfeatures analyzer
 type Config struct {
 	// Files contains files to check. If specified, only these files will be checked.
@@ -76,21 +65,11 @@ func run(pass *analysis.Pass, config Config) (interface{}, error) {
 	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
 	isTargetFile := false
 
-	// Determine which files to check
-	var targetFiles []string
-	if len(config.Files) > 0 {
-		// If specific files are provided, only check those
-		targetFiles = config.Files
-	} else {
-		// Otherwise use the default target files
-		targetFiles = defaultTargetFiles
-	}
-
 	if config.Debug {
 		fmt.Printf("Checking file: %s\n", filename)
 	}
 
-	for _, target := range targetFiles {
+	for _, target := range config.Files {
 		if strings.HasSuffix(filename, target) || strings.HasSuffix(filename, filepath.Base(target)) {
 			isTargetFile = true
 			break
@@ -120,7 +99,7 @@ func run(pass *analysis.Pass, config Config) (interface{}, error) {
 
 			// Extract features with their comments
 			features := extractFeatures(genDecl, file.Comments)
-			
+
 			// Skip if no features were found
 			if len(features) <= 1 {
 				continue
@@ -224,11 +203,11 @@ func reportSortingIssue(pass *analysis.Pass, decl *ast.GenDecl, current, sorted 
 		DisableCapacities:       true,
 		SortKeys:                true,
 	}
-	
+
 	// Generate dumps of both current and expected orders
 	currentDump := spewConfig.Sdump(current)
 	sortedDump := spewConfig.Sdump(sorted)
-	
+
 	// Create a unified diff between the two dumps
 	diff := difflib.UnifiedDiff{
 		A:        difflib.SplitLines(currentDump),
