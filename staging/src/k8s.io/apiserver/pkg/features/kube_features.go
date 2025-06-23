@@ -33,33 +33,6 @@ import (
 // of code conflicts because changes are more likely to be scattered
 // across the file.
 const (
-	// owner: @jefftree
-	//
-	// Remove the v2beta1 apidiscovery.k8s.io/v2beta1 group version. Aggregated
-	// discovery implements its own handlers and follows a different lifecycle than
-	// traditional k8s resources.
-	AggregatedDiscoveryRemoveBetaType featuregate.Feature = "AggregatedDiscoveryRemoveBetaType"
-
-	// owner: @modulitos
-	//
-	// Allow user.DefaultInfo.UID to be set from x509 cert during cert auth.
-	AllowParsingUserUIDFromCertAuth featuregate.Feature = "AllowParsingUserUIDFromCertAuth"
-
-	// owner: @vinayakankugoyal
-	// kep: https://kep.k8s.io/4633
-	//
-	// Allows us to enable anonymous auth for only certain apiserver endpoints.
-	AnonymousAuthConfigurableEndpoints featuregate.Feature = "AnonymousAuthConfigurableEndpoints"
-
-	// owner: @stlaz @tkashem @dgrisonnet
-	// kep: https://kep.k8s.io/3926
-	//
-	// Enables the cluster admin to identify resources that fail to
-	// decrypt or fail to be decoded into an object, and introduces
-	// a new delete option to allow deletion of such corrupt
-	// resources using the Kubernetes API only.
-	AllowUnsafeMalformedObjectDeletion featuregate.Feature = "AllowUnsafeMalformedObjectDeletion"
-
 	// owner: @ilackams
 	//
 	// Enables compression of REST responses (GET and LIST only)
@@ -80,11 +53,43 @@ const (
 	// Enables serving watch requests in separate goroutines.
 	APIServingWithRoutine featuregate.Feature = "APIServingWithRoutine"
 
+	// owner: @jefftree
+	//
+	// Remove the v2beta1 apidiscovery.k8s.io/v2beta1 group version. Aggregated
+	// discovery implements its own handlers and follows a different lifecycle than
+	// traditional k8s resources.
+	AggregatedDiscoveryRemoveBetaType featuregate.Feature = "AggregatedDiscoveryRemoveBetaType"
+
+	// owner: @modulitos
+	//
+	// Allow user.DefaultInfo.UID to be set from x509 cert during cert auth.
+	AllowParsingUserUIDFromCertAuth featuregate.Feature = "AllowParsingUserUIDFromCertAuth"
+
+	// owner: @stlaz @tkashem @dgrisonnet
+	// kep: https://kep.k8s.io/3926
+	//
+	// Enables the cluster admin to identify resources that fail to
+	// decrypt or fail to be decoded into an object, and introduces
+	// a new delete option to allow deletion of such corrupt
+	// resources using the Kubernetes API only.
+	AllowUnsafeMalformedObjectDeletion featuregate.Feature = "AllowUnsafeMalformedObjectDeletion"
+
+	// owner: @vinayakankugoyal
+	// kep: https://kep.k8s.io/4633
+	//
+	// Allows us to enable anonymous auth for only certain apiserver endpoints.
+	AnonymousAuthConfigurableEndpoints featuregate.Feature = "AnonymousAuthConfigurableEndpoints"
+
 	// owner: @deads2k
 	// kep: https://kep.k8s.io/4601
 	//
 	// Allows authorization to use field and label selectors.
 	AuthorizeWithSelectors featuregate.Feature = "AuthorizeWithSelectors"
+
+	// owner: @serathius
+	//
+	// Replaces watch cache hashmap implementation with a btree based one, bringing performance improvements.
+	BtreeWatchCache featuregate.Feature = "BtreeWatchCache"
 
 	// owner: @benluddy
 	// kep: https://kep.k8s.io/4222
@@ -94,13 +99,14 @@ const (
 	CBORServingAndStorage featuregate.Feature = "CBORServingAndStorage"
 
 	// owner: @serathius
-	//
-	// Replaces watch cache hashmap implementation with a btree based one, bringing performance improvements.
-	BtreeWatchCache featuregate.Feature = "BtreeWatchCache"
-
-	// owner: @serathius
 	// Enables concurrent watch object decoding to avoid starving watch cache when conversion webhook is installed.
 	ConcurrentWatchObjectDecode featuregate.Feature = "ConcurrentWatchObjectDecode"
+
+	// owner: @serathius
+	// kep: http://kep.k8s.io/2340
+	//
+	// Allow the API server to serve consistent lists from cache
+	ConsistentListFromCache featuregate.Feature = "ConsistentListFromCache"
 
 	// owner: @jefftree
 	// kep: https://kep.k8s.io/4355
@@ -147,49 +153,16 @@ const (
 	// overload.
 	ResilientWatchCacheInitialization featuregate.Feature = "ResilientWatchCacheInitialization"
 
-	// owner: @serathius
-	//
-	// Allow watch cache to create a watch on a dedicated RPC.
-	// This prevents watch cache from being starved by other watches.
-	SeparateCacheWatchRPC featuregate.Feature = "SeparateCacheWatchRPC"
-
-	// owner: @enj
-	//
-	// Enables http2 DOS mitigations for unauthenticated clients.
-	//
-	// Some known reasons to disable these mitigations:
-	//
-	// An API server that is fronted by an L7 load balancer that is set up
-	// to mitigate http2 attacks may opt to disable this protection to prevent
-	// unauthenticated clients from disabling connection reuse between the load
-	// balancer and the API server (many incoming connections could share the
-	// same backend connection).
-	//
-	// An API server that is on a private network may opt to disable this
-	// protection to prevent performance regressions for unauthenticated
-	// clients.
-	UnauthenticatedHTTP2DOSMitigation featuregate.Feature = "UnauthenticatedHTTP2DOSMitigation"
-
 	// owner: @jpbetz
 	// Resource create requests using generateName are retried automatically by the apiserver
 	// if the generated name conflicts with an existing resource name, up to a maximum number of 7 retries.
 	RetryGenerateName featuregate.Feature = "RetryGenerateName"
 
-	// owner: @cici37
+	// owner: @serathius
 	//
-	// StrictCostEnforcementForVAP is used to apply strict CEL cost validation for ValidatingAdmissionPolicy.
-	// It will be set to off by default for certain time of period to prevent the impact on the existing users.
-	// It is strongly recommended to enable this feature gate as early as possible.
-	// The strict cost is specific for the extended libraries whose cost defined under k8s/apiserver/pkg/cel/library.
-	StrictCostEnforcementForVAP featuregate.Feature = "StrictCostEnforcementForVAP"
-
-	// owner: @cici37
-	//
-	// StrictCostEnforcementForWebhooks is used to apply strict CEL cost validation for matchConditions in Webhooks.
-	// It will be set to off by default for certain time of period to prevent the impact on the existing users.
-	// It is strongly recommended to enable this feature gate as early as possible.
-	// The strict cost is specific for the extended libraries whose cost defined under k8s/apiserver/pkg/cel/library.
-	StrictCostEnforcementForWebhooks featuregate.Feature = "StrictCostEnforcementForWebhooks"
+	// Allow watch cache to create a watch on a dedicated RPC.
+	// This prevents watch cache from being starved by other watches.
+	SeparateCacheWatchRPC featuregate.Feature = "SeparateCacheWatchRPC"
 
 	// owner: @caesarxuchao @roycaihw
 	//
@@ -210,6 +183,22 @@ const (
 	// Allow API server Protobuf encoder to encode collections item by item, instead of all at once.
 	StreamingCollectionEncodingToProtobuf featuregate.Feature = "StreamingCollectionEncodingToProtobuf"
 
+	// owner: @cici37
+	//
+	// StrictCostEnforcementForVAP is used to apply strict CEL cost validation for ValidatingAdmissionPolicy.
+	// It will be set to off by default for certain time of period to prevent the impact on the existing users.
+	// It is strongly recommended to enable this feature gate as early as possible.
+	// The strict cost is specific for the extended libraries whose cost defined under k8s/apiserver/pkg/cel/library.
+	StrictCostEnforcementForVAP featuregate.Feature = "StrictCostEnforcementForVAP"
+
+	// owner: @cici37
+	//
+	// StrictCostEnforcementForWebhooks is used to apply strict CEL cost validation for matchConditions in Webhooks.
+	// It will be set to off by default for certain time of period to prevent the impact on the existing users.
+	// It is strongly recommended to enable this feature gate as early as possible.
+	// The strict cost is specific for the extended libraries whose cost defined under k8s/apiserver/pkg/cel/library.
+	StrictCostEnforcementForWebhooks featuregate.Feature = "StrictCostEnforcementForWebhooks"
+
 	// owner: @aramase, @enj, @nabokihms
 	// kep: https://kep.k8s.io/3331
 	//
@@ -221,6 +210,23 @@ const (
 	//
 	// Enables Structured Authorization Configuration
 	StructuredAuthorizationConfiguration featuregate.Feature = "StructuredAuthorizationConfiguration"
+
+	// owner: @enj
+	//
+	// Enables http2 DOS mitigations for unauthenticated clients.
+	//
+	// Some known reasons to disable these mitigations:
+	//
+	// An API server that is fronted by an L7 load balancer that is set up
+	// to mitigate http2 attacks may opt to disable this protection to prevent
+	// unauthenticated clients from disabling connection reuse between the load
+	// balancer and the API server (many incoming connections could share the
+	// same backend connection).
+	//
+	// An API server that is on a private network may opt to disable this
+	// protection to prevent performance regressions for unauthenticated
+	// clients.
+	UnauthenticatedHTTP2DOSMitigation featuregate.Feature = "UnauthenticatedHTTP2DOSMitigation"
 
 	// owner: @wojtek-t
 	//
@@ -236,12 +242,6 @@ const (
 	//
 	// Allow the API server to stream individual items instead of chunking
 	WatchList featuregate.Feature = "WatchList"
-
-	// owner: @serathius
-	// kep: http://kep.k8s.io/2340
-	//
-	// Allow the API server to serve consistent lists from cache
-	ConsistentListFromCache featuregate.Feature = "ConsistentListFromCache"
 )
 
 func init() {
