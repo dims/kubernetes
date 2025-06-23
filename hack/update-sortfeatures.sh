@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+# Copyright 2021 The Kubernetes Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+source "${KUBE_ROOT}/hack/lib/init.sh"
+
+kube::golang::setup_env
+
+cd "${KUBE_ROOT}"
+
+# If command line parameters are provided, use those
+if [[ $# -gt 0 ]]; then
+    go run cmd/sortfeatures/main.go "$@"
+else
+    # Otherwise use the default list of files
+    files=(
+        "pkg/features/kube_features.go"
+        "staging/src/k8s.io/apiserver/pkg/features/kube_features.go"
+        "staging/src/k8s.io/client-go/features/known_features.go"
+        "staging/src/k8s.io/controller-manager/pkg/features/kube_features.go"
+        "staging/src/k8s.io/apiextensions-apiserver/pkg/features/kube_features.go"
+        "test/e2e/feature/feature.go"
+        "test/e2e/environment/environment.go"
+    )
+
+    echo "${files[@]}" | xargs go run cmd/sortfeatures/main.go --files
+fi
