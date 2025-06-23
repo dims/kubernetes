@@ -25,12 +25,22 @@ kube::golang::setup_env
 
 cd "${KUBE_ROOT}"
 
-# If command line parameters are provided, use those
-if [[ $# -gt 0 ]]; then
-    go run cmd/sortfeatures/main.go "$@"
-else
-    # Otherwise use the default list of files
-    files=(
+# Initialize variables
+FORCE_FLAG=""
+FILES=()
+
+# Parse arguments
+for arg in "$@"; do
+    if [[ "${arg}" == "--force" ]]; then
+        FORCE_FLAG="--force"
+    else
+        FILES+=("${arg}")
+    fi
+done
+
+# If no files are provided, use the default list
+if [[ ${#FILES[@]} -eq 0 ]]; then
+    FILES=(
         "pkg/features/kube_features.go"
         "staging/src/k8s.io/apiserver/pkg/features/kube_features.go"
         "staging/src/k8s.io/client-go/features/known_features.go"
@@ -39,6 +49,7 @@ else
         "test/e2e/feature/feature.go"
         "test/e2e/environment/environment.go"
     )
-
-    echo "${files[@]}" | xargs go run cmd/sortfeatures/main.go --files
 fi
+
+# Run the sortfeatures tool with the collected files
+go run cmd/sortfeatures/main.go ${FORCE_FLAG} --files "${FILES[@]}"
