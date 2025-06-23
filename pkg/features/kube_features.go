@@ -28,18 +28,17 @@ import (
 	kcmfeatures "k8s.io/controller-manager/pkg/features"
 )
 
+// Every feature gate should add method here following this template:
+//
+// // owner: @username
+// // kep: https://kep.k8s.io/NNN
+// MyFeature featuregate.Feature = "MyFeature"
+//
+// Feature gates should be listed in alphabetical, case-sensitive
+// (upper before any lower case character) order. This reduces the risk
+// of code conflicts because changes are more likely to be scattered
+// across the file.
 const (
-	// Every feature gate should add method here following this template:
-	//
-	// // owner: @username
-	// // kep: https://kep.k8s.io/NNN
-	// MyFeature featuregate.Feature = "MyFeature"
-	//
-	// Feature gates should be listed in alphabetical, case-sensitive
-	// (upper before any lower case character) order. This reduces the risk
-	// of code conflicts because changes are more likely to be scattered
-	// across the file.
-
 	// owner: @aojea
 	//
 	// Allow kubelet to request a certificate without any Node IP available, only

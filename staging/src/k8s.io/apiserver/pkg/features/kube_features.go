@@ -23,17 +23,16 @@ import (
 	"k8s.io/component-base/featuregate"
 )
 
+// Every feature gate should add method here following this template:
+//
+// // owner: @username
+// MyFeature featuregate.Feature = "MyFeature"
+//
+// Feature gates should be listed in alphabetical, case-sensitive
+// (upper before any lower case character) order. This reduces the risk
+// of code conflicts because changes are more likely to be scattered
+// across the file.
 const (
-	// Every feature gate should add method here following this template:
-	//
-	// // owner: @username
-	// MyFeature featuregate.Feature = "MyFeature"
-	//
-	// Feature gates should be listed in alphabetical, case-sensitive
-	// (upper before any lower case character) order. This reduces the risk
-	// of code conflicts because changes are more likely to be scattered
-	// across the file.
-
 	// owner: @jefftree
 	//
 	// Remove the v2beta1 apidiscovery.k8s.io/v2beta1 group version. Aggregated

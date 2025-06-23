@@ -29,6 +29,10 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/errors"
 )
 
+// Feature gates should be listed in alphabetical, case-sensitive
+// (upper before any lower case character) order. This reduces the risk
+// of code conflicts because changes are more likely to be scattered
+// across the file.
 const (
 	// PublicKeysECDSA is expected to be alpha in v1.19
 	PublicKeysECDSA = "PublicKeysECDSA"
