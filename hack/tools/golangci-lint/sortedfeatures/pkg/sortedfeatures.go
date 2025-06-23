@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -57,39 +56,23 @@ func NewAnalyzerWithConfig(config Config) *analysis.Analyzer {
 	}
 }
 
+func isTargetFile(configFiles []string, filename string) bool {
+	for _, item := range configFiles {
+		if strings.HasSuffix(filename, item) {
+			return true
+		}
+	}
+	return false
+}
+
 func run(pass *analysis.Pass, config Config) (interface{}, error) {
-	// Check if there are any files to analyze
-	if len(pass.Files) == 0 {
-		if config.Debug {
-			fmt.Printf("No files to analyze\n")
-		}
-		// No files to analyze, return early
-		return nil, nil
-	}
-
-	// Check if the current file is one of our target files
-	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
-	isTargetFile := false
-
-	if config.Debug {
-		fmt.Printf("Checking file: %s\n", filename)
-	}
-
-	for _, target := range config.Files {
-		if strings.HasSuffix(filename, target) || strings.HasSuffix(filename, filepath.Base(target)) {
-			isTargetFile = true
-			break
-		}
-	}
-
-	if !isTargetFile {
-		if config.Debug {
-			fmt.Printf("Skipping file: %s\n", filename)
-		}
-		return nil, nil
-	}
-
 	for _, file := range pass.Files {
+		filename := pass.Fset.File(file.Pos()).Name()
+
+		if !isTargetFile(config.Files, filename) {
+			continue
+		}
+
 		for _, decl := range file.Decls {
 			genDecl, ok := decl.(*ast.GenDecl)
 			if !ok {

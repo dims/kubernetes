@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-
 	"golang.org/x/tools/go/analysis"
 
 	"k8s.io/kubernetes/hack/tools/golangci-lint/sortedfeatures/pkg"
