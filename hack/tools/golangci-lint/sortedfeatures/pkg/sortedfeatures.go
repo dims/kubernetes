@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package sortedfeatures implements a linter that checks if feature gates are sorted alphabetically.
-package sortedfeatures
+package pkg
 
 import (
 	"fmt"
@@ -40,7 +40,7 @@ type Config struct {
 
 // NewAnalyzer returns a new sortedfeatures analyzer.
 func NewAnalyzer() *analysis.Analyzer {
-	return NewAnalyzerWithConfig(Config{})
+	return NewAnalyzerWithConfig(Config{Debug: true})
 }
 
 // NewAnalyzerWithConfig returns a new sortedfeatures analyzer with the given configuration.
@@ -49,6 +49,9 @@ func NewAnalyzerWithConfig(config Config) *analysis.Analyzer {
 		Name: "sortedfeatures",
 		Doc:  "Checks if feature gates are sorted alphabetically in const and var blocks",
 		Run: func(pass *analysis.Pass) (interface{}, error) {
+			if config.Debug {
+				fmt.Printf("Processing...\n")
+			}
 			return run(pass, config)
 		},
 	}
@@ -57,6 +60,9 @@ func NewAnalyzerWithConfig(config Config) *analysis.Analyzer {
 func run(pass *analysis.Pass, config Config) (interface{}, error) {
 	// Check if there are any files to analyze
 	if len(pass.Files) == 0 {
+		if config.Debug {
+			fmt.Printf("No files to analyze\n")
+		}
 		// No files to analyze, return early
 		return nil, nil
 	}
