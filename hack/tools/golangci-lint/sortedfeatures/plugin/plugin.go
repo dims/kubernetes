@@ -57,11 +57,7 @@ func New(pluginSettings interface{}) ([]*analysis.Analyzer, error) {
 
 		// Apply settings to config
 		config.Debug = s.Debug
-
-		// Use Files if specified
-		if len(s.Files) > 0 {
-			config.Files = append(config.Files, s.Files...)
-		}
+		config.Files = append(config.Files, s.Files...)
 
 		if config.Debug {
 			fmt.Printf("sortedfeatures settings: %+v\n", s)

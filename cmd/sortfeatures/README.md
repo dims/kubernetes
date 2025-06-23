@@ -4,7 +4,9 @@
 
 ## Purpose
 
-In Kubernetes, feature gates should be listed in alphabetical, case-sensitive (upper before any lower case character) order to reduce the risk of code conflicts and improve readability. This tool enforces this convention by automatically sorting feature declarations in specified files.
+In Kubernetes, feature gates should be listed in alphabetical, case-sensitive (upper before any lower case character)
+order to reduce the risk of code conflicts and improve readability. This tool enforces this convention by automatically
+sorting feature declarations in specified files.
 
 ## Usage
 
@@ -72,8 +74,11 @@ The standard set of files processed by `hack/update-sortfeatures.sh` includes:
 
 ## Related Tools
 
-- **sortedfeatures linter**: A golangci-lint plugin that checks if feature gates are sorted alphabetically. When it detects unsorted features, it suggests running `hack/update-sortfeatures.sh` to fix the issues. See [hack/tools/golangci-lint/sortedfeatures](../../hack/tools/golangci-lint/sortedfeatures) for more information.
+- **sortedfeatures linter**: A golangci-lint plugin that checks if feature gates are sorted alphabetically. When it
+detects unsorted features, it suggests running `hack/update-sortfeatures.sh` to fix the issues.
+See [hack/tools/golangci-lint/sortedfeatures](../../hack/tools/golangci-lint/sortedfeatures) for more information.
 
 ## Development
 
-If you need to modify this tool, ensure that any changes are also reflected in the corresponding linter to maintain consistency in how features are sorted across the Kubernetes codebase.
+If you need to modify this tool, ensure that any changes are also reflected in the corresponding linter to maintain
+consistency in how features are sorted across the Kubernetes codebase.
