@@ -4,13 +4,31 @@ This linter checks if feature gates in Kubernetes code are sorted alphabetically
 
 ## Purpose
 
-In Kubernetes, feature gates should be listed in alphabetical, case-sensitive (upper before any lower case character) order to reduce the risk of code conflicts and improve readability. This linter enforces this convention by checking if feature gates are properly sorted.
+In Kubernetes, feature gates should be listed in alphabetical, case-sensitive (upper before any lower case character)
+order to reduce the risk of code conflicts and improve readability. This linter enforces this convention by checking
+if feature gates are properly sorted.
 
 ## How It Works
 
-The linter analyzes const and var blocks in specified files, extracts feature declarations, and checks if they are sorted alphabetically by name. If they are not sorted, it reports an error with a detailed diff showing the current order versus the expected order.
+The linter analyzes const and var blocks in specified files, extracts feature declarations, and checks if they are
+sorted alphabetically by name. If they are not sorted, it reports an error with a detailed diff showing the current
+order versus the expected order.
 
-The linter uses the same core logic as the `cmd/sortfeatures/main.go` tool, which is used by the `hack/update-sortfeatures.sh` script to automatically sort feature gates.
+The linter uses the same core logic as the `cmd/sortfeatures/main.go` tool, which is used by the
+`hack/update-sortfeatures.sh` script to automatically sort feature gates.
+
+NOTE: the linter only works for the following scenario where a `const` or a `var` block contains feature gates:
+```go
+const (
+    FeatureA featuregate.Feature = "FeatureA"
+    FeatureB featuregate.Feature = "FeatureB"
+)
+```
+it will not work for cases where feature gates are defined in a different way, such as:
+```go
+const FeatureA featuregate.Feature = "FeatureA"
+const FeatureB featuregate.Feature = "FeatureB"
+```
 
 ## Installation
 
@@ -58,18 +76,21 @@ settings:
     - another/path/file.go
 ```
 
-Note: If `files` is specified, only those files will be checked and the default files will be ignored. If no files are specified, the default set of Kubernetes feature gate files will be checked.
+Note: If `files` is specified, only those files will be checked and the default files will be ignored. If no files are
+specified, the default set of Kubernetes feature gate files will be checked.
 
 ## Usage
 
-The linter will check all const and var blocks in your code to ensure that feature gates are sorted alphabetically. If they are not sorted, it will report an error with a detailed diff showing the current order versus the expected order, and suggest running `hack/update-sortfeatures.sh` to fix the issues.
+The linter will check all const and var blocks in your code to ensure that feature gates are sorted alphabetically.
+ If they are not sorted, it will report an error with a detailed diff showing the current order versus the expected
+ order, and suggest running `hack/update-sortfeatures.sh` to fix the issues.
 
 ### Enabling the linter
 
 Custom linters are enabled by default, but abide by the same rules as other linters.
 
-If the disable all option is specified either on command line or in `.golangci.yml` files `linters.disable-all: true`, custom linters will be disabled;
-they can be re-enabled by adding them to the `linters.enable` list,
+If the disable all option is specified either on command line or in `.golangci.yml` files `linters.disable-all: true`,
+custom linters will be disabled;  they can be re-enabled by adding them to the `linters.enable` list,
 or providing the enabled option on the command line, `golangci-lint run -Esortedfeatures`.
 
 ## Example
@@ -120,7 +141,9 @@ hack/update-sortfeatures.sh path/to/file1.go path/to/file2.go
 
 ## Integration with CI
 
-This linter is part of the Kubernetes CI pipeline and helps ensure that all feature gates are properly sorted across the codebase. It's recommended to run this linter locally before submitting pull requests that modify feature gates.
+This linter is part of the Kubernetes CI pipeline and helps ensure that all feature gates are properly sorted
+across the codebase. It's recommended to run this linter locally before submitting pull requests that modify
+feature gates.
 
 ## Troubleshooting
 
