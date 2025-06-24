@@ -73,26 +73,111 @@ func run(pass *analysis.Pass, config Config) (interface{}, error) {
 			continue
 		}
 
+		// Check all declarations in the file
 		for _, decl := range file.Decls {
 			genDecl, ok := decl.(*ast.GenDecl)
 			if !ok {
 				continue
 			}
 
-			// Only process var and const blocks
-			if genDecl.Tok != token.VAR && genDecl.Tok != token.CONST {
+			// Process var and const blocks for regular feature gates
+			if (genDecl.Tok == token.VAR || genDecl.Tok == token.CONST) && len(genDecl.Specs) > 1 {
+				// Extract features with their comments
+				features := extractFeatures(genDecl, file.Comments)
+
+				// Skip if no features were found
+				if len(features) > 1 {
+					// Sort features
+					sortedFeatures := sortFeatures(features)
+
+					// Check if the order has changed
+					orderChanged := hasOrderChanged(features, sortedFeatures)
+
+					if orderChanged {
+						// Generate a diff to show what's wrong
+						reportSortingIssue(pass, genDecl, features, sortedFeatures)
+					}
+				}
+			}
+
+			// Check for maps with feature gates as keys
+			if genDecl.Tok == token.VAR {
+				checkFeatureGateMaps(pass, genDecl)
+			}
+		}
+	}
+	return nil, nil
+}
+
+// checkFeatureGateMaps checks if maps with feature gates as keys have their keys sorted alphabetically
+func checkFeatureGateMaps(pass *analysis.Pass, genDecl *ast.GenDecl) {
+	for _, spec := range genDecl.Specs {
+		valueSpec, ok := spec.(*ast.ValueSpec)
+		if !ok || len(valueSpec.Names) == 0 || len(valueSpec.Values) == 0 {
+			continue
+		}
+
+		// Check each value to see if it's a map with feature gates
+		for _, value := range valueSpec.Values {
+			compositeLit, ok := value.(*ast.CompositeLit)
+			if !ok {
 				continue
 			}
 
-			// Skip if there's only one spec (not a block)
-			if len(genDecl.Specs) <= 1 {
+			// Check if this is a map type
+			mapType, ok := compositeLit.Type.(*ast.MapType)
+			if !ok {
 				continue
 			}
 
-			// Extract features with their comments
-			features := extractFeatures(genDecl, file.Comments)
+			// Check if the key type is featuregate.Feature or contains "Feature"
+			isFeatureGateMap := false
+			
+			// Check for SelectorExpr (e.g., featuregate.Feature)
+			if selectorExpr, ok := mapType.Key.(*ast.SelectorExpr); ok {
+				if selectorExpr.Sel.Name == "Feature" {
+					isFeatureGateMap = true
+				}
+			}
+			
+			// Check for Ident (e.g., Feature)
+			if ident, ok := mapType.Key.(*ast.Ident); ok {
+				if ident.Name == "Feature" {
+					isFeatureGateMap = true
+				}
+			}
 
-			// Skip if no features were found
+			if !isFeatureGateMap {
+				continue
+			}
+
+			// This is a map with feature gates as keys
+			var features []Feature
+			for _, elt := range compositeLit.Elts {
+				keyValueExpr, ok := elt.(*ast.KeyValueExpr)
+				if !ok {
+					continue
+				}
+
+				// Get the key, which should be a feature gate identifier
+				var featureName string
+				
+				// Handle different types of keys
+				switch key := keyValueExpr.Key.(type) {
+				case *ast.Ident:
+					featureName = key.Name
+				case *ast.SelectorExpr:
+					featureName = key.Sel.Name
+				default:
+					continue
+				}
+
+				features = append(features, Feature{
+					Name:     featureName,
+					Comments: []string{}, // No comments for map keys
+				})
+			}
+
 			if len(features) <= 1 {
 				continue
 			}
@@ -105,11 +190,10 @@ func run(pass *analysis.Pass, config Config) (interface{}, error) {
 
 			if orderChanged {
 				// Generate a diff to show what's wrong
-				reportSortingIssue(pass, genDecl, features, sortedFeatures)
+				reportMapSortingIssue(pass, genDecl, valueSpec.Names[0].Name, features, sortedFeatures)
 			}
 		}
 	}
-	return nil, nil
 }
 
 // Feature represents a feature declaration with its associated comments
@@ -226,6 +310,51 @@ func stripHeader(input string, n int) string {
 	}
 
 	return strings.TrimSuffix(result.String(), "\n")
+}
+
+// reportMapSortingIssue reports a linting issue for unsorted map keys
+func reportMapSortingIssue(pass *analysis.Pass, decl *ast.GenDecl, mapName string, current, sorted []Feature) {
+	// Generate the original source code
+	originalSource := generateMapSourceCode(current)
+
+	// Generate the sorted source code
+	sortedSource := generateMapSourceCode(sorted)
+
+	// Create a unified diff between the original and sorted source
+	diff := difflib.UnifiedDiff{
+		A:        difflib.SplitLines(originalSource),
+		B:        difflib.SplitLines(sortedSource),
+		FromFile: "Current Map Keys",
+		ToFile:   "Expected Map Keys",
+		Context:  3,
+	}
+
+	diffText, err := difflib.GetUnifiedDiffString(diff)
+	if err != nil {
+		pass.Reportf(decl.Pos(), "map '%s' keys not sorted alphabetically (error creating diff: %v)", mapName, err)
+		return
+	}
+
+	// Report the issue with the diff
+	pass.Reportf(decl.Pos(), "map '%s' keys not sorted alphabetically:\n%s\nRun hack/update-sortfeatures.sh to fix", mapName, stripHeader(diffText, 3))
+}
+
+// generateMapSourceCode recreates the source code for map keys
+func generateMapSourceCode(features []Feature) string {
+	var sb strings.Builder
+
+	sb.WriteString("map[featuregate.Feature]featuregate.VersionedSpecs{\n")
+
+	// Add each feature key
+	for _, feature := range features {
+		sb.WriteString("\t")
+		sb.WriteString(feature.Name)
+		sb.WriteString(": ...,\n")
+	}
+
+	sb.WriteString("}")
+
+	return sb.String()
 }
 
 // generateSourceCode recreates the source code from features
