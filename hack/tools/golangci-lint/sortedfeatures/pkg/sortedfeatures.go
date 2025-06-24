@@ -211,10 +211,10 @@ func reportSortingIssue(pass *analysis.Pass, decl *ast.GenDecl, current, sorted 
 
 	diffText, err := difflib.GetUnifiedDiffString(diff)
 	if err != nil {
-		pass.Reportf(decl.Pos(), "feature gates are not sorted alphabetically (error creating diff: %v)", err)
+		pass.Reportf(decl.Pos(), "not sorted alphabetically (error creating diff: %v)", err)
 		return
 	}
 
 	// Report the issue with the diff
-	pass.Reportf(decl.Pos(), "feature gates are not sorted alphabetically:\n%s\nRun hack/update-sortfeatures.sh to fix", diffText)
+	pass.Reportf(decl.Pos(), "not sorted alphabetically:\n%s\nRun hack/update-sortfeatures.sh to fix", diffText)
 }

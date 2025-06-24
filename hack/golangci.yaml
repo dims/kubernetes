@@ -232,8 +232,8 @@ linters:
         original-url: k8s.io/kubernetes/hack/tools/golangci-lint/sortedfeatures
         settings:
           files:
+            - cmd/kubeadm/app/features/features.go
             - pkg/features/kube_features.go
-            - pkg/features/versioned_kube_features.go
             - staging/src/k8s.io/apiserver/pkg/features/kube_features.go
             - staging/src/k8s.io/client-go/features/known_features.go
             - staging/src/k8s.io/controller-manager/pkg/features/kube_features.go
