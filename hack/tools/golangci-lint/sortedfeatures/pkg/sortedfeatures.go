@@ -18,13 +18,13 @@ limitations under the License.
 package pkg
 
 import (
+	"bufio"
 	"fmt"
 	"go/ast"
 	"go/token"
 	"sort"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pmezard/go-difflib/difflib"
 	"golang.org/x/tools/go/analysis"
 )
@@ -188,24 +188,18 @@ func hasOrderChanged(original, sorted []Feature) bool {
 
 // reportSortingIssue reports a linting issue with a diff showing the correct order
 func reportSortingIssue(pass *analysis.Pass, decl *ast.GenDecl, current, sorted []Feature) {
-	// Configure spew for better output
-	spewConfig := spew.ConfigState{
-		Indent:                  "  ",
-		DisablePointerAddresses: true,
-		DisableCapacities:       true,
-		SortKeys:                true,
-	}
+	// Generate the original source code
+	originalSource := generateSourceCode(decl.Tok, current)
 
-	// Generate dumps of both current and expected orders
-	currentDump := spewConfig.Sdump(current)
-	sortedDump := spewConfig.Sdump(sorted)
+	// Generate the sorted source code
+	sortedSource := generateSourceCode(decl.Tok, sorted)
 
-	// Create a unified diff between the two dumps
+	// Create a unified diff between the original and sorted source
 	diff := difflib.UnifiedDiff{
-		A:        difflib.SplitLines(currentDump),
-		B:        difflib.SplitLines(sortedDump),
-		FromFile: "Current Order",
-		ToFile:   "Expected Order",
+		A:        difflib.SplitLines(originalSource),
+		B:        difflib.SplitLines(sortedSource),
+		FromFile: "Current",
+		ToFile:   "Expected",
 		Context:  3,
 	}
 
@@ -216,5 +210,52 @@ func reportSortingIssue(pass *analysis.Pass, decl *ast.GenDecl, current, sorted 
 	}
 
 	// Report the issue with the diff
-	pass.Reportf(decl.Pos(), "not sorted alphabetically:\n%s\nRun hack/update-sortfeatures.sh to fix", diffText)
+	pass.Reportf(decl.Pos(), "not sorted alphabetically:\n%s\nRun hack/update-sortfeatures.sh to fix", stripHeader(diffText, 3))
+}
+
+func stripHeader(input string, n int) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	var result strings.Builder
+	lineCount := 0
+
+	for scanner.Scan() {
+		lineCount++
+		if lineCount > n {
+			result.WriteString(scanner.Text() + "\n")
+		}
+	}
+
+	return strings.TrimSuffix(result.String(), "\n")
+}
+
+// generateSourceCode recreates the source code from features
+func generateSourceCode(tokenType token.Token, features []Feature) string {
+	var sb strings.Builder
+
+	// Start the block with the token type (var or const)
+	sb.WriteString(tokenType.String())
+	sb.WriteString(" (\n")
+
+	// Add each feature with its comments
+	for _, feature := range features {
+		// Add comments
+		for _, comment := range feature.Comments {
+			sb.WriteString("\t")
+			sb.WriteString(comment)
+			sb.WriteString("\n")
+		}
+
+		// Add the feature declaration
+		sb.WriteString("\t")
+		sb.WriteString(feature.Name)
+		sb.WriteString(" = ")
+		// Since we don't have the actual value, we'll use a placeholder
+		sb.WriteString("value")
+		sb.WriteString("\n\n")
+	}
+
+	// Close the block
+	sb.WriteString(")")
+
+	return sb.String()
 }

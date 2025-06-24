@@ -21,8 +21,10 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/pmezard/go-difflib/difflib"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -320,18 +322,29 @@ const (
 		t.Fatalf("Failed to find const declaration")
 	}
 
-	var reportCalled bool
+	var reportMessage string
 	pass := &analysis.Pass{
 		Fset:     fset,
 		Files:    []*ast.File{f},
 		ResultOf: make(map[*analysis.Analyzer]interface{}),
-		Report:   func(d analysis.Diagnostic) { reportCalled = true },
+		Report:   func(d analysis.Diagnostic) { reportMessage = d.Message },
 	}
 
 	reportSortingIssue(pass, foundDecl, current, sorted)
 
-	if !reportCalled {
+	if reportMessage == "" {
 		t.Errorf("Expected Report to be called")
+	}
+
+	// Check that the diff shows the features in the correct order
+	if !strings.Contains(reportMessage, "FeatureB") || !strings.Contains(reportMessage, "FeatureA") || !strings.Contains(reportMessage, "FeatureC") {
+		t.Errorf("Expected diff to contain all feature names, got: %s", reportMessage)
+	}
+
+	// Check that the diff contains the expected content
+	expectedContent := "const ("
+	if !strings.Contains(reportMessage, expectedContent) {
+		t.Errorf("Expected diff to contain %q, got: %s", expectedContent, reportMessage)
 	}
 }
 
@@ -654,5 +667,96 @@ const (
 	_, err = run(pass, config)
 	if err != nil {
 		t.Errorf("run returned an error: %v", err)
+	}
+}
+
+func TestGenerateSourceCode(t *testing.T) {
+	features := []Feature{
+		{Name: "FeatureB", Comments: []string{"// Comment for FeatureB"}},
+		{Name: "FeatureA", Comments: []string{"// Comment for FeatureA"}},
+	}
+
+	// Test const block generation
+	constSource := generateSourceCode(token.CONST, features)
+	expectedConstSource := `const (
+	// Comment for FeatureB
+	FeatureB = value
+
+	// Comment for FeatureA
+	FeatureA = value
+
+)`
+
+	if constSource != expectedConstSource {
+		t.Errorf("Expected const source:\n%s\n\nGot:\n%s", expectedConstSource, constSource)
+	}
+
+	// Test var block generation
+	varSource := generateSourceCode(token.VAR, features)
+	expectedVarSource := `var (
+	// Comment for FeatureB
+	FeatureB = value
+
+	// Comment for FeatureA
+	FeatureA = value
+
+)`
+
+	if varSource != expectedVarSource {
+		t.Errorf("Expected var source:\n%s\n\nGot:\n%s", expectedVarSource, varSource)
+	}
+}
+
+func TestDiffGeneration(t *testing.T) {
+	// Create unsorted features
+	unsorted := []Feature{
+		{Name: "FeatureC", Comments: []string{"// Comment for FeatureC"}},
+		{Name: "FeatureA", Comments: []string{"// Comment for FeatureA"}},
+		{Name: "FeatureB", Comments: []string{"// Comment for FeatureB"}},
+	}
+
+	// Create sorted features
+	sorted := []Feature{
+		{Name: "FeatureA", Comments: []string{"// Comment for FeatureA"}},
+		{Name: "FeatureB", Comments: []string{"// Comment for FeatureB"}},
+		{Name: "FeatureC", Comments: []string{"// Comment for FeatureC"}},
+	}
+
+	// Generate source code for both
+	originalSource := generateSourceCode(token.CONST, unsorted)
+	sortedSource := generateSourceCode(token.CONST, sorted)
+
+	// Create a unified diff
+	diff := difflib.UnifiedDiff{
+		A:        difflib.SplitLines(originalSource),
+		B:        difflib.SplitLines(sortedSource),
+		FromFile: "Current",
+		ToFile:   "Expected",
+		Context:  3,
+	}
+
+	diffText, err := difflib.GetUnifiedDiffString(diff)
+	if err != nil {
+		t.Fatalf("Failed to generate diff: %v", err)
+	}
+
+	// Strip header to match the actual implementation
+	diffText = stripHeader(diffText, 3)
+
+	// Check that the diff contains expected content
+	expectedLines := []string{
+		"-\t// Comment for FeatureC",
+		"-\tFeatureC = value",
+	}
+
+	for _, line := range expectedLines {
+		if !strings.Contains(diffText, line) {
+			t.Errorf("Expected diff to contain line: %q, but it was not found in:\n%s", line, diffText)
+		}
+	}
+
+	// Check that the diff shows the correct order change
+	if !strings.Contains(diffText, "FeatureA") || !strings.Contains(diffText, "FeatureB") || !strings.Contains(diffText, "FeatureC") {
+		t.Errorf("Expected diff to contain all feature names, got: %s", diffText)
 	}
 }
