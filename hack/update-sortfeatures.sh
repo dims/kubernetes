@@ -41,6 +41,7 @@ done
 # If no files are provided, use the default list
 if [[ ${#FILES[@]} -eq 0 ]]; then
     FILES=(
+        "cmd/kubeadm/app/features/features.go"
         "pkg/features/kube_features.go"
         "staging/src/k8s.io/apiserver/pkg/features/kube_features.go"
         "staging/src/k8s.io/client-go/features/known_features.go"
