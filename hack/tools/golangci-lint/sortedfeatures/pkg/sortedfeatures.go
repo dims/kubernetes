@@ -167,7 +167,12 @@ func checkFeatureGateMaps(pass *analysis.Pass, genDecl *ast.GenDecl) {
 				case *ast.Ident:
 					featureName = key.Name
 				case *ast.SelectorExpr:
-					featureName = key.Sel.Name
+					// For selector expressions like genericfeatures.APIServerIdentity
+					if x, ok := key.X.(*ast.Ident); ok {
+						featureName = x.Name + "." + key.Sel.Name
+					} else {
+						continue
+					}
 				default:
 					continue
 				}
