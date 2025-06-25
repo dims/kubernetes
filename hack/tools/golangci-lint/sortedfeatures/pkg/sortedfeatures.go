@@ -132,14 +132,14 @@ func checkFeatureGateMaps(pass *analysis.Pass, genDecl *ast.GenDecl) {
 
 			// Check if the key type is featuregate.Feature or contains "Feature"
 			isFeatureGateMap := false
-			
+
 			// Check for SelectorExpr (e.g., featuregate.Feature)
 			if selectorExpr, ok := mapType.Key.(*ast.SelectorExpr); ok {
 				if selectorExpr.Sel.Name == "Feature" {
 					isFeatureGateMap = true
 				}
 			}
-			
+
 			// Check for Ident (e.g., Feature)
 			if ident, ok := mapType.Key.(*ast.Ident); ok {
 				if ident.Name == "Feature" {
@@ -161,7 +161,7 @@ func checkFeatureGateMaps(pass *analysis.Pass, genDecl *ast.GenDecl) {
 
 				// Get the key, which should be a feature gate identifier
 				var featureName string
-				
+
 				// Handle different types of keys
 				switch key := keyValueExpr.Key.(type) {
 				case *ast.Ident:
