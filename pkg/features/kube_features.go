@@ -28,7 +28,7 @@ import (
 	kcmfeatures "k8s.io/controller-manager/pkg/features"
 )
 
-// Every feature gate should add method here following this template:
+// Every feature gate should have an entry here following this template:
 //
 // // owner: @username
 // // kep: https://kep.k8s.io/NNN
@@ -561,6 +561,9 @@ const (
 	// The recommendation is to enable it on a need basis for debugging purposes and disabling otherwise.
 	NodeLogQuery featuregate.Feature = "NodeLogQuery"
 
+	// owner: @iholder101 @kannon92
+	// kep: https://kep.k8s.io/2400
+	//
 	// Permits kubelet to run with swap enabled.
 	NodeSwap featuregate.Feature = "NodeSwap"
 
@@ -855,6 +858,9 @@ const (
 	// Superseded by BtreeWatchCache.
 	StorageNamespaceIndex featuregate.Feature = "StorageNamespaceIndex"
 
+	// owner: @nilekhc
+	// kep: https://kep.k8s.io/4192
+	//
 	// Enables support for the StorageVersionMigrator controller.
 	StorageVersionMigrator featuregate.Feature = "StorageVersionMigrator"
 

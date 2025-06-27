@@ -16,7 +16,7 @@ limitations under the License.
 
 package features
 
-// Every feature gate should add method here following this template:
+// Every feature gate should have an entry here following this template:
 //
 // // owner: @username
 // // alpha: v1.4

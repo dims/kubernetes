@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// Every feature gate should add method here following this template:
+	// Every feature gate should have an entry here following this template:
 	//
 	// // owner: @username
 	// // kep: https://kep.k8s.io/NNN (or issue: https://github.com/etcd-io/etcd/issues/NNN, or main PR: https://github.com/etcd-io/etcd/pull/NNN)

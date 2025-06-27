@@ -23,7 +23,7 @@ import (
 	"k8s.io/component-base/featuregate"
 )
 
-// Every feature gate should add method here following this template:
+// Every feature gate should have an entry here following this template:
 //
 // // owner: @username
 // MyFeature featuregate.Feature = "MyFeature"
