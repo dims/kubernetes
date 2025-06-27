@@ -14,9 +14,6 @@ The linter analyzes const and var blocks in specified files, extracts feature de
 sorted alphabetically by name. If they are not sorted, it reports an error with a detailed diff showing the current
 order versus the expected order.
 
-The linter uses the same core logic as the `cmd/sortfeatures/main.go` tool, which is used by the
-`hack/update-sortfeatures.sh` script to automatically sort feature gates.
-
 NOTE: the linter only works for the following scenario where a `const` or a `var` block contains feature gates:
 ```go
 const (
@@ -83,7 +80,7 @@ specified, the default set of Kubernetes feature gate files will be checked.
 
 The linter will check all const and var blocks in your code to ensure that feature gates are sorted alphabetically.
  If they are not sorted, it will report an error with a detailed diff showing the current order versus the expected
- order, and suggest running `hack/update-sortfeatures.sh` to fix the issues.
+ order.
 
 ### Enabling the linter
 
@@ -123,22 +120,6 @@ By default, this linter checks the following files in the Kubernetes codebase:
 - `test/e2e/feature/feature.go`
 - `test/e2e/environment/environment.go`
 
-## Fixing Issues
-
-When the linter reports unsorted features, you can fix them by running:
-
-```bash
-hack/update-sortfeatures.sh
-```
-
-This script uses the `cmd/sortfeatures/main.go` tool to automatically sort feature gates in the specified files.
-
-If you want to sort specific files, you can pass them as arguments:
-
-```bash
-hack/update-sortfeatures.sh path/to/file1.go path/to/file2.go
-```
-
 ## Integration with CI
 
 This linter is part of the Kubernetes CI pipeline and helps ensure that all feature gates are properly sorted
@@ -152,6 +133,5 @@ If you encounter issues with the linter:
 1. Enable debug mode in your configuration
 2. Check that the plugin is correctly built and referenced in your golangci-lint configuration
 3. Verify that the files you want to check are either in the default list or explicitly specified in your configuration
-4. Run the `hack/update-sortfeatures.sh` script to automatically fix sorting issues
 
 For more information on custom linters in golangci-lint, refer to the [official documentation](https://golangci-lint.run/contributing/new-linters/).
