@@ -5,7 +5,7 @@
 ## Purpose
 
 In Kubernetes, feature gates should be listed in alphabetical, case-sensitive (upper before any lower case character)
-order to reduce the risk of code conflicts and improve readability. This tool enforces this convention by automatically
+in order to reduce the risk of code conflicts and improve readability. This tool enforces this convention by automatically
 sorting feature declarations in specified files.
 
 ## Usage
