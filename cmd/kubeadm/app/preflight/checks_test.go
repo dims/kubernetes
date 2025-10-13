@@ -769,6 +769,93 @@ func resetProxyEnv(t *testing.T) {
 	t.Log("http.ProxyFromEnvironment is usable, continue executing test")
 }
 
+// TestHTTPProxyCIDRCheckIPv4IPv6Regression tests the Go 1.26 IPv4/IPv6 detection regression
+// This test verifies that IPv4 CIDRs are not incorrectly formatted as IPv6 URLs
+func TestHTTPProxyCIDRCheckIPv4IPv6Regression(t *testing.T) {
+	resetProxyEnv(t)
+
+	var tests = []struct {
+		name        string
+		cidr        string
+		expectError bool
+	}{
+		// Positive test cases - should succeed
+		{
+			name:        "IPv4 CIDR regression case",
+			cidr:        "192.168.0.0/16", // This specific CIDR was failing with Go 1.26-devel
+			expectError: false,
+		},
+		{
+			name:        "IPv4 private range",
+			cidr:        "10.0.0.0/8",
+			expectError: false,
+		},
+		{
+			name:        "IPv4 class C",
+			cidr:        "172.16.0.0/12",
+			expectError: false,
+		},
+		{
+			name:        "IPv6 CIDR should still work",
+			cidr:        "2001:db8:1::/56",
+			expectError: false,
+		},
+		{
+			name:        "IPv6 link-local",
+			cidr:        "fe80::/10",
+			expectError: false,
+		},
+		{
+			name:        "Empty CIDR",
+			cidr:        "",
+			expectError: false, // Empty CIDR is handled gracefully
+		},
+		// Negative test cases - should fail
+		{
+			name:        "Invalid CIDR format",
+			cidr:        "not-a-cidr",
+			expectError: true,
+		},
+		{
+			name:        "IPv4 without prefix",
+			cidr:        "192.168.1.1",
+			expectError: true,
+		},
+		{
+			name:        "IPv6 without prefix",
+			cidr:        "2001:db8::1",
+			expectError: true,
+		},
+		{
+			name:        "Invalid IPv4 format",
+			cidr:        "999.999.999.999/24",
+			expectError: true,
+		},
+		{
+			name:        "Invalid prefix length",
+			cidr:        "192.168.0.0/99",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			check := HTTPProxyCIDRCheck{
+				Proto: "https",
+				CIDR:  tt.cidr,
+			}
+
+			_, errors := check.Check()
+
+			if tt.expectError && errors == nil {
+				t.Errorf("CIDR %s should cause errors but got none", tt.cidr)
+			} else if !tt.expectError && errors != nil {
+				t.Errorf("CIDR %s should not cause errors but got: %v", tt.cidr, errors)
+			}
+		})
+	}
+}
+
 func TestKubeletVersionCheck(t *testing.T) {
 	minimumKubeletVersion := version.MustParseSemantic("v1.3.0")
 	minimumControlPlaneVersion := version.MustParseSemantic("v1.3.0")

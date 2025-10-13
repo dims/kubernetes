@@ -465,7 +465,7 @@ func (subnet HTTPProxyCIDRCheck) Check() (warnings, errorList []error) {
 	}
 
 	testIPstring := testIP.String()
-	if len(testIP) == net.IPv6len {
+	if testIP.To4() == nil {
 		testIPstring = fmt.Sprintf("[%s]:1234", testIP)
 	}
 	url := fmt.Sprintf("%s://%s/", subnet.Proto, testIPstring)
