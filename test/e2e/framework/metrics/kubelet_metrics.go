@@ -68,20 +68,26 @@ func NewKubeletMetrics() KubeletMetrics {
 
 // GrabKubeletMetricsWithoutProxy retrieve metrics from the kubelet on the given node using a simple GET over http.
 func GrabKubeletMetricsWithoutProxy(ctx context.Context, nodeName, path string) (KubeletMetrics, error) {
+	framework.Logf(">>>> GET: %s", fmt.Sprintf("http://%s%s", nodeName, path))
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://%s%s", nodeName, path), nil)
 	if err != nil {
 		return KubeletMetrics{}, err
 	}
+	framework.Logf(">>>> http.DefaultClient.Do")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return KubeletMetrics{}, err
 	}
 	defer resp.Body.Close()
+	framework.Logf(">>>> io.ReadAll")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return KubeletMetrics{}, err
 	}
-	return parseKubeletMetrics(string(body))
+	framework.Logf(">>>> KubeletMetrics: %s", string(body))
+	parsed, err := parseKubeletMetrics(string(body))
+	framework.Logf(">>>> parseKubeletMetrics: %#v", parsed)
+	return parsed, err
 }
 
 func parseKubeletMetrics(data string) (KubeletMetrics, error) {
