@@ -86,7 +86,12 @@ func GrabKubeletMetricsWithoutProxy(ctx context.Context, nodeName, path string) 
 		return KubeletMetrics{}, err
 	}
 	framework.Logf(">>>> RAW RESPONSE LENGTH: %d bytes", len(body))
-	framework.Logf(">>>> RAW RESPONSE BODY:\n%s", string(body))
+	// Only log first 2000 chars to avoid flooding logs
+	preview := string(body)
+	if len(preview) > 2000 {
+		preview = preview[:2000] + "\n... [truncated]"
+	}
+	framework.Logf(">>>> RAW RESPONSE BODY (preview):\n%s", preview)
 	parsed, err := parseKubeletMetrics(string(body))
 	if err != nil {
 		framework.Logf(">>>> GrabKubeletMetricsWithoutProxy parse error: %v", err)
@@ -95,6 +100,7 @@ func GrabKubeletMetricsWithoutProxy(ctx context.Context, nodeName, path string) 
 }
 
 func parseKubeletMetrics(data string) (KubeletMetrics, error) {
+	framework.Logf(">>>> parseKubeletMetrics: starting parse of %d bytes", len(data))
 	result := NewKubeletMetrics()
 	if err := testutil.ParseMetrics(data, (*testutil.Metrics)(&result)); err != nil {
 		framework.Logf(">>>> parseKubeletMetrics ERROR: %v", err)
@@ -104,42 +110,26 @@ func parseKubeletMetrics(data string) (KubeletMetrics, error) {
 	// Log all metric names and sample counts
 	framework.Logf(">>>> parseKubeletMetrics: found %d metric families", len(result))
 
-	// Build a JSON-friendly structure for logging
-	type sampleJSON struct {
-		Labels map[string]string `json:"labels"`
-		Value  float64           `json:"value"`
+	// Collect all metric names first
+	var metricNames []string
+	for name := range result {
+		metricNames = append(metricNames, name)
 	}
-	metricsJSON := make(map[string][]sampleJSON)
+	sort.Strings(metricNames)
+	framework.Logf(">>>> METRIC NAMES: %v", metricNames)
 
-	for name, samples := range result {
+	// Log details for each metric
+	for _, name := range metricNames {
+		samples := result[name]
 		framework.Logf(">>>> METRIC: %s (%d samples)", name, len(samples))
-		var samplesForJSON []sampleJSON
+		// Log first 2 samples with full detail
 		for i, sample := range samples {
-			labels := make(map[string]string)
-			for k, v := range sample.Metric {
-				labels[string(k)] = string(v)
+			if i >= 2 {
+				break
 			}
-			samplesForJSON = append(samplesForJSON, sampleJSON{
-				Labels: labels,
-				Value:  float64(sample.Value),
-			})
-			// Also log first 3 samples inline
-			if i < 3 {
-				framework.Logf(">>>>   sample[%d]: labels=%v value=%v", i, sample.Metric, sample.Value)
-			}
+			labelsJSON, _ := json.Marshal(sample.Metric)
+			framework.Logf(">>>>   [%d] labels=%s value=%v", i, string(labelsJSON), sample.Value)
 		}
-		if len(samples) > 3 {
-			framework.Logf(">>>>   ... and %d more samples", len(samples)-3)
-		}
-		metricsJSON[name] = samplesForJSON
-	}
-
-	// Output full JSON
-	jsonBytes, err := json.MarshalIndent(metricsJSON, "", "  ")
-	if err != nil {
-		framework.Logf(">>>> JSON marshal error: %v", err)
-	} else {
-		framework.Logf(">>>> PARSED METRICS JSON:\n%s", string(jsonBytes))
 	}
 
 	return result, nil
