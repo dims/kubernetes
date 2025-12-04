@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -84,17 +85,63 @@ func GrabKubeletMetricsWithoutProxy(ctx context.Context, nodeName, path string) 
 	if err != nil {
 		return KubeletMetrics{}, err
 	}
-	framework.Logf(">>>> KubeletMetrics: %s", string(body))
+	framework.Logf(">>>> RAW RESPONSE LENGTH: %d bytes", len(body))
+	framework.Logf(">>>> RAW RESPONSE BODY:\n%s", string(body))
 	parsed, err := parseKubeletMetrics(string(body))
-	framework.Logf(">>>> parseKubeletMetrics: %#v", parsed)
+	if err != nil {
+		framework.Logf(">>>> GrabKubeletMetricsWithoutProxy parse error: %v", err)
+	}
 	return parsed, err
 }
 
 func parseKubeletMetrics(data string) (KubeletMetrics, error) {
 	result := NewKubeletMetrics()
 	if err := testutil.ParseMetrics(data, (*testutil.Metrics)(&result)); err != nil {
+		framework.Logf(">>>> parseKubeletMetrics ERROR: %v", err)
 		return KubeletMetrics{}, err
 	}
+
+	// Log all metric names and sample counts
+	framework.Logf(">>>> parseKubeletMetrics: found %d metric families", len(result))
+
+	// Build a JSON-friendly structure for logging
+	type sampleJSON struct {
+		Labels map[string]string `json:"labels"`
+		Value  float64           `json:"value"`
+	}
+	metricsJSON := make(map[string][]sampleJSON)
+
+	for name, samples := range result {
+		framework.Logf(">>>> METRIC: %s (%d samples)", name, len(samples))
+		var samplesForJSON []sampleJSON
+		for i, sample := range samples {
+			labels := make(map[string]string)
+			for k, v := range sample.Metric {
+				labels[string(k)] = string(v)
+			}
+			samplesForJSON = append(samplesForJSON, sampleJSON{
+				Labels: labels,
+				Value:  float64(sample.Value),
+			})
+			// Also log first 3 samples inline
+			if i < 3 {
+				framework.Logf(">>>>   sample[%d]: labels=%v value=%v", i, sample.Metric, sample.Value)
+			}
+		}
+		if len(samples) > 3 {
+			framework.Logf(">>>>   ... and %d more samples", len(samples)-3)
+		}
+		metricsJSON[name] = samplesForJSON
+	}
+
+	// Output full JSON
+	jsonBytes, err := json.MarshalIndent(metricsJSON, "", "  ")
+	if err != nil {
+		framework.Logf(">>>> JSON marshal error: %v", err)
+	} else {
+		framework.Logf(">>>> PARSED METRICS JSON:\n%s", string(jsonBytes))
+	}
+
 	return result, nil
 }
 
