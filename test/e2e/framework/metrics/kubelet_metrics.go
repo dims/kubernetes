@@ -132,6 +132,52 @@ func parseKubeletMetrics(data string) (KubeletMetrics, error) {
 		}
 	}
 
+	// Log all unique namespace::pod::container combinations for container metrics
+	containerKeys := make(map[string]bool)
+	podKeys := make(map[string]bool)
+	for name, samples := range result {
+		for _, sample := range samples {
+			ns := string(sample.Metric["namespace"])
+			pod := string(sample.Metric["pod"])
+			container := string(sample.Metric["container"])
+			if ns != "" && pod != "" && container != "" {
+				key := fmt.Sprintf("%s::%s::%s", ns, pod, container)
+				containerKeys[key] = true
+			}
+			if ns != "" && pod != "" && strings.HasPrefix(name, "pod_") {
+				key := fmt.Sprintf("%s::%s", ns, pod)
+				podKeys[key] = true
+			}
+		}
+	}
+	var containerList []string
+	for k := range containerKeys {
+		containerList = append(containerList, k)
+	}
+	sort.Strings(containerList)
+	framework.Logf(">>>> ALL CONTAINER KEYS (namespace::pod::container): %v", containerList)
+
+	var podList []string
+	for k := range podKeys {
+		podList = append(podList, k)
+	}
+	sort.Strings(podList)
+	framework.Logf(">>>> ALL POD KEYS (namespace::pod): %v", podList)
+
+	// Specifically look for stats-busybox test pods and log their values
+	framework.Logf(">>>> SEARCHING FOR TEST PODS (stats-busybox-*)...")
+	for name, samples := range result {
+		for _, sample := range samples {
+			pod := string(sample.Metric["pod"])
+			if strings.Contains(pod, "stats-busybox") {
+				ns := string(sample.Metric["namespace"])
+				container := string(sample.Metric["container"])
+				framework.Logf(">>>> FOUND TEST POD: metric=%s ns=%s pod=%s container=%s value=%v",
+					name, ns, pod, container, sample.Value)
+			}
+		}
+	}
+
 	return result, nil
 }
 
