@@ -782,6 +782,15 @@ func (p *criStatsProvider) makeContainerStats(
 		if stats.Memory.RssBytes != nil {
 			result.Memory.RSSBytes = &stats.Memory.RssBytes.Value
 		}
+		if stats.Memory.AvailableBytes != nil {
+			result.Memory.AvailableBytes = &stats.Memory.AvailableBytes.Value
+		}
+		if stats.Memory.PageFaults != nil {
+			result.Memory.PageFaults = &stats.Memory.PageFaults.Value
+		}
+		if stats.Memory.MajorPageFaults != nil {
+			result.Memory.MajorPageFaults = &stats.Memory.MajorPageFaults.Value
+		}
 		result.Memory.PSI = makePSIStats(stats.Memory.Psi)
 	} else {
 		result.Memory.Time = metav1.NewTime(time.Unix(0, time.Now().UnixNano()))
