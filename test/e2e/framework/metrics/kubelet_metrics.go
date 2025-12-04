@@ -18,7 +18,6 @@ package metrics
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -69,115 +68,27 @@ func NewKubeletMetrics() KubeletMetrics {
 
 // GrabKubeletMetricsWithoutProxy retrieve metrics from the kubelet on the given node using a simple GET over http.
 func GrabKubeletMetricsWithoutProxy(ctx context.Context, nodeName, path string) (KubeletMetrics, error) {
-	framework.Logf(">>>> GET: %s", fmt.Sprintf("http://%s%s", nodeName, path))
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://%s%s", nodeName, path), nil)
 	if err != nil {
 		return KubeletMetrics{}, err
 	}
-	framework.Logf(">>>> http.DefaultClient.Do")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return KubeletMetrics{}, err
 	}
 	defer resp.Body.Close()
-	framework.Logf(">>>> io.ReadAll")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return KubeletMetrics{}, err
 	}
-	framework.Logf(">>>> RAW RESPONSE LENGTH: %d bytes", len(body))
-	// Only log first 2000 chars to avoid flooding logs
-	preview := string(body)
-	if len(preview) > 2000 {
-		preview = preview[:2000] + "\n... [truncated]"
-	}
-	framework.Logf(">>>> RAW RESPONSE BODY (preview):\n%s", preview)
-	parsed, err := parseKubeletMetrics(string(body))
-	if err != nil {
-		framework.Logf(">>>> GrabKubeletMetricsWithoutProxy parse error: %v", err)
-	}
-	return parsed, err
+	return parseKubeletMetrics(string(body))
 }
 
 func parseKubeletMetrics(data string) (KubeletMetrics, error) {
-	framework.Logf(">>>> parseKubeletMetrics: starting parse of %d bytes", len(data))
 	result := NewKubeletMetrics()
 	if err := testutil.ParseMetrics(data, (*testutil.Metrics)(&result)); err != nil {
-		framework.Logf(">>>> parseKubeletMetrics ERROR: %v", err)
 		return KubeletMetrics{}, err
 	}
-
-	// Log all metric names and sample counts
-	framework.Logf(">>>> parseKubeletMetrics: found %d metric families", len(result))
-
-	// Collect all metric names first
-	var metricNames []string
-	for name := range result {
-		metricNames = append(metricNames, name)
-	}
-	sort.Strings(metricNames)
-	framework.Logf(">>>> METRIC NAMES: %v", metricNames)
-
-	// Log details for each metric
-	for _, name := range metricNames {
-		samples := result[name]
-		framework.Logf(">>>> METRIC: %s (%d samples)", name, len(samples))
-		// Log first 2 samples with full detail
-		for i, sample := range samples {
-			if i >= 2 {
-				break
-			}
-			labelsJSON, _ := json.Marshal(sample.Metric)
-			framework.Logf(">>>>   [%d] labels=%s value=%v", i, string(labelsJSON), sample.Value)
-		}
-	}
-
-	// Log all unique namespace::pod::container combinations for container metrics
-	containerKeys := make(map[string]bool)
-	podKeys := make(map[string]bool)
-	for name, samples := range result {
-		for _, sample := range samples {
-			ns := string(sample.Metric["namespace"])
-			pod := string(sample.Metric["pod"])
-			container := string(sample.Metric["container"])
-			if ns != "" && pod != "" && container != "" {
-				key := fmt.Sprintf("%s::%s::%s", ns, pod, container)
-				containerKeys[key] = true
-			}
-			if ns != "" && pod != "" && strings.HasPrefix(name, "pod_") {
-				key := fmt.Sprintf("%s::%s", ns, pod)
-				podKeys[key] = true
-			}
-		}
-	}
-	var containerList []string
-	for k := range containerKeys {
-		containerList = append(containerList, k)
-	}
-	sort.Strings(containerList)
-	framework.Logf(">>>> ALL CONTAINER KEYS (namespace::pod::container): %v", containerList)
-
-	var podList []string
-	for k := range podKeys {
-		podList = append(podList, k)
-	}
-	sort.Strings(podList)
-	framework.Logf(">>>> ALL POD KEYS (namespace::pod): %v", podList)
-
-	// Specifically look for stats-busybox test pods and log their values
-	framework.Logf(">>>> SEARCHING FOR TEST PODS (stats-busybox-*)...")
-	for name, samples := range result {
-		for _, sample := range samples {
-			pod := string(sample.Metric["pod"])
-			if strings.Contains(pod, "stats-busybox") {
-				ns := string(sample.Metric["namespace"])
-				container := string(sample.Metric["container"])
-				framework.Logf(">>>> FOUND TEST POD: metric=%s ns=%s pod=%s container=%s value=%v",
-					name, ns, pod, container, sample.Value)
-			}
-		}
-	}
-
 	return result, nil
 }
 
