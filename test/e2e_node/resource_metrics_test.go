@@ -62,14 +62,13 @@ var _ = SIGDescribe("ResourceMetricsAPI", feature.ResourceMetrics, func() {
 			keys := []string{
 				"resource_scrape_error", "node_cpu_usage_seconds_total", "node_memory_working_set_bytes",
 				"pod_cpu_usage_seconds_total", "pod_memory_working_set_bytes",
+				"container_cpu_usage_seconds_total", "container_memory_working_set_bytes", "container_start_time_seconds",
+				"container_swap_usage_bytes", "pod_swap_usage_bytes",
 			}
 
-			// NOTE: This check should be removed when ListMetricDescriptors is implemented
-			// by CRI-O and Containerd. When getting stats from CRI, container-level metrics
-			// and swap metrics are not yet available from containerd.
+			// node_swap_usage_bytes requires cAdvisor which is not available when PodAndContainerStatsFromCRI is enabled
 			if !e2eskipper.IsFeatureGateEnabled(features.PodAndContainerStatsFromCRI) {
-				keys = append(keys, "container_cpu_usage_seconds_total", "container_memory_working_set_bytes", "container_start_time_seconds")
-				keys = append(keys, "node_swap_usage_bytes", "container_swap_usage_bytes", "pod_swap_usage_bytes")
+				keys = append(keys, "node_swap_usage_bytes")
 			}
 
 			zeroSampe := boundedSample(0, 0)

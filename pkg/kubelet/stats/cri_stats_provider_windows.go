@@ -274,6 +274,25 @@ func criInterfaceToWinSummary(criIface *runtimeapi.WindowsNetworkInterfaceUsage)
 	}
 }
 
+// addCRIPodContainerCPUAndMemoryStats adds container CPU and memory stats from CRI to the PodStats.
+func (p *criStatsProvider) addCRIPodContainerCPUAndMemoryStats(
+	criSandboxStat *runtimeapi.PodSandboxStats,
+	ps *statsapi.PodStats,
+	containerMap map[string]*runtimeapi.Container) {
+	if criSandboxStat == nil || criSandboxStat.Windows == nil {
+		return
+	}
+	for _, criContainerStat := range criSandboxStat.Windows.Containers {
+		container, found := containerMap[criContainerStat.Attributes.Id]
+		if !found {
+			continue
+		}
+		// Fill available CPU and memory stats for resource metrics
+		cs := p.makeContainerCPUAndMemoryStats(criContainerStat, time.Unix(0, container.CreatedAt), true)
+		ps.Containers = append(ps.Containers, *cs)
+	}
+}
+
 // newNetworkStatsProvider uses the real windows hnslib if not provided otherwise if the interface is provided
 // by the cristatsprovider in testing scenarios it uses that one
 func newNetworkStatsProvider(p *criStatsProvider) windowsNetworkStatsProvider {
