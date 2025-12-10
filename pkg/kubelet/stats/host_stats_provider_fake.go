@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	cadvisorapiv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	"k8s.io/apimachinery/pkg/types"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"

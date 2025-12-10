@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 	"go.opentelemetry.io/otel/trace"
 	grpcstatus "google.golang.org/grpc/status"
 

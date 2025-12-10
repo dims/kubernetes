@@ -30,7 +30,7 @@ import (
 	"sync"
 	"time"
 
-	cadvisorv1 "github.com/google/cadvisor/info/v1"
+	cadvisorv1 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 	libcontainercgroups "github.com/opencontainers/cgroups"
 
 	v1 "k8s.io/api/core/v1"

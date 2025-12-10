@@ -25,8 +25,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/google/cadvisor/container/crio"
-	cadvisorfs "github.com/google/cadvisor/fs"
+	"k8s.io/kubernetes/third_party/forked/cadvisor/container/crio"
+	cadvisorfs "k8s.io/kubernetes/third_party/forked/cadvisor/fs"
 )
 
 func TestImageFsInfoLabel(t *testing.T) {

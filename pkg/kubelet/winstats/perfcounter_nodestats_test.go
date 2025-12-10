@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 

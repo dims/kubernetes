@@ -33,7 +33,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 	inuserns "github.com/moby/sys/userns"
 	"github.com/opencontainers/selinux/go-selinux"
 	"go.opentelemetry.io/otel/attribute"

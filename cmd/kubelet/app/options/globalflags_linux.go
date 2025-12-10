@@ -26,12 +26,12 @@ import (
 	"github.com/spf13/pflag"
 
 	// ensure libs have a chance to globally register their flags
-	_ "github.com/google/cadvisor/container/common"
-	_ "github.com/google/cadvisor/container/containerd"
-	_ "github.com/google/cadvisor/container/raw"
-	_ "github.com/google/cadvisor/machine"
-	_ "github.com/google/cadvisor/manager"
-	_ "github.com/google/cadvisor/storage"
+	_ "k8s.io/kubernetes/third_party/forked/cadvisor/container/common"
+	_ "k8s.io/kubernetes/third_party/forked/cadvisor/container/containerd"
+	_ "k8s.io/kubernetes/third_party/forked/cadvisor/container/raw"
+	_ "k8s.io/kubernetes/third_party/forked/cadvisor/machine"
+	_ "k8s.io/kubernetes/third_party/forked/cadvisor/manager"
+	_ "k8s.io/kubernetes/third_party/forked/cadvisor/storage"
 )
 
 // addCadvisorFlags adds flags from cadvisor

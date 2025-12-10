@@ -24,8 +24,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/cadvisor/container/crio"
-	info "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/third_party/forked/cadvisor/container/crio"
+	info "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

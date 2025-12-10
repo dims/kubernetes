@@ -23,8 +23,8 @@ package testing
 import (
 	"context"
 
-	v10 "github.com/google/cadvisor/info/v1"
-	"github.com/google/cadvisor/info/v2"
+	v10 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
+	"k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	mock "github.com/stretchr/testify/mock"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"

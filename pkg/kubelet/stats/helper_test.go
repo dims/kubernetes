@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	cadvisorapiv1 "github.com/google/cadvisor/info/v1"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	cadvisorapiv1 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
+	cadvisorapiv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 

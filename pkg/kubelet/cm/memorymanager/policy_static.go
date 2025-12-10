@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sort"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

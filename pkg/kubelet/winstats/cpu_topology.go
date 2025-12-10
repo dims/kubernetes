@@ -24,7 +24,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 
 	"k8s.io/klog/v2"
 )

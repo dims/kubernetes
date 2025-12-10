@@ -23,8 +23,8 @@ package testing
 import (
 	"context"
 
-	"github.com/google/cadvisor/info/v1"
-	"github.com/google/cadvisor/info/v2"
+	"k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
+	"k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	mock "github.com/stretchr/testify/mock"
 )
 

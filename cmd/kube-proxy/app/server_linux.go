@@ -29,8 +29,8 @@ import (
 	goruntime "runtime"
 	"time"
 
-	"github.com/google/cadvisor/machine"
-	"github.com/google/cadvisor/utils/sysfs"
+	"k8s.io/kubernetes/third_party/forked/cadvisor/machine"
+	"k8s.io/kubernetes/third_party/forked/cadvisor/utils/sysfs"
 
 	v1 "k8s.io/api/core/v1"
 	utilsysctl "k8s.io/component-helpers/node/util/sysctl"

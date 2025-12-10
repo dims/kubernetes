@@ -23,8 +23,8 @@ import (
 	"net/http"
 
 	restful "github.com/emicklei/go-restful/v3"
-	cadvisorapi "github.com/google/cadvisor/info/v1"
-	cadvisorv2 "github.com/google/cadvisor/info/v2"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
+	cadvisorv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	"k8s.io/klog/v2"
 
 	v1 "k8s.io/api/core/v1"

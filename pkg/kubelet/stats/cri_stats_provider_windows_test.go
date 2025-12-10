@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/Microsoft/hnslib"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	cadvisorapiv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

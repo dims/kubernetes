@@ -30,8 +30,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	cadvisorclient "github.com/google/cadvisor/client/v2"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	cadvisorclient "k8s.io/kubernetes/third_party/forked/cadvisor/client/v2"
+	cadvisorapiv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	"github.com/opencontainers/cgroups"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

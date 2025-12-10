@@ -26,9 +26,9 @@ import (
 	"sync"
 	"time"
 
-	cadvisormemory "github.com/google/cadvisor/cache/memory"
-	cadvisorfs "github.com/google/cadvisor/fs"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	cadvisormemory "k8s.io/kubernetes/third_party/forked/cadvisor/cache/memory"
+	cadvisorfs "k8s.io/kubernetes/third_party/forked/cadvisor/fs"
+	cadvisorapiv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

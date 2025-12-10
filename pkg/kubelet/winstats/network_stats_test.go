@@ -23,7 +23,7 @@ import (
 	"errors"
 	"testing"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 
 	"k8s.io/klog/v2/ktesting"

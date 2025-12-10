@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"strings"
 
-	cadvisorfs "github.com/google/cadvisor/fs"
+	cadvisorfs "k8s.io/kubernetes/third_party/forked/cadvisor/fs"
 )
 
 // imageFsInfoProvider knows how to translate the configured runtime

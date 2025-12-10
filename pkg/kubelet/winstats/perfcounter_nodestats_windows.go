@@ -31,7 +31,7 @@ import (
 	"time"
 	"unsafe"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	cadvisorapi "k8s.io/kubernetes/third_party/forked/cadvisor/info/v1"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 

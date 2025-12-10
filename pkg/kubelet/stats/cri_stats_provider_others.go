@@ -20,7 +20,7 @@ limitations under the License.
 package stats
 
 import (
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	cadvisorapiv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/klog/v2"

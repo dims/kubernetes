@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"testing"
 
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
+	cadvisorapiv2 "k8s.io/kubernetes/third_party/forked/cadvisor/info/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
