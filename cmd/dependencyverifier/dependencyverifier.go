@@ -20,9 +20,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -48,10 +50,29 @@ type PinnedModule struct {
 	Reason  string `json:"Reason"`
 }
 
+// UnwantedReferenceInfo categorizes references to an unwanted module.
+// This helps maintainers understand whether an unwanted dependency is actually used
+// and where to focus remediation efforts.
+type UnwantedReferenceInfo struct {
+	// Direct lists main modules (k8s.io/kubernetes or staging modules) that directly
+	// require this unwanted module in their go.mod.
+	Direct []string `json:"direct,omitempty"`
+	// Transitive lists third-party modules that actually import this unwanted module
+	// in their source code. These are the modules that need to be updated/replaced
+	// to remove the unwanted dependency.
+	Transitive []string `json:"transitive,omitempty"`
+	// GoSumOnly lists modules that have this unwanted module appearing only in
+	// their go.sum (not imported in source). It's pulled in because one of their
+	// dependencies needs it. Removing the dependency from modules in Transitive
+	// will automatically remove these.
+	GoSumOnly []string `json:"goSumOnly,omitempty"`
+}
+
 type UnwantedStatus struct {
 	// references to modules in the spec.unwantedModules list, based on `go mod graph` content.
 	// eliminating things from this list is good, and sometimes requires working with upstreams to do so.
-	UnwantedReferences map[string][]string `json:"unwantedReferences"`
+	// References are categorized as "direct" (from main modules) or "transitive" (from third-party deps).
+	UnwantedReferences map[string]UnwantedReferenceInfo `json:"unwantedReferences"`
 	// list of modules in the spec.unwantedModules list which are vendored
 	UnwantedVendored []string `json:"unwantedVendored"`
 }
@@ -63,8 +84,13 @@ func runCommand(cmd ...string) (string, error) {
 }
 
 func runCommandInDir(dir string, cmd []string) (string, error) {
+	return runCommandInDirWithEnv(dir, nil, cmd)
+}
+
+func runCommandInDirWithEnv(dir string, env []string, cmd []string) (string, error) {
 	c := exec.Command(cmd[0], cmd[1:]...)
 	c.Dir = dir
+	c.Env = append(os.Environ(), env...)
 	output, err := c.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to run %q: %s (%s)", strings.Join(cmd, " "), err, output)
@@ -153,6 +179,11 @@ type module struct {
 	version string
 }
 
+type targetPlatform struct {
+	goos   string
+	goarch string
+}
+
 func (m module) String() string {
 	if len(m.version) == 0 {
 		return m.name
@@ -166,6 +197,270 @@ func parseModule(s string) module {
 	}
 	parts := strings.SplitN(s, "@", 2)
 	return module{name: parts[0], version: parts[1]}
+}
+
+func goListImportsByTarget(dir string, targets []targetPlatform) (map[string]bool, error) {
+	imports := map[string]bool{}
+	var errs []string
+	successes := 0
+
+	for _, target := range targets {
+		env := []string{
+			"GOOS=" + target.goos,
+			"GOARCH=" + target.goarch,
+			"CGO_ENABLED=0",
+		}
+		output, err := runCommandInDirWithEnv(dir, env, []string{"go", "list", "-buildvcs=false", "-f", "{{range .Imports}}{{.}}\n{{end}}", "./..."})
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s/%s: %v", target.goos, target.goarch, err))
+			continue
+		}
+		successes++
+		for _, imp := range strings.Split(strings.TrimSpace(output), "\n") {
+			if imp == "" {
+				continue
+			}
+			imports[imp] = true
+		}
+	}
+
+	if successes == 0 {
+		return nil, fmt.Errorf("go list failed for all target platforms: %s", strings.Join(errs, "; "))
+	}
+
+	return imports, nil
+}
+
+// buildModuleImportsMap downloads each module and runs `go list` from within
+// the module directory to determine which modules it actually imports.
+// Returns a map of module name -> set of module names it imports.
+func buildModuleImportsMap(modulesToCheck []string, moduleVersions map[string]string) (map[string]map[string]bool, error) {
+	if len(modulesToCheck) == 0 {
+		return make(map[string]map[string]bool), nil
+	}
+
+	targets := []targetPlatform{
+		{goos: "linux", goarch: "amd64"},
+		{goos: "linux", goarch: "arm64"},
+	}
+
+	moduleImports := make(map[string]map[string]bool)
+	for _, mod := range modulesToCheck {
+		version := moduleVersions[mod]
+		if version == "" || version == "v0.0.0" {
+			continue
+		}
+		// Download the module and get its directory using go mod download -json
+		output, err := runCommand("go", "mod", "download", "-json", mod+"@"+version)
+		if err != nil {
+			// Module might not be downloadable, skip it
+			continue
+		}
+
+		// Parse the JSON to get the Dir field
+		var downloadInfo struct {
+			Dir string `json:"Dir"`
+		}
+		if err := json.Unmarshal([]byte(output), &downloadInfo); err != nil {
+			continue
+		}
+		if downloadInfo.Dir == "" {
+			continue
+		}
+
+		// Run go list across supported target platforms and union the imports.
+		// {{.Imports}} gives direct imports from non-test files.
+		// -buildvcs=false is needed because module cache is read-only without VCS info.
+		importPaths, err := goListImportsByTarget(downloadInfo.Dir, targets)
+		if err != nil {
+			// Module might have replace directives with relative paths that don't work.
+			// Try copying to a temp dir and removing replace directives.
+			importPaths, err = runGoListWithoutReplace(downloadInfo.Dir, targets)
+			if err != nil {
+				// Still failed, skip it
+				continue
+			}
+		}
+
+		moduleImports[mod] = make(map[string]bool)
+		for imp := range importPaths {
+			// Extract module from import path by finding longest matching module
+			impModule := findModuleForPackage(imp, moduleVersions)
+			if impModule != "" && impModule != mod {
+				moduleImports[mod][impModule] = true
+			}
+		}
+	}
+
+	return moduleImports, nil
+}
+
+// runGoListWithoutReplace copies a module to a temp directory, removes replace
+// directives from go.mod, and runs go list. This handles modules like etcd that
+// use replace directives with relative paths that don't work when downloaded alone.
+func runGoListWithoutReplace(moduleDir string, targets []targetPlatform) (map[string]bool, error) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "depverifier-*")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Copy module contents to temp dir.
+	if err := copyDirectoryContents(moduleDir, tmpDir); err != nil {
+		return nil, err
+	}
+
+	// Make go.mod and go.sum writable (module cache files are read-only)
+	goModPath := tmpDir + "/go.mod"
+	if err := os.Chmod(goModPath, 0644); err != nil {
+		return nil, err
+	}
+	goSumPath := tmpDir + "/go.sum"
+	if _, err := os.Stat(goSumPath); err == nil {
+		if err := os.Chmod(goSumPath, 0644); err != nil {
+			return nil, err
+		}
+	}
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove replace blocks and single replace directives
+	lines := strings.Split(string(goModContent), "\n")
+	var newLines []string
+	inReplaceBlock := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "replace (") || strings.HasPrefix(trimmed, "replace(") {
+			inReplaceBlock = true
+			continue
+		}
+		if inReplaceBlock {
+			if trimmed == ")" {
+				inReplaceBlock = false
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "replace ") {
+			continue
+		}
+		newLines = append(newLines, line)
+	}
+
+	if err := os.WriteFile(goModPath, []byte(strings.Join(newLines, "\n")), 0644); err != nil {
+		return nil, err
+	}
+
+	// Update go.sum after removing replace directives
+	if _, err := runCommandInDir(tmpDir, []string{"go", "mod", "tidy"}); err != nil {
+		return nil, err
+	}
+
+	// Run go list in the temp directory
+	return goListImportsByTarget(tmpDir, targets)
+}
+
+func copyDirectoryContents(srcRoot, dstRoot string) error {
+	return filepath.WalkDir(srcRoot, func(srcPath string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(srcRoot, srcPath)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			return nil
+		}
+
+		dstPath := filepath.Join(dstRoot, relPath)
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			// Module cache directories are often read-only. Make copied dirs writable
+			// so fallback steps can create nested files and run go commands.
+			mode := info.Mode().Perm()
+			mode |= 0700
+			return os.MkdirAll(dstPath, mode)
+		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(srcPath)
+			if err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+				return err
+			}
+			return os.Symlink(target, dstPath)
+		}
+
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+
+		return copyRegularFile(srcPath, dstPath, info.Mode().Perm())
+	})
+}
+
+func copyRegularFile(srcPath, dstPath string, mode os.FileMode) error {
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return err
+	}
+
+	// Source files in module cache are typically 0444. Copy as writable so
+	// follow-up commands (like go mod tidy) can update module files as needed.
+	writableMode := mode | 0200
+	dstFile, err := os.OpenFile(dstPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, writableMode)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
+// findModuleForPackage finds the module that owns a given package path.
+// It tries progressively shorter prefixes to find a match in moduleVersions.
+func findModuleForPackage(pkgPath string, moduleVersions map[string]string) string {
+	// Try progressively shorter prefixes to find the module
+	path := pkgPath
+	for {
+		if _, ok := moduleVersions[path]; ok {
+			return path
+		}
+		idx := strings.LastIndex(path, "/")
+		if idx < 0 {
+			break
+		}
+		path = path[:idx]
+	}
+	return ""
+}
+
+// isDirectImporter checks if a module actually imports the unwanted module in its source code.
+// It uses the pre-computed moduleImports map from go list analysis.
+// Returns true if the module has actual import statements for the unwanted module.
+func isDirectImporter(moduleImports map[string]map[string]bool, moduleName, unwantedModule string) bool {
+	imports, ok := moduleImports[moduleName]
+	if !ok {
+		// Module not found in imports map (go list may have failed) - assume no direct imports
+		return false
+	}
+	return imports[unwantedModule]
 }
 
 // option1: dependencyverifier dependencies.json
@@ -226,6 +521,25 @@ func main() {
 		}
 	}
 
+	// Convert effectiveVersions to simple map[string]string for module versions
+	// Include ALL modules from the graph so we can detect imports of transitive deps (like unwanted modules)
+	moduleVersions := make(map[string]string)
+	for name, mod := range effectiveVersions {
+		moduleVersions[name] = mod.version
+	}
+	// Also include all modules from the full graph (not just direct deps of main modules)
+	// This ensures we can detect imports of unwanted modules that are transitive dependencies
+	for from, tos := range moduleGraph {
+		if from.version != "" && moduleVersions[from.name] == "" {
+			moduleVersions[from.name] = from.version
+		}
+		for _, to := range tos {
+			if to.version != "" && moduleVersions[to.name] == "" {
+				moduleVersions[to.name] = to.version
+			}
+		}
+	}
+
 	// Check for pinned modules that have been updated
 	pinnedModuleViolations := map[string][]string{}
 	if len(configFromFile.Spec.PinnedModules) > 0 {
@@ -272,12 +586,31 @@ func main() {
 		}, mainModule, moduleGraph, effectiveVersions)
 	}
 
+	// Collect all third-party modules that reference unwanted modules
+	// so we can batch-check which ones actually import the unwanted modules
+	modulesToCheck := make(map[string]bool)
+	for _, referencers := range unwantedToReferencers {
+		for _, referencer := range referencers {
+			if referencer.version != "" && referencer.version != "v0.0.0" {
+				modulesToCheck[referencer.name] = true
+			}
+		}
+	}
+	modulesToCheckList := make([]string, 0, len(modulesToCheck))
+	for mod := range modulesToCheck {
+		modulesToCheckList = append(modulesToCheckList, mod)
+	}
+
+	// Build module imports map using `go list -deps` for accurate detection
+	moduleImports, err := buildModuleImportsMap(modulesToCheckList, moduleVersions)
+	if err != nil {
+		log.Fatalf("Error building module imports map: %s", err)
+	}
+
 	config := &Unwanted{}
 	config.Spec.UnwantedModules = configFromFile.Spec.UnwantedModules
+	config.Status.UnwantedReferences = map[string]UnwantedReferenceInfo{}
 	for unwanted := range unwantedToReferencers {
-		if config.Status.UnwantedReferences == nil {
-			config.Status.UnwantedReferences = map[string][]string{}
-		}
 		sort.Slice(unwantedToReferencers[unwanted], func(i, j int) bool {
 			ri := unwantedToReferencers[unwanted][i]
 			rj := unwantedToReferencers[unwanted][j]
@@ -286,17 +619,25 @@ func main() {
 			}
 			return ri.version < rj.version
 		})
+		refInfo := UnwantedReferenceInfo{}
 		for _, referencer := range unwantedToReferencers[unwanted] {
-			// make sure any reference at all shows up as a non-nil status
-			if config.Status.UnwantedReferences == nil {
-				config.Status.UnwantedReferences[unwanted] = []string{}
-			}
-			// record specific names of versioned referents
+			// record specific names of versioned referents (third-party modules)
 			if referencer.version != "" && referencer.version != "v0.0.0" {
-				config.Status.UnwantedReferences[unwanted] = append(config.Status.UnwantedReferences[unwanted], referencer.name)
+				// Check if this module actually imports the unwanted package
+				// or just has it in go.mod because of its own dependencies
+				if isDirectImporter(moduleImports, referencer.name, unwanted) {
+					refInfo.Transitive = append(refInfo.Transitive, referencer.name)
+				} else {
+					refInfo.GoSumOnly = append(refInfo.GoSumOnly, referencer.name)
+				}
 			} else if directDependencies[referencer.name][unwanted] {
-				config.Status.UnwantedReferences[unwanted] = append(config.Status.UnwantedReferences[unwanted], referencer.name)
+				// main modules that directly depend on the unwanted module
+				refInfo.Direct = append(refInfo.Direct, referencer.name)
 			}
+		}
+		// only add entry if there are actual references
+		if len(refInfo.Direct) > 0 || len(refInfo.Transitive) > 0 || len(refInfo.GoSumOnly) > 0 {
+			config.Status.UnwantedReferences[unwanted] = refInfo
 		}
 	}
 
@@ -344,21 +685,58 @@ func main() {
 			needUpdate = true
 			continue
 		}
-		removedReferences, unwantedReferences := difference(expectedFrom, actualFrom)
-		if len(removedReferences) > 0 {
-			log.Printf("Good news! Unwanted module %q dropped the following dependants:", expectedRef)
-			for _, reference := range removedReferences {
-				log.Printf("   %s", reference)
+		// Check direct references
+		removedDirect, addedDirect := difference(expectedFrom.Direct, actualFrom.Direct)
+		if len(removedDirect) > 0 {
+			log.Printf("Good news! Unwanted module %q dropped the following direct dependants:", expectedRef)
+			for _, reference := range removedDirect {
+				log.Printf("   %s (direct)", reference)
 			}
-			log.Printf("!!! Remove those from status.unwantedReferences[%q] in %s to ensure they don't get reintroduced.", expectedRef, dependenciesJSONPath)
+			log.Printf("!!! Remove those from status.unwantedReferences[%q].direct in %s to ensure they don't get reintroduced.", expectedRef, dependenciesJSONPath)
 			needUpdate = true
 		}
-		if len(unwantedReferences) > 0 {
-			log.Printf("Unwanted module %q marked in %s is referenced by new dependants:", expectedRef, dependenciesJSONPath)
-			for _, reference := range unwantedReferences {
-				log.Printf("   %s", reference)
+		if len(addedDirect) > 0 {
+			log.Printf("Unwanted module %q marked in %s is referenced by new direct dependants:", expectedRef, dependenciesJSONPath)
+			for _, reference := range addedDirect {
+				log.Printf("   %s (direct)", reference)
+			}
+			log.Printf("!!! Avoid adding direct dependencies on unwanted modules\n")
+			needUpdate = true
+		}
+		// Check transitive references (actual importers)
+		removedTransitive, addedTransitive := difference(expectedFrom.Transitive, actualFrom.Transitive)
+		if len(removedTransitive) > 0 {
+			log.Printf("Good news! Unwanted module %q dropped the following transitive dependants:", expectedRef)
+			for _, reference := range removedTransitive {
+				log.Printf("   %s (transitive)", reference)
+			}
+			log.Printf("!!! Remove those from status.unwantedReferences[%q].transitive in %s to ensure they don't get reintroduced.", expectedRef, dependenciesJSONPath)
+			needUpdate = true
+		}
+		if len(addedTransitive) > 0 {
+			log.Printf("Unwanted module %q marked in %s is referenced by new transitive dependants:", expectedRef, dependenciesJSONPath)
+			for _, reference := range addedTransitive {
+				log.Printf("   %s (transitive)", reference)
 			}
 			log.Printf("!!! Avoid updating referencing modules to versions that reintroduce use of unwanted dependencies\n")
+			needUpdate = true
+		}
+		// Check goSumOnly references (modules that have the unwanted dep in go.sum but don't actually import it)
+		removedGoSumOnly, addedGoSumOnly := difference(expectedFrom.GoSumOnly, actualFrom.GoSumOnly)
+		if len(removedGoSumOnly) > 0 {
+			log.Printf("Good news! Unwanted module %q dropped the following go.sum-only dependants:", expectedRef)
+			for _, reference := range removedGoSumOnly {
+				log.Printf("   %s (goSumOnly)", reference)
+			}
+			log.Printf("!!! Remove those from status.unwantedReferences[%q].goSumOnly in %s to ensure they don't get reintroduced.", expectedRef, dependenciesJSONPath)
+			needUpdate = true
+		}
+		if len(addedGoSumOnly) > 0 {
+			log.Printf("Unwanted module %q marked in %s has new go.sum-only dependants:", expectedRef, dependenciesJSONPath)
+			for _, reference := range addedGoSumOnly {
+				log.Printf("   %s (goSumOnly - doesn't actually import, just in go.sum)", reference)
+			}
+			log.Printf("!!! These modules don't directly import the unwanted module - fix the 'transitive' modules instead\n")
 			needUpdate = true
 		}
 	}
@@ -368,8 +746,14 @@ func main() {
 			continue
 		}
 		log.Printf("Unwanted module %q marked in %s is referenced", actualRef, dependenciesJSONPath)
-		for _, reference := range actualFrom {
-			log.Printf("   %s", reference)
+		for _, reference := range actualFrom.Direct {
+			log.Printf("   %s (direct)", reference)
+		}
+		for _, reference := range actualFrom.Transitive {
+			log.Printf("   %s (transitive - actually imports the unwanted module)", reference)
+		}
+		for _, reference := range actualFrom.GoSumOnly {
+			log.Printf("   %s (goSumOnly - doesn't import, just in go.sum)", reference)
 		}
 		log.Printf("!!! Avoid updating referencing modules to versions that reintroduce use of unwanted dependencies\n")
 		needUpdate = true
