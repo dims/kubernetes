@@ -98,6 +98,7 @@
           "k8s.io/apimachinery"
         ],
         "transitive": [
+          "github.com/json-iterator/go",
           "github.com/stretchr/testify",
           "k8s.io/utils",
           "sigs.k8s.io/kustomize/kyaml"
@@ -111,7 +112,6 @@
           "github.com/google/cadvisor",
           "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
           "github.com/grpc-ecosystem/go-grpc-middleware/v2",
-          "github.com/json-iterator/go",
           "github.com/prometheus/common",
           "github.com/sirupsen/logrus",
           "github.com/stretchr/objx",
@@ -168,30 +168,30 @@
           "go.etcd.io/etcd/server/v3"
         ]
       },
-      "github.com/golang/protobuf": {
-        "transitive": [
-          "github.com/container-storage-interface/spec",
-          "github.com/containerd/ttrpc",
-          "go.etcd.io/etcd/api/v3",
-          "go.etcd.io/etcd/server/v3",
-          "go.etcd.io/raft/v3"
-        ],
-        "goSumOnly": [
-          "github.com/containerd/containerd/api",
-          "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
-          "go.etcd.io/etcd/client/v3",
-          "google.golang.org/grpc",
-          "google.golang.org/protobuf",
-          "sigs.k8s.io/apiserver-network-proxy/konnectivity-client"
-        ]
-      },
+    "github.com/golang/protobuf": {
+      "transitive": [
+        "github.com/container-storage-interface/spec",
+        "github.com/containerd/ttrpc",
+        "go.etcd.io/etcd/api/v3",
+        "go.etcd.io/etcd/server/v3",
+        "go.etcd.io/raft/v3",
+        "google.golang.org/protobuf"
+      ],
+      "goSumOnly": [
+        "github.com/containerd/containerd/api",
+        "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
+        "go.etcd.io/etcd/client/v3",
+        "google.golang.org/grpc",
+        "sigs.k8s.io/apiserver-network-proxy/konnectivity-client"
+      ]
+    },
       "github.com/google/btree": {
         "transitive": [
           "go.etcd.io/etcd/server/v3"
         ]
       },
       "github.com/google/gofuzz": {
-        "goSumOnly": [
+        "transitive": [
           "github.com/json-iterator/go"
         ]
       },
@@ -267,19 +267,20 @@
       },
       "gopkg.in/yaml.v3": {
         "transitive": [
+          "github.com/coreos/go-semver",
           "github.com/go-openapi/swag",
+          "github.com/google/cel-go",
           "github.com/spf13/cobra",
-          "github.com/stretchr/testify"
+          "github.com/stretchr/testify",
+          "go.uber.org/zap"
         ],
         "goSumOnly": [
           "github.com/containerd/containerd/api",
-          "github.com/coreos/go-semver",
           "github.com/cyphar/filepath-securejoin",
           "github.com/go-logr/zapr",
           "github.com/go-openapi/jsonpointer",
           "github.com/go-task/slim-sprig/v3",
           "github.com/google/cadvisor",
-          "github.com/google/cel-go",
           "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
           "github.com/grpc-ecosystem/go-grpc-middleware/v2",
           "github.com/prometheus/common",
@@ -303,7 +304,6 @@
           "go.opentelemetry.io/otel/trace",
           "go.uber.org/goleak",
           "go.uber.org/multierr",
-          "go.uber.org/zap",
           "k8s.io/kube-openapi",
           "sigs.k8s.io/kustomize/api",
           "sigs.k8s.io/kustomize/kustomize/v5",

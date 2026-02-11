@@ -19,16 +19,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/google/go-cmp/cmp" //nolint:depguard
+	"golang.org/x/tools/go/packages"
 )
 
 type Unwanted struct {
@@ -71,7 +72,7 @@ type UnwantedReferenceInfo struct {
 type UnwantedStatus struct {
 	// references to modules in the spec.unwantedModules list, based on `go mod graph` content.
 	// eliminating things from this list is good, and sometimes requires working with upstreams to do so.
-	// References are categorized as "direct" (from main modules) or "transitive" (from third-party deps).
+	// References are categorized as "direct" (from main modules), "transitive" (from third-party modules directly importing), or "goSumOnly" (from a dependency).
 	UnwantedReferences map[string]UnwantedReferenceInfo `json:"unwantedReferences"`
 	// list of modules in the spec.unwantedModules list which are vendored
 	UnwantedVendored []string `json:"unwantedVendored"`
@@ -90,12 +91,42 @@ func runCommandInDir(dir string, cmd []string) (string, error) {
 func runCommandInDirWithEnv(dir string, env []string, cmd []string) (string, error) {
 	c := exec.Command(cmd[0], cmd[1:]...)
 	c.Dir = dir
-	c.Env = append(os.Environ(), env...)
+	c.Env = mergeEnv(os.Environ(), env...)
 	output, err := c.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to run %q: %s (%s)", strings.Join(cmd, " "), err, output)
 	}
 	return string(output), nil
+}
+
+func mergeEnv(base []string, overrides ...string) []string {
+	if len(overrides) == 0 {
+		return append([]string(nil), base...)
+	}
+	merged := make([]string, 0, len(base)+len(overrides))
+	seen := map[string]bool{}
+	for _, override := range overrides {
+		key := envKey(override)
+		if key != "" {
+			seen[key] = true
+		}
+	}
+	for _, value := range base {
+		key := envKey(value)
+		if key != "" && seen[key] {
+			continue
+		}
+		merged = append(merged, value)
+	}
+	merged = append(merged, overrides...)
+	return merged
+}
+
+func envKey(env string) string {
+	if idx := strings.Index(env, "="); idx != -1 {
+		return env[:idx]
+	}
+	return ""
 }
 
 func readFile(path string) (string, error) {
@@ -184,6 +215,34 @@ type targetPlatform struct {
 	goarch string
 }
 
+func parsePlatforms(value string) ([]targetPlatform, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	entries := strings.Split(value, ",")
+	platforms := make([]targetPlatform, 0, len(entries))
+	for _, entry := range entries {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		parts := strings.SplitN(entry, "/", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return nil, fmt.Errorf("invalid platform %q, expected goos/goarch", entry)
+		}
+		platforms = append(platforms, targetPlatform{goos: parts[0], goarch: parts[1]})
+	}
+	return platforms, nil
+}
+
+func formatTargets(targets []targetPlatform) string {
+	parts := make([]string, 0, len(targets))
+	for _, target := range targets {
+		parts = append(parts, target.goos+"/"+target.goarch)
+	}
+	return strings.Join(parts, ",")
+}
+
 func (m module) String() string {
 	if len(m.version) == 0 {
 		return m.name
@@ -199,49 +258,105 @@ func parseModule(s string) module {
 	return module{name: parts[0], version: parts[1]}
 }
 
-func goListImportsByTarget(dir string, targets []targetPlatform) (map[string]bool, error) {
+// goPackagesImportsByTarget uses go/packages to load all packages in dir across multiple
+// target platforms and returns the union of all imported modules.
+// -buildvcs=false is needed because module cache is read-only without VCS info.
+// Tests and the default build tags are included to mirror Kubernetes' typecheck behavior.
+func goPackagesImportsByTarget(dir string, targets []targetPlatform, skipTests bool, buildTags []string, debugModules map[string]bool) (map[string]bool, error) {
 	imports := map[string]bool{}
-	var errs []string
+	var errs []error
 	successes := 0
 
 	for _, target := range targets {
-		env := []string{
-			"GOOS=" + target.goos,
-			"GOARCH=" + target.goarch,
-			"CGO_ENABLED=0",
-		}
-		output, err := runCommandInDirWithEnv(dir, env, []string{"go", "list", "-buildvcs=false", "-f", "{{range .Imports}}{{.}}\n{{end}}", "./..."})
+		moduleImports, err := goPackagesImportsInDir(dir, target, skipTests, buildTags, debugModules)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("%s/%s: %v", target.goos, target.goarch, err))
+			errs = append(errs, err)
 			continue
 		}
 		successes++
-		for _, imp := range strings.Split(strings.TrimSpace(output), "\n") {
-			if imp == "" {
-				continue
-			}
-			imports[imp] = true
+		for impPath := range moduleImports {
+			imports[impPath] = true
 		}
 	}
 
 	if successes == 0 {
-		return nil, fmt.Errorf("go list failed for all target platforms: %s", strings.Join(errs, "; "))
+		return nil, fmt.Errorf("go/packages load failed for all target platforms: %w", errors.Join(errs...))
 	}
 
 	return imports, nil
 }
 
-// buildModuleImportsMap downloads each module and runs `go list` from within
+func goPackagesImportsInDir(dir string, target targetPlatform, skipTests bool, buildTags []string, debugModules map[string]bool) (map[string]bool, error) {
+	imports := map[string]bool{}
+	env := []string{
+		"GOOS=" + target.goos,
+		"GOARCH=" + target.goarch,
+		"CGO_ENABLED=0",
+	}
+	if len(buildTags) == 0 {
+		buildTags = []string{"selinux"}
+	}
+	config := &packages.Config{
+		Mode:       packages.NeedName | packages.NeedImports | packages.NeedModule | packages.NeedFiles,
+		Dir:        dir,
+		Env:        mergeEnv(os.Environ(), env...),
+		BuildFlags: []string{"-buildvcs=false", "-tags", strings.Join(buildTags, ",")},
+		Tests:      !skipTests,
+	}
+	pkgs, err := packages.Load(config, "./...")
+	if err != nil {
+		return nil, fmt.Errorf("%s/%s: %w", target.goos, target.goarch, err)
+	}
+	if pkgErrs := collectPackageErrors(pkgs); len(pkgErrs) > 0 {
+		return nil, fmt.Errorf("%s/%s: %w", target.goos, target.goarch, errors.Join(pkgErrs...))
+	}
+	for _, pkg := range pkgs {
+		if skipTests && len(pkg.GoFiles) == 0 {
+			continue
+		}
+		importerModule := modulePath(pkg.Module)
+		for _, impPkg := range pkg.Imports {
+			if impPkg == nil || impPkg.Module == nil {
+				continue
+			}
+			imports[impPkg.Module.Path] = true
+			if len(debugModules) > 0 && (debugModules[importerModule] || debugModules[impPkg.Module.Path]) {
+				log.Printf(
+					"debug-imports target=%s/%s importerModule=%s importerPkg=%s importedModule=%s",
+					target.goos,
+					target.goarch,
+					importerModule,
+					pkg.PkgPath,
+					impPkg.Module.Path,
+				)
+			}
+		}
+	}
+	return imports, nil
+}
+
+func collectPackageErrors(pkgs []*packages.Package) []error {
+	var errs []error
+	for _, pkg := range pkgs {
+		for _, pkgErr := range pkg.Errors {
+			errs = append(errs, errors.New(pkgErr.Error()))
+		}
+	}
+	return errs
+}
+
+// buildModuleImportsMap downloads each module and runs go/packages from within
 // the module directory to determine which modules it actually imports.
 // Returns a map of module name -> set of module names it imports.
-func buildModuleImportsMap(modulesToCheck []string, moduleVersions map[string]string) (map[string]map[string]bool, error) {
+func buildModuleImportsMap(modulesToCheck []string, moduleVersions map[string]string, skipTests bool, buildTags []string, targets []targetPlatform, debugModules map[string]bool) (map[string]map[string]bool, error) {
 	if len(modulesToCheck) == 0 {
 		return make(map[string]map[string]bool), nil
 	}
-
-	targets := []targetPlatform{
-		{goos: "linux", goarch: "amd64"},
-		{goos: "linux", goarch: "arm64"},
+	if len(targets) == 0 {
+		targets = []targetPlatform{
+			{goos: "linux", goarch: "amd64"},
+			{goos: "linux", goarch: "arm64"},
+		}
 	}
 
 	moduleImports := make(map[string]map[string]bool)
@@ -250,6 +365,7 @@ func buildModuleImportsMap(modulesToCheck []string, moduleVersions map[string]st
 		if version == "" || version == "v0.0.0" {
 			continue
 		}
+		log.Printf("dependencyverifier: analyze module %s@%s", mod, version)
 		// Download the module and get its directory using go mod download -json
 		output, err := runCommand("go", "mod", "download", "-json", mod+"@"+version)
 		if err != nil {
@@ -268,14 +384,11 @@ func buildModuleImportsMap(modulesToCheck []string, moduleVersions map[string]st
 			continue
 		}
 
-		// Run go list across supported target platforms and union the imports.
-		// {{.Imports}} gives direct imports from non-test files.
-		// -buildvcs=false is needed because module cache is read-only without VCS info.
-		importPaths, err := goListImportsByTarget(downloadInfo.Dir, targets)
+		importPaths, err := goPackagesImportsByTarget(downloadInfo.Dir, targets, skipTests, buildTags, debugModules)
 		if err != nil {
 			// Module might have replace directives with relative paths that don't work.
 			// Try copying to a temp dir and removing replace directives.
-			importPaths, err = runGoListWithoutReplace(downloadInfo.Dir, targets)
+			importPaths, err = runGoPackagesWithoutReplace(downloadInfo.Dir, targets, skipTests, buildTags, debugModules)
 			if err != nil {
 				// Still failed, skip it
 				continue
@@ -283,10 +396,8 @@ func buildModuleImportsMap(modulesToCheck []string, moduleVersions map[string]st
 		}
 
 		moduleImports[mod] = make(map[string]bool)
-		for imp := range importPaths {
-			// Extract module from import path by finding longest matching module
-			impModule := findModuleForPackage(imp, moduleVersions)
-			if impModule != "" && impModule != mod {
+		for impModule := range importPaths {
+			if impModule != mod {
 				moduleImports[mod][impModule] = true
 			}
 		}
@@ -295,10 +406,10 @@ func buildModuleImportsMap(modulesToCheck []string, moduleVersions map[string]st
 	return moduleImports, nil
 }
 
-// runGoListWithoutReplace copies a module to a temp directory, removes replace
-// directives from go.mod, and runs go list. This handles modules like etcd that
+// runGoPackagesWithoutReplace copies a module to a temp directory, removes replace
+// directives from go.mod, and runs go/packages. This handles modules like etcd that
 // use replace directives with relative paths that don't work when downloaded alone.
-func runGoListWithoutReplace(moduleDir string, targets []targetPlatform) (map[string]bool, error) {
+func runGoPackagesWithoutReplace(moduleDir string, targets []targetPlatform, skipTests bool, buildTags []string, debugModules map[string]bool) (map[string]bool, error) {
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "depverifier-*")
 	if err != nil {
@@ -307,7 +418,7 @@ func runGoListWithoutReplace(moduleDir string, targets []targetPlatform) (map[st
 	defer os.RemoveAll(tmpDir)
 
 	// Copy module contents to temp dir.
-	if err := copyDirectoryContents(moduleDir, tmpDir); err != nil {
+	if err := os.CopyFS(tmpDir, os.DirFS(moduleDir)); err != nil {
 		return nil, err
 	}
 
@@ -358,127 +469,60 @@ func runGoListWithoutReplace(moduleDir string, targets []targetPlatform) (map[st
 		return nil, err
 	}
 
-	// Run go list in the temp directory
-	return goListImportsByTarget(tmpDir, targets)
+	// Run go/packages in the temp directory
+	return goPackagesImportsByTarget(tmpDir, targets, skipTests, buildTags, debugModules)
 }
 
-func copyDirectoryContents(srcRoot, dstRoot string) error {
-	return filepath.WalkDir(srcRoot, func(srcPath string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(srcRoot, srcPath)
-		if err != nil {
-			return err
-		}
-		if relPath == "." {
-			return nil
-		}
-
-		dstPath := filepath.Join(dstRoot, relPath)
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() {
-			// Module cache directories are often read-only. Make copied dirs writable
-			// so fallback steps can create nested files and run go commands.
-			mode := info.Mode().Perm()
-			mode |= 0700
-			return os.MkdirAll(dstPath, mode)
-		}
-
-		if info.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Readlink(srcPath)
-			if err != nil {
-				return err
-			}
-			if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
-				return err
-			}
-			return os.Symlink(target, dstPath)
-		}
-
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-
-		return copyRegularFile(srcPath, dstPath, info.Mode().Perm())
-	})
-}
-
-func copyRegularFile(srcPath, dstPath string, mode os.FileMode) error {
-	srcFile, err := os.Open(srcPath)
-	if err != nil {
-		return err
+func modulePath(mod *packages.Module) string {
+	if mod == nil {
+		return ""
 	}
-	defer srcFile.Close()
-
-	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
-		return err
-	}
-
-	// Source files in module cache are typically 0444. Copy as writable so
-	// follow-up commands (like go mod tidy) can update module files as needed.
-	writableMode := mode | 0200
-	dstFile, err := os.OpenFile(dstPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, writableMode)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	return err
-}
-
-// findModuleForPackage finds the module that owns a given package path.
-// It tries progressively shorter prefixes to find a match in moduleVersions.
-func findModuleForPackage(pkgPath string, moduleVersions map[string]string) string {
-	// Try progressively shorter prefixes to find the module
-	path := pkgPath
-	for {
-		if _, ok := moduleVersions[path]; ok {
-			return path
-		}
-		idx := strings.LastIndex(path, "/")
-		if idx < 0 {
-			break
-		}
-		path = path[:idx]
-	}
-	return ""
+	return mod.Path
 }
 
 // isDirectImporter checks if a module actually imports the unwanted module in its source code.
-// It uses the pre-computed moduleImports map from go list analysis.
+// It uses the pre-computed moduleImports map from go/packages analysis.
 // Returns true if the module has actual import statements for the unwanted module.
 func isDirectImporter(moduleImports map[string]map[string]bool, moduleName, unwantedModule string) bool {
 	imports, ok := moduleImports[moduleName]
 	if !ok {
-		// Module not found in imports map (go list may have failed) - assume no direct imports
+		// Module not found in imports map (go/packages may have failed) - assume no direct imports
 		return false
 	}
-	return imports[unwantedModule]
+	if imports[unwantedModule] {
+		return true
+	}
+	for importedModule := range imports {
+		if strings.HasPrefix(importedModule, unwantedModule+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // option1: dependencyverifier dependencies.json
 // it will run `go mod graph` and check it.
 func main() {
+	skipTests := flag.Bool("skip-test", false, "exclude test files when computing module imports")
+	buildTagsFlag := flag.String("tags", "selinux,weak_dependency", "comma-separated build tags to pass to go/packages")
+	platformsFlag := flag.String("platforms", "", "comma-separated target platforms (goos/goarch) to check")
+	cross := flag.Bool("cross", false, "check across common GOOS/GOARCH targets")
+	debugImports := flag.String("debug-imports", "", "comma-separated module paths to log import sources for")
+	flag.Parse()
+
 	var modeGraphStr string
 	var err error
-	if len(os.Args) == 2 {
+	if flag.NArg() == 1 {
 		// run `go mod graph`
 		modeGraphStr, err = runCommand("go", "mod", "graph")
 		if err != nil {
 			log.Fatalf("Error running 'go mod graph': %s", err)
 		}
 	} else {
-		log.Fatalf("Usage: %s dependencies.json", os.Args[0])
+		log.Fatalf("Usage: %s [--skip-test] dependencies.json", os.Args[0])
 	}
 
-	dependenciesJSONPath := string(os.Args[1])
+	dependenciesJSONPath := flag.Arg(0)
 	dependencies, err := readFile(dependenciesJSONPath)
 	if err != nil {
 		log.Fatalf("Error reading dependencies file %s: %s", dependencies, err)
@@ -501,9 +545,9 @@ func main() {
 		if mainModule.name != "k8s.io/kubernetes" {
 			dir = "staging/src/" + mainModule.name
 		}
-		listOutput, err := runCommandInDir(dir, []string{"go", "list", "-m", "-f", "{{if not .Indirect}}{{if not .Main}}{{.Path}}{{end}}{{end}}", "all"})
+		listOutput, err := runCommandInDir(dir, []string{"go", "list", "-m", "-buildvcs=false", "-f", "{{if not .Indirect}}{{if not .Main}}{{.Path}}{{end}}{{end}}", "all"})
 		if err != nil {
-			log.Fatalf("Error running 'go list' for %s: %s", mainModule.name, err)
+			log.Fatalf("Error running go/packages for %s: %s", mainModule.name, err)
 		}
 		directDependencies[mainModule.name] = map[string]bool{}
 		for _, directDependency := range strings.Split(listOutput, "\n") {
@@ -601,8 +645,50 @@ func main() {
 		modulesToCheckList = append(modulesToCheckList, mod)
 	}
 
-	// Build module imports map using `go list -deps` for accurate detection
-	moduleImports, err := buildModuleImportsMap(modulesToCheckList, moduleVersions)
+	// Build module imports map using go/packages for accurate detection
+	debugModules := map[string]bool{}
+	if *debugImports != "" {
+		for _, mod := range strings.Split(*debugImports, ",") {
+			if mod == "" {
+				continue
+			}
+			debugModules[strings.TrimSpace(mod)] = true
+		}
+	}
+	buildTags := []string{}
+	if *buildTagsFlag != "" {
+		for _, tag := range strings.Split(*buildTagsFlag, ",") {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				buildTags = append(buildTags, tag)
+			}
+		}
+	}
+	var targets []targetPlatform
+	if *cross {
+		targets = []targetPlatform{
+			{goos: "linux", goarch: "amd64"},
+			{goos: "windows", goarch: "386"},
+			{goos: "darwin", goarch: "amd64"},
+			{goos: "darwin", goarch: "arm64"},
+			{goos: "linux", goarch: "arm"},
+			{goos: "linux", goarch: "386"},
+			{goos: "windows", goarch: "amd64"},
+			{goos: "linux", goarch: "arm64"},
+			{goos: "linux", goarch: "ppc64le"},
+			{goos: "linux", goarch: "s390x"},
+			{goos: "windows", goarch: "arm64"},
+		}
+	}
+	if len(targets) == 0 {
+		parsed, err := parsePlatforms(*platformsFlag)
+		if err != nil {
+			log.Fatalf("Error parsing --platforms: %v", err)
+		}
+		targets = parsed
+	}
+	log.Printf("dependencyverifier: modules=%d skipTests=%t tags=%q targets=%q", len(modulesToCheckList), *skipTests, strings.Join(buildTags, ","), formatTargets(targets))
+	moduleImports, err := buildModuleImportsMap(modulesToCheckList, moduleVersions, *skipTests, buildTags, targets, debugModules)
 	if err != nil {
 		log.Fatalf("Error building module imports map: %s", err)
 	}
