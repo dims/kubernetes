@@ -33,6 +33,17 @@ endif
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 BASH_ENV := ./hack/lib/logging.sh
 
+# On macOS, prefer Homebrew bash if present so make targets don't fail on the
+# system bash 3.2 shipped by Apple.
+ifeq ($(shell uname -s),Darwin)
+ifneq ($(wildcard /opt/homebrew/bin/bash),)
+PATH := /opt/homebrew/bin:$(PATH)
+else ifneq ($(wildcard /usr/local/bin/bash),)
+PATH := /usr/local/bin:$(PATH)
+endif
+export PATH
+endif
+
 # Define optional user-input variables so `make --warn-undefined-variables` works.
 # Usage is described below with each target that respects these
 PRINT_HELP ?=
