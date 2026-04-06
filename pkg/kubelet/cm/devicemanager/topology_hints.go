@@ -152,12 +152,22 @@ func (m *ManagerImpl) getAvailableDevices(resource string) sets.Set[string] {
 }
 
 func (m *ManagerImpl) generateDeviceTopologyHints(resource string, available sets.Set[string], reusable sets.Set[string], request int) []topologymanager.TopologyHint {
+	numaNodesWithDevices := sets.New[int]()
+	for _, device := range m.allDevices[resource] {
+		numaNodesWithDevices.Insert(m.getNUMANodeIds(device.Topology)...)
+	}
+
+	numaNodes := m.numaNodes
+	if nodes := sets.List(numaNodesWithDevices); len(nodes) > 0 && len(nodes) < len(m.numaNodes) {
+		numaNodes = nodes
+	}
+
 	// Initialize minAffinitySize to include all NUMA Nodes
-	minAffinitySize := len(m.numaNodes)
+	minAffinitySize := len(numaNodes)
 
 	// Iterate through all combinations of NUMA Nodes and build hints from them.
 	hints := []topologymanager.TopologyHint{}
-	bitmask.IterateBitMasks(m.numaNodes, func(mask bitmask.BitMask) {
+	bitmask.IterateBitMasks(numaNodes, func(mask bitmask.BitMask) {
 		// First, update minAffinitySize for the current request size.
 		devicesInMask := 0
 		for _, device := range m.allDevices[resource] {
