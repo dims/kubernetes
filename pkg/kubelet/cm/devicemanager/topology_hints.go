@@ -152,12 +152,40 @@ func (m *ManagerImpl) getAvailableDevices(resource string) sets.Set[string] {
 }
 
 func (m *ManagerImpl) generateDeviceTopologyHints(resource string, available sets.Set[string], reusable sets.Set[string], request int) []topologymanager.TopologyHint {
-	// Initialize minAffinitySize to include all NUMA Nodes
-	minAffinitySize := len(m.numaNodes)
+	// On machines with many NUMA nodes where devices span only a subset
+	// (e.g. NVIDIA GB200 with 34 NUMA nodes), iterating all 2^N bitmask
+	// combinations is prohibitively expensive. Reduce to NUMA nodes that
+	// host available or reusable devices, falling back to all device-bearing
+	// nodes, and add a fallback any-NUMA hint so other providers can still
+	// intersect.
+	numaNodes := m.numaNodes
+	deviceNUMA := make(map[int]bool)
+	for _, id := range available.Union(reusable).UnsortedList() {
+		if dev, ok := m.allDevices[resource][id]; ok {
+			for _, n := range m.getNUMANodeIds(dev.Topology) {
+				deviceNUMA[n] = true
+			}
+		}
+	}
+	if len(deviceNUMA) == 0 {
+		for _, device := range m.allDevices[resource] {
+			for _, id := range m.getNUMANodeIds(device.Topology) {
+				deviceNUMA[id] = true
+			}
+		}
+	}
+	if len(deviceNUMA) > 0 && len(deviceNUMA) < len(m.numaNodes) {
+		numaNodes = make([]int, 0, len(deviceNUMA))
+		for _, n := range m.numaNodes {
+			if deviceNUMA[n] {
+				numaNodes = append(numaNodes, n)
+			}
+		}
+	}
 
-	// Iterate through all combinations of NUMA Nodes and build hints from them.
+	minAffinitySize := len(numaNodes)
 	hints := []topologymanager.TopologyHint{}
-	bitmask.IterateBitMasks(m.numaNodes, func(mask bitmask.BitMask) {
+	bitmask.IterateBitMasks(numaNodes, func(mask bitmask.BitMask) {
 		// First, update minAffinitySize for the current request size.
 		devicesInMask := 0
 		for _, device := range m.allDevices[resource] {
@@ -212,6 +240,18 @@ func (m *ManagerImpl) generateDeviceTopologyHints(resource string, available set
 	for i := range hints {
 		if hints[i].NUMANodeAffinity.Count() == minAffinitySize {
 			hints[i].Preferred = true
+		}
+	}
+
+	// When we filtered NUMA nodes, add a non-preferred hint spanning all
+	// system NUMA nodes so that other hint providers (e.g. CPU manager)
+	// can still find a valid intersection during the merge.
+	if len(hints) > 0 && len(numaNodes) < len(m.numaNodes) {
+		if defaultMask, err := bitmask.NewBitMask(m.numaNodes...); err == nil {
+			hints = append(hints, topologymanager.TopologyHint{
+				NUMANodeAffinity: defaultMask,
+				Preferred:        false,
+			})
 		}
 	}
 
