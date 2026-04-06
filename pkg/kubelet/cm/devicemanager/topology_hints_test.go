@@ -1693,3 +1693,74 @@ func getPodScopeTestCases() []topologyHintTestCase {
 		},
 	}
 }
+
+// TestFilteredHintsMergeEquivalence verifies that filtering NUMA nodes to only
+// those with devices produces the same TopologyManager merge result as
+// iterating over all system NUMA nodes. Hints spanning NUMA nodes without
+// devices (e.g. makeSocketMask(0, 1) when devices only exist on node 1) are
+// always non-preferred and never win the merge, so pruning them is safe.
+func TestFilteredHintsMergeEquivalence(t *testing.T) {
+	testCases := []struct {
+		description    string
+		numaNodes      []int
+		unfilteredHints []topologymanager.TopologyHint
+		filteredHints  []topologymanager.TopologyHint
+	}{
+		{
+			description: "devices on one of two NUMA nodes",
+			numaNodes:   []int{0, 1},
+			unfilteredHints: []topologymanager.TopologyHint{
+				{NUMANodeAffinity: makeSocketMask(1), Preferred: true},
+				{NUMANodeAffinity: makeSocketMask(0, 1), Preferred: false},
+			},
+			filteredHints: []topologymanager.TopologyHint{
+				{NUMANodeAffinity: makeSocketMask(1), Preferred: true},
+			},
+		},
+		{
+			description: "devices on both NUMA nodes",
+			numaNodes:   []int{0, 1},
+			unfilteredHints: []topologymanager.TopologyHint{
+				{NUMANodeAffinity: makeSocketMask(0), Preferred: true},
+				{NUMANodeAffinity: makeSocketMask(1), Preferred: true},
+				{NUMANodeAffinity: makeSocketMask(0, 1), Preferred: false},
+			},
+			filteredHints: []topologymanager.TopologyHint{
+				{NUMANodeAffinity: makeSocketMask(0), Preferred: true},
+				{NUMANodeAffinity: makeSocketMask(1), Preferred: true},
+				{NUMANodeAffinity: makeSocketMask(0, 1), Preferred: false},
+			},
+		},
+		{
+			description: "all devices allocated on one node",
+			numaNodes:   []int{0, 1},
+			unfilteredHints: []topologymanager.TopologyHint{
+				{NUMANodeAffinity: makeSocketMask(0), Preferred: true},
+				{NUMANodeAffinity: makeSocketMask(0, 1), Preferred: false},
+			},
+			filteredHints: []topologymanager.TopologyHint{
+				{NUMANodeAffinity: makeSocketMask(0), Preferred: true},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			numaInfo := &topologymanager.NUMAInfo{
+				Nodes: tc.numaNodes,
+				NUMADistances: topologymanager.NUMADistances{
+					0: {10, 11},
+					1: {11, 10},
+				},
+			}
+			opts := topologymanager.PolicyOptions{}
+
+			unfilteredMerge := topologymanager.NewHintMerger(numaInfo, [][]topologymanager.TopologyHint{tc.unfilteredHints}, topologymanager.PolicyBestEffort, opts).Merge()
+			filteredMerge := topologymanager.NewHintMerger(numaInfo, [][]topologymanager.TopologyHint{tc.filteredHints}, topologymanager.PolicyBestEffort, opts).Merge()
+
+			if !unfilteredMerge.NUMANodeAffinity.IsEqual(filteredMerge.NUMANodeAffinity) || unfilteredMerge.Preferred != filteredMerge.Preferred {
+				t.Errorf("merge results differ: unfiltered=%v, filtered=%v", unfilteredMerge, filteredMerge)
+			}
+		})
+	}
+}
