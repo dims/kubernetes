@@ -315,14 +315,22 @@ func (m *manager) setReadyStateOnKubeletRestart(ready *bool, pod *v1.Pod, contai
 			}
 		}
 		if containerSpec.ReadinessProbe != nil {
+			// For static pods, pod.Status.Conditions is always empty (raw manifest from disk).
+			// Fall back to the status manager cache; if neither has condition data, keep ready=true.
+			podConditions := pod.Status.Conditions
+			if len(podConditions) == 0 {
+				if cachedStatus, ok := m.statusManager.GetPodStatus(pod.UID); ok {
+					podConditions = cachedStatus.Conditions
+				}
+			}
 			podIsReady := false
-			for _, c := range pod.Status.Conditions {
+			for _, c := range podConditions {
 				if c.Type == v1.PodReady && c.Status == v1.ConditionTrue {
 					podIsReady = true
 					break
 				}
 			}
-			if !podIsReady {
+			if len(podConditions) > 0 && !podIsReady {
 				*ready = false
 			}
 		}

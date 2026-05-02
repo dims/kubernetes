@@ -420,6 +420,98 @@ func TestUpdatePodStatus(t *testing.T) {
 	}
 }
 
+// TestSetReadyStateOnKubeletRestartStaticPod verifies readiness preservation across
+// kubelet restart for static pods, where pod.Status.Conditions is always empty.
+func TestSetReadyStateOnKubeletRestartStaticPod(t *testing.T) {
+	ctx := ktesting.Init(t)
+
+	preRestartStartedAt := metav1.NewTime(time.Now().Add(-20 * time.Second))
+	containerID := "test://static-container-id"
+	containerName := "static-container"
+
+	containerStatus := v1.ContainerStatus{
+		Name:        containerName,
+		ContainerID: containerID,
+		State: v1.ContainerState{
+			Running: &v1.ContainerStateRunning{StartedAt: preRestartStartedAt},
+		},
+	}
+
+	tests := []struct {
+		name             string
+		podConditions    []v1.PodCondition // placed on pod.Status.Conditions
+		cachedConditions []v1.PodCondition // pre-seeded in the status manager cache
+		wantReady        bool
+	}{
+		{
+			name:      "static pod no conditions no cache stays ready",
+			wantReady: true,
+		},
+		{
+			name: "static pod no conditions cached ready stays ready",
+			cachedConditions: []v1.PodCondition{{
+				Type: v1.PodReady, Status: v1.ConditionTrue,
+			}},
+			wantReady: true,
+		},
+		{
+			name: "regular pod conditions ready stays ready",
+			podConditions: []v1.PodCondition{{
+				Type: v1.PodReady, Status: v1.ConditionTrue,
+			}},
+			wantReady: true,
+		},
+		{
+			// PodReady=False in conditions must still mark the container not-ready.
+			name: "regular pod conditions not ready goes not ready",
+			podConditions: []v1.PodCondition{{
+				Type: v1.PodReady, Status: v1.ConditionFalse,
+			}},
+			wantReady: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestManager()
+
+			podUID := types.UID("static-pod-uid")
+			pod := &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{UID: podUID, Name: "static-pod"},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{{
+						Name: containerName,
+						ReadinessProbe: &v1.Probe{
+							ProbeHandler: v1.ProbeHandler{Exec: &v1.ExecAction{}},
+						},
+					}},
+				},
+				Status: v1.PodStatus{Conditions: tt.podConditions},
+			}
+
+			// Fake worker with no result: ready=false initially, exercises the grace-period path.
+			m.workers = map[probeKey]*worker{
+				{podUID, containerName, readiness}: {},
+			}
+
+			if tt.cachedConditions != nil {
+				m.statusManager.SetPodStatus(klog.Background(), pod, v1.PodStatus{
+					Conditions: tt.cachedConditions,
+				})
+			}
+
+			podStatus := v1.PodStatus{
+				ContainerStatuses: []v1.ContainerStatus{containerStatus},
+			}
+			m.UpdatePodStatus(ctx, pod, &podStatus)
+
+			if got := podStatus.ContainerStatuses[0].Ready; got != tt.wantReady {
+				t.Errorf("Ready = %v, want %v", got, tt.wantReady)
+			}
+		})
+	}
+}
+
 func TestUpdatePodStatusWithInitContainers(t *testing.T) {
 	notStarted := v1.ContainerStatus{
 		Name:        "not_started_container",
