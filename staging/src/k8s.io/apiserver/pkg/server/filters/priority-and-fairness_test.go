@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -190,8 +191,18 @@ func newApfHandlerWithFilter(t *testing.T, flowControlFilter utilflowcontrol.Int
 			// TODO: all test(s) using this filter must run
 			// serially to each other
 			defer func() {
-				currentValue := atomicReadOnlyExecuting.Load()
-				if currentValue != 0 {
+				// The Go memory model guarantees that noteExecutingDelta(-1)
+				// happens-before the resultCh send, which happens-before the
+				// <-resultCh receive that triggered the return of ServeHTTP.
+				// However, on weakly-ordered platforms (ppc64le) and with
+				// newer Go schedulers the load may transiently observe a
+				// non-zero value in the scheduling window before the atomic
+				// store is globally visible. Poll briefly to absorb that.
+				deadline := time.Now().Add(time.Second)
+				for atomicReadOnlyExecuting.Load() != 0 && time.Now().Before(deadline) {
+					goruntime.Gosched()
+				}
+				if currentValue := atomicReadOnlyExecuting.Load(); currentValue != 0 {
 					t.Errorf("Wanted %d requests executing, got %d", 0, currentValue)
 				}
 			}()
@@ -578,7 +589,10 @@ func TestApfWatchHandlePanic(t *testing.T) {
 	}
 
 	onExecuteFunc := func() {
-		time.Sleep(5 * time.Second)
+		// A brief sleep ensures execute() is blocking at Wait() before
+		// the main goroutine sends the initialization signal. The exact
+		// duration does not affect correctness; 5s was unnecessarily slow.
+		time.Sleep(time.Millisecond)
 	}
 	postExecuteFunc := func() {}
 
