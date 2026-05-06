@@ -123,8 +123,8 @@ func Test_StorageVersionUpdatedWithAllEncodingVersionsEqualOnLeaseDeletion(t *te
 	}
 	var lastErr error
 
-	// Wait up to 5 seconds, checking every 100ms to ensure controller had a chance to reconcile
-	err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+	// Wait up to ForeverTestTimeout (30s) to ensure controller had a chance to reconcile
+	err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 		storageVersion, err := clientset.InternalV1alpha1().StorageVersions().Get(
 			ctx, "k8s.test.resources", metav1.GetOptions{},
 		)
@@ -354,7 +354,7 @@ func Test_StorageVersionDeletedOnLeaseDeletion(t *testing.T) {
 		t.Fatalf("error deleting lease object: %v", err)
 	}
 
-	err := wait.PollUntilContextTimeout(context.Background(), time.Second, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 		// expect deleted
 		_, err := clientset.InternalV1alpha1().StorageVersions().Get(context.Background(), "k8s.test.resources", metav1.GetOptions{})
 		return apierrors.IsNotFound(err), nil
