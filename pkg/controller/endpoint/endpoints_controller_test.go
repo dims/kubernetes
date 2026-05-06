@@ -1270,7 +1270,7 @@ func TestWaitsForAllInformersToBeSynced2(t *testing.T) {
 			time.Sleep(150 * time.Millisecond)
 			if test.shouldUpdateEndpoints {
 				// Ensure the work queue has been processed by looping for up to a second to prevent flakes.
-				wait.PollImmediate(50*time.Millisecond, 1*time.Second, func() (bool, error) {
+				wait.PollImmediate(50*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 					return endpoints.queue.Len() == 0, nil
 				})
 				endpointsHandler.ValidateRequestCount(t, 1)
@@ -2562,11 +2562,11 @@ func TestMultipleServiceChanges(t *testing.T) {
 	controller.serviceStore.Add(svc)
 	controller.onServiceUpdate(svc)
 	// blockNextAction should eventually unblock once server gets endpoint request.
-	waitForChanReceive(t, 1*time.Second, blockNextAction, "Service Add should have caused a request to be sent to the test server")
+	waitForChanReceive(t, wait.ForeverTestTimeout, blockNextAction, "Service Add should have caused a request to be sent to the test server")
 
 	controller.serviceStore.Delete(svc)
 	controller.onServiceDelete(svc)
-	waitForChanReceive(t, 1*time.Second, blockNextAction, "Service Delete should have caused a request to be sent to the test server")
+	waitForChanReceive(t, wait.ForeverTestTimeout, blockNextAction, "Service Delete should have caused a request to be sent to the test server")
 
 	// If endpoints cache has not updated before service update is registered
 	// Services add will not trigger a Create endpoint request.
@@ -2574,13 +2574,13 @@ func TestMultipleServiceChanges(t *testing.T) {
 	controller.onServiceUpdate(svc)
 
 	// Ensure the work queue has been processed by looping for up to a second to prevent flakes.
-	wait.PollImmediate(50*time.Millisecond, 1*time.Second, func() (bool, error) {
+	wait.PollImmediate(50*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		return controller.queue.Len() == 0, nil
 	})
 
 	// Cause test server to delete endpoints
 	close(blockDelete)
-	waitForChanReceive(t, 1*time.Second, blockNextAction, "Endpoint should have been recreated")
+	waitForChanReceive(t, wait.ForeverTestTimeout, blockNextAction, "Endpoint should have been recreated")
 
 	close(blockNextAction)
 	close(stopChan)
@@ -2641,7 +2641,7 @@ func TestMultiplePodChanges(t *testing.T) {
 	_ = controller.podStore.Update(pod2)
 	controller.onPodUpdate(pod, pod2)
 	// blockNextAction should eventually unblock once server gets endpoints request.
-	waitForChanReceive(t, 1*time.Second, blockNextAction, "Pod Update should have caused a request to be sent to the test server")
+	waitForChanReceive(t, wait.ForeverTestTimeout, blockNextAction, "Pod Update should have caused a request to be sent to the test server")
 	// The endpoints update hasn't been applied to the cache yet.
 	pod3 := pod.DeepCopy()
 	pod3.ResourceVersion = "3"
@@ -2658,7 +2658,7 @@ func TestMultiplePodChanges(t *testing.T) {
 
 	// Applying the endpoints update to the cache should cause test server to update endpoints.
 	close(blockUpdate)
-	waitForChanReceive(t, 1*time.Second, blockNextAction, "Endpoints should have been updated")
+	waitForChanReceive(t, wait.ForeverTestTimeout, blockNextAction, "Endpoints should have been updated")
 
 	close(blockNextAction)
 	close(stopChan)
