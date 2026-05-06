@@ -68,7 +68,7 @@ func TestCacheWatcherCleanupNotBlockedByResult(t *testing.T) {
 	w = newCacheWatcher(0, filter, forget, storage.APIObjectVersioner{}, time.Now(), false, schema.GroupResource{Resource: "pods"}, "")
 	go w.processInterval(context.Background(), intervalFromEvents(initEvents), 0)
 	w.Stop()
-	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+	if err := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		lock.RLock()
 		defer lock.RUnlock()
 		return count == 2, nil
@@ -431,7 +431,7 @@ func TestCacheWatcherDraining(t *testing.T) {
 	if eventCount != 3 {
 		t.Errorf("Unexpected number of objects received: %d, expected: 3", eventCount)
 	}
-	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+	if err := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		lock.RLock()
 		defer lock.RUnlock()
 		return count == 2, nil
@@ -465,7 +465,7 @@ func TestCacheWatcherDrainingRequestedButNotDrained(t *testing.T) {
 	}
 	forget(true) // drain the watcher
 	w.Stop()     // client disconnected, timeout expired or ctx was actually closed
-	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+	if err := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		lock.RLock()
 		defer lock.RUnlock()
 		return count == 3, nil
@@ -572,7 +572,7 @@ func TestCacheWatcherDrainingNoBookmarkAfterResourceVersionSent(t *testing.T) {
 	if w.add(&watchCacheEvent{Object: makePod(20), ResourceVersion: 20}, time.NewTimer(1*time.Second)) {
 		t.Fatal("expected the add method to fail")
 	}
-	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+	if err := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		lock.RLock()
 		defer lock.RUnlock()
 		return count == 1, nil
@@ -596,7 +596,7 @@ func TestCacheWatcherDrainingNoBookmarkAfterResourceVersionSent(t *testing.T) {
 		{Type: watch.Added, Object: makePod(15)},
 	}, true)
 
-	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+	if err := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		lock.RLock()
 		defer lock.RUnlock()
 		return count == 2, nil
