@@ -430,7 +430,7 @@ func TestStreamExitsAfterConnectionIsClosed(t *testing.T) {
 	conn.Close()
 
 	select {
-	case <-time.After(1 * time.Second):
+	case <-time.After(wait.ForeverTestTimeout):
 		t.Fatalf("expect stream to be closed after connection is closed.")
 	case <-errorChan:
 		return

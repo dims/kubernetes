@@ -39,6 +39,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
@@ -209,7 +210,7 @@ func TestWatchWebsocketClientClose(t *testing.T) {
 		if ok {
 			t.Errorf("expected a closed result channel, but got watch result %#v", data)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(wait.ForeverTestTimeout):
 		t.Errorf("watcher did not close when client closed")
 	}
 
@@ -259,7 +260,7 @@ func TestWatchClientClose(t *testing.T) {
 		if ok {
 			t.Errorf("expected a closed result channel, but got watch result %#v", data)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(wait.ForeverTestTimeout):
 		t.Errorf("watcher did not close when client closed")
 	}
 

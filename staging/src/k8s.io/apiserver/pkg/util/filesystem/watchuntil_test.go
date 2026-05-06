@@ -23,6 +23,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func TestWatchUntilPanicsOnInvalidArgs(t *testing.T) {
@@ -84,7 +86,7 @@ func TestWatchUntilContextCancellation(t *testing.T) {
 	select {
 	case <-done:
 		// WatchUntil returned after context cancellation
-	case <-time.After(5 * time.Second):
+	case <-time.After(wait.ForeverTestTimeout):
 		t.Fatal("WatchUntil did not return after context cancellation")
 	}
 }

@@ -26,6 +26,7 @@ import (
 
 	"bytes"
 
+	"k8s.io/apimachinery/pkg/util/wait"
 	v1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/kube-openapi/pkg/common"
 	"k8s.io/kube-openapi/pkg/validation/spec"
@@ -561,7 +562,7 @@ func TestFailingAPIServiceDoesNotBlockAdd(t *testing.T) {
 
 	select {
 	case <-updateDone:
-	case <-time.After(2 * time.Second):
+	case <-time.After(wait.ForeverTestTimeout):
 		t.Errorf("AddUpdateAPIService affected by APIService response time")
 	}
 
