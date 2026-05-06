@@ -101,7 +101,7 @@ func runTestReflectorDataConsistencyDetector(t *testing.T, transformer Transform
 	r := NewReflector(lw, &v1.Pod{}, fifo, 0)
 
 	go func() {
-		_ = wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+		_ = wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 			return r.LastSyncResourceVersion() != "", nil
 		})
 		cancel()

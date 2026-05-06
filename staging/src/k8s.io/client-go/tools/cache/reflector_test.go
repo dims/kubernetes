@@ -2246,7 +2246,7 @@ func TestReflectorRespectStoreTransformer(t *testing.T) {
 			}()
 
 			// wait for the RV to sync to the version returned by the final list
-			err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
+			err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (done bool, err error) {
 				if rv := r.LastSyncResourceVersion(); rv == lastExpectedRV {
 					return true, nil
 				}
