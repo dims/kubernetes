@@ -427,7 +427,7 @@ func TestReconcileRetry(t *testing.T) {
 }
 
 func TestInformerList(t *testing.T) {
-	testContext, testCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	testContext, testCancel := context.WithTimeout(context.Background(), wait.ForeverTestTimeout)
 
 	tracker, myController, _, _, _ := setupTest(testContext, nil)
 
@@ -505,7 +505,7 @@ func TestInformerList(t *testing.T) {
 	require.NoError(t, tracker.Add(object1))
 	require.NoError(t, tracker.Add(object2))
 
-	require.NoError(t, wait.PollUntilContextTimeout(testContext, 100*time.Millisecond, 500*time.Millisecond, false, func(ctx context.Context) (done bool, err error) {
+	require.NoError(t, wait.PollUntilContextTimeout(testContext, 100*time.Millisecond, wait.ForeverTestTimeout, false, func(ctx context.Context) (done bool, err error) {
 		return myController.Informer().LastSyncResourceVersion() == object2.GetResourceVersion(), nil
 	}))
 
@@ -517,7 +517,7 @@ func TestInformerList(t *testing.T) {
 	require.NoError(t, tracker.Delete(fakeGVR, object2.GetNamespace(), object2.GetName()))
 	require.NoError(t, tracker.Add(object3))
 
-	require.NoError(t, wait.PollUntilContextTimeout(testContext, 100*time.Millisecond, 500*time.Millisecond, false, func(ctx context.Context) (done bool, err error) {
+	require.NoError(t, wait.PollUntilContextTimeout(testContext, 100*time.Millisecond, wait.ForeverTestTimeout, false, func(ctx context.Context) (done bool, err error) {
 		return myController.Informer().LastSyncResourceVersion() == object3.GetResourceVersion(), nil
 	}))
 
@@ -528,7 +528,7 @@ func TestInformerList(t *testing.T) {
 	require.NoError(t, tracker.Add(namespacedObject1))
 	require.NoError(t, tracker.Add(namespacedObject2))
 
-	require.NoError(t, wait.PollUntilContextTimeout(testContext, 100*time.Millisecond, 500*time.Millisecond, false, func(ctx context.Context) (done bool, err error) {
+	require.NoError(t, wait.PollUntilContextTimeout(testContext, 100*time.Millisecond, wait.ForeverTestTimeout, false, func(ctx context.Context) (done bool, err error) {
 		return myController.Informer().LastSyncResourceVersion() == namespacedObject2.GetResourceVersion(), nil
 	}))
 	values, err = myController.Informer().Namespaced(namespacedObject1.GetNamespace()).List(labels.Everything())

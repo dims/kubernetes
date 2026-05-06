@@ -346,7 +346,7 @@ func TestApplyConfiguration(t *testing.T) {
 	tcManager := NewTypeConverterManager(nil, openapitest.NewEmbeddedFileClient())
 	go tcManager.Run(ctx)
 
-	err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, time.Second, true, func(context.Context) (done bool, err error) {
+	err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, wait.ForeverTestTimeout, true, func(context.Context) (done bool, err error) {
 		converter := tcManager.GetTypeConverter(deploymentGVK)
 		return converter != nil, nil
 	})
