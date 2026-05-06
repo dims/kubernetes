@@ -2151,8 +2151,9 @@ func TestSchedulerWithVolumeBinding(t *testing.T) {
 	assumeErr := fmt.Errorf("assume err")
 	bindErr := fmt.Errorf("bind err")
 
-	// This can be small because we wait for pod to finish scheduling first
-	chanTimeout := 2 * time.Second
+	// Use ForeverTestTimeout: the binding goroutine must complete after scheduling,
+	// but scheduling jitter on slow hosts (ppc64le) can delay it past 2 s.
+	chanTimeout := wait.ForeverTestTimeout
 
 	table := []struct {
 		name               string
@@ -2642,7 +2643,7 @@ func TestUpdatePodStatus(t *testing.T) {
 				if test.expectPatchRequest {
 					select {
 					case <-patchCalled:
-					case <-time.After(time.Second):
+					case <-time.After(wait.ForeverTestTimeout):
 						t.Fatalf("Timed out while waiting for patch to be called")
 					}
 					regex, err := regexp.Compile(test.expectedPatchDataPattern)

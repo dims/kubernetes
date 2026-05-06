@@ -1281,7 +1281,7 @@ func TestRemoveNominatedNodeName(t *testing.T) {
 				if test.expectPatchRequest {
 					select {
 					case <-patchCalled:
-					case <-time.After(time.Second):
+					case <-time.After(wait.ForeverTestTimeout):
 						t.Fatalf("Timed out while waiting for patch to be called")
 					}
 					if actualPatchData != test.expectedPatchData {
