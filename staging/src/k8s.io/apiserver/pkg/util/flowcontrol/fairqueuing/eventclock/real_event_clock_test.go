@@ -49,9 +49,15 @@ func TestRealEventClock(t *testing.T) {
 		d := time.Duration(rand.Intn(30)-3) * time.Millisecond * 100
 		try(i%2 == 0, d)
 	}
-	time.Sleep(time.Second * 4)
+	// The latest event is scheduled for 3.3s. Poll with a generous deadline
+	// instead of a fixed sleep so the test tolerates scheduling jitter on
+	// loaded hosts (e.g. ppc64le CI runners).
+	deadline := time.Now().Add(15 * time.Second)
+	for atomic.LoadInt32(&numDone) != batchSize+1 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
 	if atomic.LoadInt32(&numDone) != batchSize+1 {
-		t.Errorf("Got only %v events", numDone)
+		t.Errorf("Got only %v events", atomic.LoadInt32(&numDone))
 	}
 	lastTime := now
 	for i := 0; i <= batchSize; i++ {
