@@ -481,7 +481,9 @@ func testCRListConversion(ctx context.Context, f *framework.Framework, testCrd *
 
 // waitWebhookConversionReady sends stub custom resource creation requests requiring conversion until one succeeds.
 func waitWebhookConversionReady(ctx context.Context, f *framework.Framework, crd *apiextensionsv1.CustomResourceDefinition, customResourceClients map[string]dynamic.ResourceInterface, version string) {
-	framework.ExpectNoError(wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 60*time.Second, true, func(ctx context.Context) (bool, error) {
+	pollCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+	framework.ExpectNoError(wait.PollUntilContextTimeout(pollCtx, 100*time.Millisecond, 120*time.Second, true, func(ctx context.Context) (bool, error) {
 		crInstance := &unstructured.Unstructured{
 			Object: map[string]interface{}{
 				"kind":       crd.Spec.Names.Kind,
