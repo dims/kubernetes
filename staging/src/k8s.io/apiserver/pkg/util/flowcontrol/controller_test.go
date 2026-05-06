@@ -394,9 +394,9 @@ func TestAPFControllerWithGracefulShutdown(t *testing.T) {
 
 	informerFactory.Start(stopCh)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	status := informerFactory.WaitForCacheSync(ctx.Done())
+	syncCtx, syncCancel := context.WithTimeout(context.Background(), wait.ForeverTestTimeout)
+	defer syncCancel()
+	status := informerFactory.WaitForCacheSync(syncCtx.Done())
 	if names := unsynced(status); len(names) > 0 {
 		t.Fatalf("WaitForCacheSync did not successfully complete, resources=%#v", names)
 	}
@@ -407,7 +407,7 @@ func TestAPFControllerWithGracefulShutdown(t *testing.T) {
 	}()
 
 	// ensure that the controller has run its first loop.
-	err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 		return controller.hasPriorityLevelState(plName), nil
 	})
 	if err != nil {

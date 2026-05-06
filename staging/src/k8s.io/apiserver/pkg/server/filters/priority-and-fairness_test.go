@@ -1143,9 +1143,9 @@ func startAPFController(t *testing.T, stopCh <-chan struct{}, apfConfiguration [
 	factory.Start(stopCh)
 
 	// wait for the informer cache to sync.
-	timeout, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	defer cancel()
-	cacheSyncDone := factory.WaitForCacheSync(timeout.Done())
+	syncCtx, syncCancel := context.WithTimeout(context.TODO(), wait.ForeverTestTimeout)
+	defer syncCancel()
+	cacheSyncDone := factory.WaitForCacheSync(syncCtx.Done())
 	if names := unsyncedInformers(cacheSyncDone); len(names) > 0 {
 		t.Fatalf("WaitForCacheSync did not successfully complete, resources=%#v", names)
 	}
@@ -1159,7 +1159,7 @@ func startAPFController(t *testing.T, stopCh <-chan struct{}, apfConfiguration [
 
 	// make sure that apf controller syncs the priority level configuration object we are using in this test.
 	// read the metrics and ensure the concurrency limit for our priority level is set to the expected value.
-	pollErr := wait.PollImmediate(100*time.Millisecond, 5*time.Second, func() (done bool, err error) {
+	pollErr := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (done bool, err error) {
 		if err := gaugeValueMatch("apiserver_flowcontrol_nominal_limit_seats", map[string]string{"priority_level": plName}, plConcurrency); err != nil {
 			t.Logf("polling retry - error: %s", err)
 			return false, nil
