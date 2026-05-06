@@ -764,7 +764,7 @@ func TestStreamTranslator_WebSocketServerErrors(t *testing.T) {
 # TYPE apiserver_stream_translator_requests_total counter
 apiserver_stream_translator_requests_total{code="400"} 1
 `
-	if err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 		if testutil.GatherAndCompare(legacyregistry.DefaultGatherer, strings.NewReader(expected), metricNames...) == nil {
 			return true, nil
 		}

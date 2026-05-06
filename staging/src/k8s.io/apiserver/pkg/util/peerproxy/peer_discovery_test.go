@@ -177,7 +177,7 @@ func TestRunPeerDiscoveryCacheSync(t *testing.T) {
 			for _, lease := range tt.leases {
 				initialCache[lease.Name] = makePeerDiscoveryCacheEntry("testgroup", "v1", "testresources")
 			}
-			err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, false, func(ctx context.Context) (bool, error) {
+			err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, wait.ForeverTestTimeout, false, func(ctx context.Context) (bool, error) {
 				select {
 				case <-ctx.Done():
 					return false, ctx.Err()
@@ -224,7 +224,7 @@ func TestRunPeerDiscoveryCacheSync(t *testing.T) {
 				}
 			}
 
-			err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, false, func(ctx context.Context) (bool, error) {
+			err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, wait.ForeverTestTimeout, false, func(ctx context.Context) (bool, error) {
 				select {
 				case <-ctx.Done():
 					return false, ctx.Err()

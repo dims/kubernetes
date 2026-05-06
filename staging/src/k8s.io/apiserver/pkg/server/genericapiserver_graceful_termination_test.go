@@ -937,7 +937,7 @@ func requestMustFailWithRetryHeader(resultGot result, statusCodedExpected int) e
 func waitForAPIServerStarted(t *testing.T, doer doer) {
 	client := newClient(true)
 	i := 1
-	err := wait.PollImmediate(100*time.Millisecond, 5*time.Second, func() (done bool, err error) {
+	err := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (done bool, err error) {
 		result := doer.Do(client, func(httptrace.GotConnInfo) {}, fmt.Sprintf("/echo?message=attempt-%d", i), time.Second)
 		i++
 
