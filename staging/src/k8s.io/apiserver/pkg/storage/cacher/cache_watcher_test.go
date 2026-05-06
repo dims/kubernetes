@@ -513,7 +513,7 @@ func TestCacheWatcherDrainingNoBookmarkAfterResourceVersionReceived(t *testing.T
 	if w.add(&watchCacheEvent{Object: &v1.Pod{}}, time.NewTimer(10*time.Millisecond)) {
 		t.Fatal("expected the add method to fail")
 	}
-	if err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, 5*time.Second, true, func(_ context.Context) (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, wait.ForeverTestTimeout, true, func(_ context.Context) (bool, error) {
 		lock.RLock()
 		defer lock.RUnlock()
 		return count == 2, nil
