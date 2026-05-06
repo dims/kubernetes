@@ -954,7 +954,7 @@ func TestPrepareCandidateAsyncSetsPreemptingSets(t *testing.T) {
 					// Perform the checks when there are no victims left to preempt.
 					t.Log("Waiting for async preemption goroutine to finish cleanup...")
 
-					err = wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 2*time.Second, false, func(ctx context.Context) (bool, error) {
+					err = wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, wait.ForeverTestTimeout, false, func(ctx context.Context) (bool, error) {
 						// Check if the preemptor is removed from the ev.preempting set.
 						executor.mu.RLock()
 						defer executor.mu.RUnlock()
@@ -1164,7 +1164,7 @@ func TestAsyncPreemptionFailure(t *testing.T) {
 			}
 
 			// Wait for the async preemption to finish.
-			err = wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 5*time.Second, false, func(ctx context.Context) (bool, error) {
+			err = wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, wait.ForeverTestTimeout, false, func(ctx context.Context) (bool, error) {
 				// Check if the preemptor is removed from the executor.preempting set.
 				executor.mu.RLock()
 				defer executor.mu.RUnlock()

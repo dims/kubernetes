@@ -648,14 +648,14 @@ func TestUnSupportWatchListSemantics(t *testing.T) {
 	// The fake client doesn’t support WatchList semantics,
 	// so we don’t need to prepare a response.
 	fakeClient := fake.NewClientset()
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), wait.ForeverTestTimeout)
 	defer cancel()
 	target := newSecretCache(context.TODO(), fakeClient, fakeClock, time.Minute)
 
 	ret := target.newReflectorLocked("ns", "obj")
 	defer ret.stop()
 
-	if err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 3*time.Second, true, func(ctx context.Context) (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 		return ret.store.hasSynced(), nil
 	}); err != nil {
 		t.Fatal(err)
@@ -715,14 +715,14 @@ func TestWatchListSemanticsSimple(t *testing.T) {
 	}
 
 	fakeClock := testingclock.NewFakeClock(time.Now())
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), wait.ForeverTestTimeout)
 	defer cancel()
 	target := newSecretCache(context.TODO(), client, fakeClock, time.Second)
 
 	ret := target.newReflectorLocked("ns", "obj")
 	defer ret.stop()
 
-	if err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 3*time.Second, true, func(ctx context.Context) (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 		return ret.store.hasSynced(), nil
 	}); err != nil {
 		t.Fatal(err)

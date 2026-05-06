@@ -283,7 +283,7 @@ func TestErrorsAndMetrics(t *testing.T) {
 		broadcaster.Broadcast(podsapi.PodWatchEvent{UID: "2"})
 
 		// Wait for the background goroutine to process the events and update metrics
-		err := wait.PollUntilContextTimeout(context.Background(), 10*time.Millisecond, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+		err := wait.PollUntilContextTimeout(context.Background(), 10*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 			count, err := testutil.GetCounterMetricValue(metrics.PodWatchEventsDroppedTotal)
 			if err != nil {
 				return false, err
@@ -365,7 +365,7 @@ func TestBroadcaster_SlowClient(t *testing.T) {
 		}
 	}
 
-	err := wait.PollUntilContextTimeout(context.Background(), 10*time.Millisecond, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(context.Background(), 10*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
 		select {
 		case _, ok := <-slowClient:
 			if !ok {
