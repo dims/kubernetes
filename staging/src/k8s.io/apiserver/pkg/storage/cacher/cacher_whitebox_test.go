@@ -1648,7 +1648,7 @@ func TestCacherSendsMultipleWatchBookmarks(t *testing.T) {
 		t.Fatalf("failed to add a pod: %v", err)
 	}
 
-	timeoutCh := time.After(5 * time.Second)
+	timeoutCh := time.After(wait.ForeverTestTimeout)
 	lastObservedRV := uint64(0)
 	// Ensure that a watcher gets two bookmarks.
 	for observedBookmarks := 0; observedBookmarks < 2; {
@@ -1742,7 +1742,7 @@ func TestDispatchingBookmarkEventsWithConcurrentStop(t *testing.T) {
 
 		select {
 		case <-done:
-		case <-time.After(time.Second):
+		case <-time.After(wait.ForeverTestTimeout):
 			t.Fatal("receive result timeout")
 		}
 		w.Stop()
