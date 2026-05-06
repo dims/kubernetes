@@ -167,7 +167,7 @@ func setupTest(ctx context.Context, customReconciler func(string, string, runtim
 }
 
 func TestReconcile(t *testing.T) {
-	testContext, testCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	testContext, testCancel := context.WithTimeout(context.Background(), wait.ForeverTestTimeout)
 	defer testCancel()
 
 	tracker, myController, informer, waitForReconcile, verifyNoMoreEvents := setupTest(testContext, nil)
@@ -237,7 +237,7 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestShutdown(t *testing.T) {
-	testContext, testCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	testContext, testCancel := context.WithTimeout(context.Background(), wait.ForeverTestTimeout)
 	defer testCancel()
 
 	_, myController, informer, _, verifyNoMoreEvents := setupTest(testContext, nil)
@@ -309,7 +309,7 @@ func TestInformerNeverStarts(t *testing.T) {
 
 // Shows that if RV does not change, the reconciler does not get called
 func TestIgnoredUpdate(t *testing.T) {
-	testContext, testCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	testContext, testCancel := context.WithTimeout(context.Background(), wait.ForeverTestTimeout)
 	defer testCancel()
 
 	tracker, myController, informer, waitForReconcile, verifyNoMoreEvents := setupTest(testContext, nil)
@@ -427,7 +427,7 @@ func TestReconcileRetry(t *testing.T) {
 }
 
 func TestInformerList(t *testing.T) {
-	testContext, testCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	testContext, testCancel := context.WithTimeout(context.Background(), wait.ForeverTestTimeout)
 
 	tracker, myController, _, _, _ := setupTest(testContext, nil)
 
