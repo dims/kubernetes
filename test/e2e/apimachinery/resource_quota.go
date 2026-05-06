@@ -52,6 +52,7 @@ import (
 	apimachineryutils "k8s.io/kubernetes/test/e2e/common/apimachinery"
 	"k8s.io/kubernetes/test/e2e/feature"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	e2epv "k8s.io/kubernetes/test/e2e/framework/pv"
 	"k8s.io/kubernetes/test/utils/crd"
 	imageutils "k8s.io/kubernetes/test/utils/image"
@@ -1602,6 +1603,8 @@ var _ = SIGDescribe("ResourceQuota", func() {
 
 		ginkgo.By("Deleting the pod")
 		err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(ctx, podName1, *metav1.NewDeleteOptions(0))
+		framework.ExpectNoError(err)
+		err = e2epod.WaitForPodNotFoundInNamespace(ctx, f.ClientSet, podName1, f.Namespace.Name, framework.PodDeleteTimeout)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Ensuring resource quota status released the pod usage")
