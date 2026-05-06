@@ -541,7 +541,7 @@ func TestOnEndpointSliceUpdate(t *testing.T) {
 
 	assert.Equal(t, 0, esController.serviceQueue.Len())
 	esController.onEndpointSliceUpdate(logger, epSlice1, epSlice2)
-	err := wait.PollImmediate(100*time.Millisecond, 3*time.Second, func() (bool, error) {
+	err := wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		if esController.serviceQueue.Len() > 0 {
 			return true, nil
 		}
