@@ -413,6 +413,11 @@ func (f *fakeWatchApfFilter) Handle(ctx context.Context,
 	if !canExecute {
 		return
 	}
+	defer func() {
+		f.lock.Lock()
+		defer f.lock.Unlock()
+		f.inflight--
+	}()
 
 	if f.preExecutePanic {
 		panic("pre-exec-panic")
@@ -421,10 +426,6 @@ func (f *fakeWatchApfFilter) Handle(ctx context.Context,
 	if f.postExecutePanic {
 		panic("post-exec-panic")
 	}
-
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	f.inflight--
 }
 
 func (f *fakeWatchApfFilter) Run(stopCh <-chan struct{}) error {
