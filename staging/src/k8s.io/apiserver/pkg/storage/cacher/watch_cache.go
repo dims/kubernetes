@@ -644,7 +644,7 @@ func (w *watchCache) listLatestRVLocked(key, continueKey string, matchValues []s
 	}
 	var store store.OrderedLister = w.store
 	if w.snapshots != nil {
-		snap, ok := w.snapshots.Latest()
+		snap, _, ok := w.snapshots.Latest()
 		if ok {
 			store = snap
 		}

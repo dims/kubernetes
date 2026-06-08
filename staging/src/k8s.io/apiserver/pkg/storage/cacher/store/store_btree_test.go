@@ -151,8 +151,8 @@ func (f *fakeSnapshotter) GetLessOrEqual(rv uint64) (OrderedLister, bool) {
 	}
 	return f.getLessOrEqual(rv)
 }
-func (f *fakeSnapshotter) Latest() (OrderedLister, bool) {
-	return nil, false
+func (f *fakeSnapshotter) Latest() (OrderedLister, uint64, bool) {
+	return nil, 0, false
 }
 func (f *fakeSnapshotter) Add(rv uint64, indexer OrderedLister) {}
 func (f *fakeSnapshotter) RemoveLess(rv uint64)                 {}

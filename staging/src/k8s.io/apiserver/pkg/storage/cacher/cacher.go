@@ -620,22 +620,40 @@ func (c *Cacher) Watch(ctx context.Context, key string, opts storage.ListOptions
 
 	// We explicitly use thread unsafe version and do locking ourself to ensure that
 	// no new events will be processed in the meantime. The watchCache will be unlocked
-	// on return from this function.
+	// once the watcher is registered (below).
 	// Note that we cannot do it under Cacher lock, to avoid a deadlock, since the
 	// underlying watchCache is calling processEvent under its lock.
 	c.watchCache.RLock()
-	defer c.watchCache.RUnlock()
+
+	// For a WatchList (SendInitialEvents=true) on a collection, build the initial events
+	// from an immutable store snapshot rather than the live store: capture only the latest
+	// snapshot + its resourceVersion under RLock (O(1)) and build the O(N) interval after
+	// the lock is released (below). The watcher is still registered before RUnlock, so no
+	// event is missed - processEvent needs the exclusive watchCache.Lock and stays blocked
+	// until then, so anything newer than the snapshot is delivered through the watcher
+	// instead of the interval.
+	_, matchesSingle := opts.Predicate.MatchesSingle()
+	useSnapshot := opts.SendInitialEvents != nil && *opts.SendInitialEvents &&
+		!(matchesSingle && !opts.Recursive) &&
+		c.watchCache.snapshots != nil && c.watchCache.snapshottingEnabled.Load()
 
 	var cacheInterval *watchCacheInterval
-	cacheInterval, err = c.watchCache.getAllEventsSinceLocked(requiredResourceVersion, key, opts)
-	if err != nil {
-		// To match the uncached watch implementation, once we have passed authn/authz/admission,
-		// and successfully parsed a resource version, other errors must fail with a watch event of type ERROR,
-		// rather than a directly returned error.
-		return newErrWatcher(err), nil
+	var snapshot store.OrderedLister
+	var snapshotRV uint64
+	if useSnapshot {
+		snapshot, snapshotRV, useSnapshot = c.watchCache.snapshots.Latest()
 	}
-
-	c.setInitialEventsEndBookmarkIfRequested(cacheInterval, opts, c.watchCache.resourceVersion)
+	if !useSnapshot {
+		cacheInterval, err = c.watchCache.getAllEventsSinceLocked(requiredResourceVersion, key, opts)
+		if err != nil {
+			c.watchCache.RUnlock()
+			// To match the uncached watch implementation, once we have passed authn/authz/admission,
+			// and successfully parsed a resource version, other errors must fail with a watch event of type ERROR,
+			// rather than a directly returned error.
+			return newErrWatcher(err), nil
+		}
+		c.setInitialEventsEndBookmarkIfRequested(cacheInterval, opts, c.watchCache.resourceVersion)
+	}
 
 	addedWatcher := false
 	func() {
@@ -663,12 +681,26 @@ func (c *Cacher) Watch(ctx context.Context, key string, opts storage.ListOptions
 		c.watcherIdx++
 	}()
 
+	c.watchCache.RUnlock()
+
 	if !addedWatcher {
 		// Watcher isn't really started at this point, so it's safe to just drop it.
 		//
 		// We're simulating the immediate watch termination, which boils down to simply
 		// closing the watcher.
 		return newImmediateCloseWatcher(), nil
+	}
+
+	// All locks are released; build the WatchList interval from the snapshot captured
+	// above. This is the O(N) work the snapshot path keeps out of the watchCache RLock.
+	if useSnapshot {
+		cacheInterval, err = newCacheIntervalFromSnapshot(snapshotRV, snapshot, key)
+		if err != nil {
+			// The watcher is already registered; drop it before failing.
+			watcher.forget(false)
+			return newErrWatcher(err), nil
+		}
+		c.setInitialEventsEndBookmarkIfRequested(cacheInterval, opts, snapshotRV)
 	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.ShardedListAndWatch) && pred.ShardSelector != nil && !pred.ShardSelector.Empty() {

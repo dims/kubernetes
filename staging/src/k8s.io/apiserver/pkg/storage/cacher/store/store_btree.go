@@ -440,7 +440,7 @@ var _ Snapshotter = (*storeSnapshotter)(nil)
 type Snapshotter interface {
 	Reset()
 	GetLessOrEqual(rv uint64) (OrderedLister, bool)
-	Latest() (OrderedLister, bool)
+	Latest() (OrderedLister, uint64, bool)
 	Add(rv uint64, indexer OrderedLister)
 	RemoveLess(rv uint64)
 	Len() int
@@ -477,15 +477,15 @@ func (s *storeSnapshotter) GetLessOrEqual(rv uint64) (OrderedLister, bool) {
 	return result.snapshot, true
 }
 
-func (s *storeSnapshotter) Latest() (OrderedLister, bool) {
+func (s *storeSnapshotter) Latest() (OrderedLister, uint64, bool) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 
 	max, ok := s.snapshots.Max()
 	if !ok {
-		return nil, false
+		return nil, 0, false
 	}
-	return max.snapshot, true
+	return max.snapshot, max.resourceVersion, true
 }
 
 func (s *storeSnapshotter) Add(rv uint64, indexer OrderedLister) {

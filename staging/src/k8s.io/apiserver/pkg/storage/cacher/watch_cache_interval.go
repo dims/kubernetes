@@ -164,6 +164,40 @@ func newCacheIntervalFromStore(resourceVersion uint64, indexer store.Indexer, ke
 	return ci, nil
 }
 
+// newCacheIntervalFromSnapshot is the equivalent of newCacheIntervalFromStore for
+// the recursive (List) case, but builds the interval from an immutable snapshot
+// rather than the live store. It can therefore run without holding watchCache.RLock,
+// keeping the lock-held portion of a WatchList O(1) instead of O(N).
+func newCacheIntervalFromSnapshot(resourceVersion uint64, snapshot store.OrderedLister, key string) (*watchCacheInterval, error) {
+	items := snapshot.OrderedListPrefix(key, "")
+	events := make([]watchCacheEvent, len(items))
+	buffer := &watchCacheIntervalBuffer{buffer: make([]*watchCacheEvent, len(items))}
+	for i, item := range items {
+		elem, ok := item.(*store.Element)
+		if !ok {
+			return nil, fmt.Errorf("not a storeElement: %v", elem)
+		}
+		events[i] = watchCacheEvent{
+			Type:            watch.Added,
+			Object:          elem.Object,
+			ObjLabels:       elem.Labels,
+			ObjFields:       elem.Fields,
+			Key:             elem.Key,
+			ResourceVersion: resourceVersion,
+		}
+		buffer.buffer[i] = &events[i]
+		buffer.endIndex++
+	}
+	ci := &watchCacheInterval{
+		startIndex: 0,
+		// Simulate that we already have all the events we're looking for.
+		endIndex:        0,
+		buffer:          buffer,
+		resourceVersion: resourceVersion,
+	}
+	return ci, nil
+}
+
 // Next returns the next item in the cache interval provided the cache
 // interval is still valid. An error is returned if the interval is
 // invalidated.
