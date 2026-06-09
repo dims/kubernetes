@@ -123,27 +123,37 @@ func newCacheInterval(startIndex, endIndex int, indexer indexerFunc, indexValida
 // the watch cache.
 // The items returned in the interval will be sorted by Key.
 func newCacheIntervalFromStore(resourceVersion uint64, indexer store.Indexer, key string, matchesSingle bool) (*watchCacheInterval, error) {
-	buffer := &watchCacheIntervalBuffer{}
 	var allItems []interface{}
 	if matchesSingle {
 		item, exists, err := indexer.GetByKey(key)
 		if err != nil {
 			return nil, err
 		}
-
 		if exists {
 			allItems = append(allItems, item)
 		}
 	} else {
 		allItems = indexer.List()
 	}
-	buffer.buffer = make([]*watchCacheEvent, len(allItems))
-	for i, item := range allItems {
+	buffer, err := eventBufferFromElements(resourceVersion, allItems)
+	if err != nil {
+		return nil, err
+	}
+	// startIndex/endIndex stay 0: every event is already in buffer.
+	return &watchCacheInterval{buffer: buffer, resourceVersion: resourceVersion}, nil
+}
+
+// eventBufferFromElements wraps store elements as synthetic Added events at
+// resourceVersion and returns a buffer pre-loaded with all of them.
+func eventBufferFromElements(resourceVersion uint64, items []interface{}) (*watchCacheIntervalBuffer, error) {
+	events := make([]watchCacheEvent, len(items))
+	buffer := &watchCacheIntervalBuffer{buffer: make([]*watchCacheEvent, len(items))}
+	for i, item := range items {
 		elem, ok := item.(*store.Element)
 		if !ok {
-			return nil, fmt.Errorf("not a storeElement: %v", elem)
+			return nil, fmt.Errorf("not a storeElement: %v", item)
 		}
-		buffer.buffer[i] = &watchCacheEvent{
+		events[i] = watchCacheEvent{
 			Type:            watch.Added,
 			Object:          elem.Object,
 			ObjLabels:       elem.Labels,
@@ -151,17 +161,10 @@ func newCacheIntervalFromStore(resourceVersion uint64, indexer store.Indexer, ke
 			Key:             elem.Key,
 			ResourceVersion: resourceVersion,
 		}
+		buffer.buffer[i] = &events[i]
 		buffer.endIndex++
 	}
-	ci := &watchCacheInterval{
-		startIndex: 0,
-		// Simulate that we already have all the events we're looking for.
-		endIndex:        0,
-		buffer:          buffer,
-		resourceVersion: resourceVersion,
-	}
-
-	return ci, nil
+	return buffer, nil
 }
 
 // Next returns the next item in the cache interval provided the cache
