@@ -101,6 +101,10 @@ type watchCacheInterval struct {
 
 	// initialEventsEndBookmark will be sent after sending all events in cacheInterval
 	initialEventsEndBookmark *watchCacheEvent
+
+	// buildBuffer, when non-nil, lazily populates buffer on the first Next() call so a
+	// snapshot-backed interval can be built off the watchCache lock instead of under it.
+	buildBuffer func() (*watchCacheIntervalBuffer, error)
 }
 
 type indexerFunc func(int) *watchCacheEvent
@@ -143,6 +147,18 @@ func newCacheIntervalFromStore(resourceVersion uint64, indexer store.Indexer, ke
 	return &watchCacheInterval{buffer: buffer, resourceVersion: resourceVersion}, nil
 }
 
+// newCacheIntervalFromSnapshot returns an interval backed by an immutable store
+// snapshot. The events are materialized lazily on the first Next() (see buildBuffer),
+// so the O(N) build runs off the watchCache lock rather than while it is held.
+func newCacheIntervalFromSnapshot(resourceVersion uint64, snapshot store.OrderedLister, key string) *watchCacheInterval {
+	return &watchCacheInterval{
+		resourceVersion: resourceVersion,
+		buildBuffer: func() (*watchCacheIntervalBuffer, error) {
+			return eventBufferFromElements(resourceVersion, snapshot.OrderedListPrefix(key, ""))
+		},
+	}
+}
+
 // eventBufferFromElements wraps store elements as synthetic Added events at
 // resourceVersion and returns a buffer pre-loaded with all of them.
 func eventBufferFromElements(resourceVersion uint64, items []interface{}) (*watchCacheIntervalBuffer, error) {
@@ -171,6 +187,16 @@ func eventBufferFromElements(resourceVersion uint64, items []interface{}) (*watc
 // interval is still valid. An error is returned if the interval is
 // invalidated.
 func (wci *watchCacheInterval) Next() (*watchCacheEvent, error) {
+	// A snapshot-backed interval materializes its buffer on first use, so the O(N)
+	// build runs here (off the watchCache lock) rather than at construction time.
+	if wci.buildBuffer != nil {
+		buffer, err := wci.buildBuffer()
+		if err != nil {
+			return nil, err
+		}
+		wci.buffer = buffer
+		wci.buildBuffer = nil
+	}
 	// if there are items in the buffer to return, return from
 	// the buffer.
 	if event, exists := wci.buffer.next(); exists {
