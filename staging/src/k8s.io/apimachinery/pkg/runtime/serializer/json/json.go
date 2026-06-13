@@ -225,6 +225,15 @@ func (s *Serializer) Encode(obj runtime.Object, w io.Writer) error {
 
 func (s *Serializer) doEncode(obj runtime.Object, w io.Writer) error {
 	if s.options.Yaml {
+		if s.options.StreamingCollectionsEncoding {
+			ok, err := streamYAMLEncodeCollections(obj, w)
+			if err != nil {
+				return err
+			}
+			if ok {
+				return nil
+			}
+		}
 		json, err := json.Marshal(obj)
 		if err != nil {
 			return err

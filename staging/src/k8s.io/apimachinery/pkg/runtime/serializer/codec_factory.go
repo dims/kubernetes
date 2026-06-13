@@ -55,11 +55,11 @@ func newSerializersForScheme(scheme *runtime.Scheme, mf json.MetaFactory, option
 
 	yamlSerializer := json.NewSerializerWithOptions(
 		mf, scheme, scheme,
-		json.SerializerOptions{Yaml: true, Pretty: false, Strict: options.Strict},
+		json.SerializerOptions{Yaml: true, Pretty: false, Strict: options.Strict, StreamingCollectionsEncoding: options.StreamingCollectionsEncodingToJSON},
 	)
 	strictYAMLSerializer := json.NewSerializerWithOptions(
 		mf, scheme, scheme,
-		json.SerializerOptions{Yaml: true, Pretty: false, Strict: true},
+		json.SerializerOptions{Yaml: true, Pretty: false, Strict: true, StreamingCollectionsEncoding: options.StreamingCollectionsEncodingToJSON},
 	)
 	protoSerializer := protobuf.NewSerializerWithOptions(scheme, scheme, protobuf.SerializerOptions{
 		StreamingCollectionsEncoding: options.StreamingCollectionsEncodingToProtobuf,
