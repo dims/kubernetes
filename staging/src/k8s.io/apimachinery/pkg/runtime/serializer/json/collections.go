@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"reflect"
 	"slices"
 	"sort"
 
@@ -32,6 +33,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+// runtime.RawExtension item lists fall back to non-streaming; see getListMeta.
+var rawExtensionType = reflect.TypeOf(runtime.RawExtension{})
 
 func streamEncodeCollections(obj runtime.Object, w io.Writer) (bool, error) {
 	list, ok := obj.(*unstructured.UnstructuredList)
@@ -83,6 +87,10 @@ func getListMeta(list runtime.Object) (metav1.TypeMeta, metav1.ListMeta, []runti
 	}
 	if listType.Field(1).Tag.Get("json") != "metadata,omitempty" {
 		return metav1.TypeMeta{}, metav1.ListMeta{}, nil, fmt.Errorf(`expected ListMeta json field tag to be "metadata,omitempty"`)
+	}
+	// RawExtension items carry a content type ExtractList drops, so fall back to keep the raw bytes.
+	if f := listType.Field(2).Type; f.Kind() == reflect.Slice && f.Elem() == rawExtensionType {
+		return metav1.TypeMeta{}, metav1.ListMeta{}, nil, fmt.Errorf("cannot stream list with runtime.RawExtension items")
 	}
 	// Items
 	items, err := meta.ExtractList(list)

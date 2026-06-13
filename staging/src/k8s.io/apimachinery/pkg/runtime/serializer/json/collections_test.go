@@ -729,6 +729,41 @@ func (b *writeCountingBuffer) Reset() {
 	b.Buffer.Reset()
 }
 
+// TestStreamingJSONRawExtensionFallsBack: metav1.List has []runtime.RawExtension items, whose
+// content type ExtractList drops (e.g. a CBOR payload), so these lists must fall back to non-streaming.
+func TestStreamingJSONRawExtensionFallsBack(t *testing.T) {
+	nonStreaming := NewSerializerWithOptions(DefaultMetaFactory, nil, nil, SerializerOptions{})
+	streaming := NewSerializerWithOptions(DefaultMetaFactory, nil, nil, SerializerOptions{StreamingCollectionsEncoding: true})
+	cborRaw := []byte{0xd9, 0xd9, 0xf7, 0xa1, 0x41, 'a', 0x01} // self-described CBOR {"a":1}
+	jsonRaw := []byte(`{"a":1}`)
+	for _, tc := range []struct {
+		name string
+		list runtime.Object
+	}{
+		{"raw cbor", &metav1.List{Items: []runtime.RawExtension{{Raw: cborRaw}}}},
+		{"raw json", &metav1.List{Items: []runtime.RawExtension{{Raw: jsonRaw}}}},
+		{"object", &metav1.List{Items: []runtime.RawExtension{{Object: &testapigroupv1.Carp{ObjectMeta: metav1.ObjectMeta{Name: "x"}}}}}},
+		{"nil item", &metav1.List{Items: []runtime.RawExtension{{}}}},
+		{"empty", &metav1.List{Items: []runtime.RawExtension{}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var want, got bytes.Buffer
+			if err := nonStreaming.Encode(tc.list, &want); err != nil {
+				t.Fatalf("non-streaming encode: %v", err)
+			}
+			if err := streaming.Encode(tc.list, &got); err != nil {
+				t.Fatalf("streaming encode: %v", err)
+			}
+			if diff := cmp.Diff(want.String(), got.String()); diff != "" {
+				t.Errorf("streaming differs from non-streaming (-want +got):\n%s", diff)
+			}
+			if ok, _ := streamEncodeCollections(tc.list, &bytes.Buffer{}); ok {
+				t.Errorf("expected RawExtension list to fall back to non-streaming (ok=false)")
+			}
+		})
+	}
+}
+
 func TestFuzzCollectionsEncoding(t *testing.T) {
 	disableFuzzFieldsV1 := func(field *metav1.FieldsV1, c randfill.Continue) {}
 	fuzzUnstructuredList := func(list *unstructured.UnstructuredList, c randfill.Continue) {
