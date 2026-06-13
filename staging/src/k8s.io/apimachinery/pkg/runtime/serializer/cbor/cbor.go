@@ -68,8 +68,9 @@ type Serializer interface {
 var _ Serializer = &serializer{}
 
 type options struct {
-	strict    bool
-	transcode bool
+	strict                       bool
+	transcode                    bool
+	streamingCollectionsEncoding bool
 }
 
 type Option func(*options)
@@ -89,6 +90,14 @@ func Strict(s bool) Option {
 func Transcode(s bool) Option {
 	return func(opts *options) {
 		opts.transcode = s
+	}
+}
+
+// StreamingCollectionsEncoding makes the serializer stream list items instead of buffering the
+// whole collection. Output is identical to non-streaming. Disabled by default.
+func StreamingCollectionsEncoding(enabled bool) Option {
+	return func(opts *options) {
+		opts.streamingCollectionsEncoding = enabled
 	}
 }
 
@@ -139,14 +148,17 @@ func (s *serializer) Identifier() runtime.Identifier {
 // Objects implementing runtime.Unstructured will have their unstructured content encoded rather
 // than following the default behavior for their dynamic type.
 func (s *serializer) Encode(obj runtime.Object, w io.Writer) error {
-	return s.encode(modes.Encode, obj, w)
+	return s.encode(modes.Encode, true, obj, w)
 }
 
 func (s *serializer) EncodeNondeterministic(obj runtime.Object, w io.Writer) error {
-	return s.encode(modes.EncodeNondeterministic, obj, w)
+	return s.encode(modes.EncodeNondeterministic, false, obj, w)
 }
 
-func (s *serializer) encode(mode modes.EncMode, obj runtime.Object, w io.Writer) error {
+// encode writes obj to w using mode. With allowStreaming (the deterministic Encode path only),
+// streamable lists are encoded item-by-item via streamEncodeCollections to avoid buffering the
+// whole collection.
+func (s *serializer) encode(mode modes.EncMode, allowStreaming bool, obj runtime.Object, w io.Writer) error {
 	var v interface{} = obj
 	if u, ok := obj.(runtime.Unstructured); ok {
 		v = u.UnstructuredContent()
@@ -154,6 +166,16 @@ func (s *serializer) encode(mode modes.EncMode, obj runtime.Object, w io.Writer)
 
 	if _, err := w.Write(selfDescribedCBOR); err != nil {
 		return err
+	}
+
+	if allowStreaming && s.options.streamingCollectionsEncoding {
+		ok, err := streamEncodeCollections(obj, w)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
 	}
 
 	return mode.MarshalTo(v, w)
@@ -373,8 +395,8 @@ func NewSerializerInfo(creater runtime.ObjectCreater, typer runtime.ObjectTyper)
 		MediaType:        "application/cbor",
 		MediaTypeType:    "application",
 		MediaTypeSubType: "cbor",
-		Serializer:       NewSerializer(creater, typer),
-		StrictSerializer: NewSerializer(creater, typer, Strict(true)),
+		Serializer:       NewSerializer(creater, typer, StreamingCollectionsEncoding(true)),
+		StrictSerializer: NewSerializer(creater, typer, Strict(true), StreamingCollectionsEncoding(true)),
 		StreamSerializer: &runtime.StreamSerializerInfo{
 			Framer:     NewFramer(),
 			Serializer: NewSerializer(creater, typer, Transcode(false)),
