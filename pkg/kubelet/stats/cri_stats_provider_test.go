@@ -41,17 +41,19 @@ import (
 	critest "k8s.io/cri-api/pkg/apis/testing"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	kubelettypes "k8s.io/kubelet/pkg/types"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/kubernetes/pkg/features"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	kubecontainertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	kubepodtest "k8s.io/kubernetes/pkg/kubelet/pod/testing"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/test/utils/ktesting"
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -190,7 +192,7 @@ func TestCRIListPodStats(t *testing.T) {
 	mockCadvisor.EXPECT().ContainerInfoV2("/", options).Return(infos, nil)
 	mockCadvisor.EXPECT().RootFsInfo().Return(rootFsInfo, nil)
 	mockCadvisor.EXPECT().GetDirFsInfo(imageFsMountpoint).Return(imageFsInfo, nil)
-	mockCadvisor.EXPECT().GetDirFsInfo(unknownMountpoint).Return(cadvisorapiv2.FsInfo{}, cadvisorfs.ErrNoSuchDevice)
+	mockCadvisor.EXPECT().GetDirFsInfo(unknownMountpoint).Return(machine.FsInfo{}, cadvisorfs.ErrNoSuchDevice)
 
 	fakeRuntimeService.SetFakeSandboxes([]*critest.FakePodSandbox{
 		sandbox0, sandbox1, sandbox2, sandbox3, sandbox4, sandbox5,
@@ -428,7 +430,7 @@ func TestListPodStatsStrictlyFromCRI(t *testing.T) {
 	mockCadvisor.EXPECT().ContainerInfoV2("/", options).Return(infos, nil)
 	mockCadvisor.EXPECT().RootFsInfo().Return(rootFsInfo, nil)
 	mockCadvisor.EXPECT().GetDirFsInfo(imageFsMountpoint).Return(imageFsInfo, nil)
-	mockCadvisor.EXPECT().GetDirFsInfo(unknownMountpoint).Return(cadvisorapiv2.FsInfo{}, cadvisorfs.ErrNoSuchDevice)
+	mockCadvisor.EXPECT().GetDirFsInfo(unknownMountpoint).Return(machine.FsInfo{}, cadvisorfs.ErrNoSuchDevice)
 	fakeRuntimeService.SetFakeSandboxes([]*critest.FakePodSandbox{
 		sandbox0, sandbox1,
 	})
@@ -1200,7 +1202,7 @@ func checkCRIIOStatsForStrictlyFromCRI(assert *assert.Assertions, actual statsap
 	}
 }
 
-func checkCRIRootfsStats(assert *assert.Assertions, actual statsapi.ContainerStats, cs *runtimeapi.ContainerStats, imageFsInfo *cadvisorapiv2.FsInfo) {
+func checkCRIRootfsStats(assert *assert.Assertions, actual statsapi.ContainerStats, cs *runtimeapi.ContainerStats, imageFsInfo *machine.FsInfo) {
 	assert.Equal(cs.WritableLayer.Timestamp, actual.Rootfs.Time.UnixNano())
 	if imageFsInfo != nil {
 		assert.Equal(imageFsInfo.Available, *actual.Rootfs.AvailableBytes)
@@ -1217,7 +1219,7 @@ func checkCRIRootfsStats(assert *assert.Assertions, actual statsapi.ContainerSta
 	assert.Equal(cs.WritableLayer.InodesUsed.Value, *actual.Rootfs.InodesUsed)
 }
 
-func checkCRILogsStats(assert *assert.Assertions, actual statsapi.ContainerStats, rootFsInfo *cadvisorapiv2.FsInfo, logStats *volume.Metrics) {
+func checkCRILogsStats(assert *assert.Assertions, actual statsapi.ContainerStats, rootFsInfo *machine.FsInfo, logStats *volume.Metrics) {
 	assert.Equal(rootFsInfo.Timestamp, actual.Logs.Time.Time)
 	assert.Equal(rootFsInfo.Available, *actual.Logs.AvailableBytes)
 	assert.Equal(rootFsInfo.Capacity, *actual.Logs.CapacityBytes)

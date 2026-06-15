@@ -41,13 +41,15 @@ import (
 	"k8s.io/klog/v2"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	kubetypes "k8s.io/kubelet/pkg/types"
+	"k8s.io/utils/clock"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
-	"k8s.io/utils/clock"
-	"k8s.io/utils/ptr"
 )
 
 var (
@@ -170,11 +172,11 @@ func (p *criStatsProvider) listPodStats(ctx context.Context, updateCPUNanoCoreUs
 	return p.listPodStatsPartiallyFromCRI(ctx, updateCPUNanoCoreUsage, containerMap, podSandboxMap, &rootFsInfo)
 }
 
-func (p *criStatsProvider) listPodStatsPartiallyFromCRI(ctx context.Context, updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo *cadvisorapiv2.FsInfo) ([]statsapi.PodStats, error) {
+func (p *criStatsProvider) listPodStatsPartiallyFromCRI(ctx context.Context, updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo *machine.FsInfo) ([]statsapi.PodStats, error) {
 	// fsIDtoInfo is a map from mountpoint to its stats. This will be used
 	// as a cache to avoid querying cAdvisor for the filesystem stats with the
 	// same filesystem id many times.
-	fsIDtoInfo := make(map[string]*cadvisorapiv2.FsInfo)
+	fsIDtoInfo := make(map[string]*machine.FsInfo)
 
 	// sandboxIDToPodStats is a temporary map from sandbox ID to its pod stats.
 	sandboxIDToPodStats := make(map[string]*statsapi.PodStats)
@@ -251,14 +253,14 @@ func (p *criStatsProvider) listPodStatsPartiallyFromCRI(ctx context.Context, upd
 	return result, nil
 }
 
-func (p *criStatsProvider) listPodStatsStrictlyFromCRI(ctx context.Context, updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo *cadvisorapiv2.FsInfo) ([]statsapi.PodStats, error) {
+func (p *criStatsProvider) listPodStatsStrictlyFromCRI(ctx context.Context, updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo *machine.FsInfo) ([]statsapi.PodStats, error) {
 	criSandboxStats, err := p.runtimeService.ListPodSandboxStats(ctx, &runtimeapi.PodSandboxStatsFilter{})
 	if err != nil {
 		return nil, err
 	}
 	logger := klog.FromContext(ctx)
 
-	fsIDtoInfo := make(map[string]*cadvisorapiv2.FsInfo)
+	fsIDtoInfo := make(map[string]*machine.FsInfo)
 	summarySandboxStats := make([]statsapi.PodStats, 0, len(podSandboxMap))
 	for _, criSandboxStat := range criSandboxStats {
 		if criSandboxStat == nil || criSandboxStat.Attributes == nil {
@@ -563,7 +565,7 @@ func (p *criStatsProvider) ImageFsDevice(ctx context.Context) (string, error) {
 // getFsInfo returns the information of the filesystem with the specified
 // fsID. If any error occurs, this function logs the error and returns
 // nil.
-func (p *criStatsProvider) getFsInfo(logger klog.Logger, fsID *runtimeapi.FilesystemIdentifier) (*cadvisorapiv2.FsInfo, error) {
+func (p *criStatsProvider) getFsInfo(logger klog.Logger, fsID *runtimeapi.FilesystemIdentifier) (*machine.FsInfo, error) {
 	if fsID == nil {
 		logger.V(2).Info("Failed to get filesystem info: fsID is nil")
 		return nil, nil
@@ -766,8 +768,8 @@ func (p *criStatsProvider) makeContainerStats(
 	logger klog.Logger,
 	stats *runtimeapi.ContainerStats,
 	container *runtimeapi.Container,
-	rootFsInfo *cadvisorapiv2.FsInfo,
-	fsIDtoInfo map[string]*cadvisorapiv2.FsInfo,
+	rootFsInfo *machine.FsInfo,
+	fsIDtoInfo map[string]*machine.FsInfo,
 	meta *runtimeapi.PodSandboxMetadata,
 	updateCPUNanoCoreUsage bool,
 ) (*statsapi.ContainerStats, error) {

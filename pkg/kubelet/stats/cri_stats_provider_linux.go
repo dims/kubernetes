@@ -22,24 +22,24 @@ import (
 	"fmt"
 	"time"
 
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/klog/v2"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+
 	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 func (p *criStatsProvider) addCRIPodContainerStats(
 	logger klog.Logger,
 	criSandboxStat *runtimeapi.PodSandboxStats,
 	ps *statsapi.PodStats,
-	fsIDtoInfo map[string]*cadvisorapiv2.FsInfo,
+	fsIDtoInfo map[string]*machine.FsInfo,
 	containerMap map[string]*runtimeapi.Container,
 	podSandbox *runtimeapi.PodSandbox,
-	rootFsInfo *cadvisorapiv2.FsInfo, updateCPUNanoCoreUsage bool) error {
+	rootFsInfo *machine.FsInfo, updateCPUNanoCoreUsage bool) error {
 	for _, criContainerStat := range criSandboxStat.Linux.Containers {
 		container, found := containerMap[criContainerStat.Attributes.Id]
 		if !found {

@@ -19,11 +19,11 @@ limitations under the License.
 package stats
 
 import (
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
-
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/klog/v2"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 // listContainerNetworkStats returns the network stats of all the running containers.
@@ -36,10 +36,10 @@ func (p *criStatsProvider) addCRIPodContainerStats(
 	klog.Logger,
 	*runtimeapi.PodSandboxStats,
 	*statsapi.PodStats,
-	map[string]*cadvisorapiv2.FsInfo,
+	map[string]*machine.FsInfo,
 	map[string]*runtimeapi.Container,
 	*runtimeapi.PodSandbox,
-	*cadvisorapiv2.FsInfo,
+	*machine.FsInfo,
 	bool) error {
 	return nil
 }

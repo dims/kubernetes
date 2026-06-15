@@ -27,10 +27,12 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/server/stats"
-	"k8s.io/utils/ptr"
 )
 
 // defaultNetworkInterfaceName is used for collectng network stats.
@@ -91,7 +93,7 @@ func cadvisorInfoToCPUandMemoryStats(info *cadvisorapiv2.ContainerInfo) (*statsa
 
 // cadvisorInfoToContainerStats returns the statsapi.ContainerStats converted
 // from the container and filesystem info.
-func cadvisorInfoToContainerStats(logger klog.Logger, name string, info *cadvisorapiv2.ContainerInfo, rootFs, imageFs *cadvisorapiv2.FsInfo) *statsapi.ContainerStats {
+func cadvisorInfoToContainerStats(logger klog.Logger, name string, info *cadvisorapiv2.ContainerInfo, rootFs, imageFs *machine.FsInfo) *statsapi.ContainerStats {
 	result := &statsapi.ContainerStats{
 		StartTime: metav1.NewTime(info.Spec.CreationTime),
 		Name:      name,
@@ -397,7 +399,7 @@ func getCgroupStats(cadvisor cadvisor.Interface, containerName string, updateSta
 	return stats, nil
 }
 
-func buildLogsStats(cstat *cadvisorapiv2.ContainerStats, rootFs *cadvisorapiv2.FsInfo) *statsapi.FsStats {
+func buildLogsStats(cstat *cadvisorapiv2.ContainerStats, rootFs *machine.FsInfo) *statsapi.FsStats {
 	fsStats := &statsapi.FsStats{
 		Time:           metav1.NewTime(cstat.Timestamp),
 		AvailableBytes: &rootFs.Available,
@@ -413,7 +415,7 @@ func buildLogsStats(cstat *cadvisorapiv2.ContainerStats, rootFs *cadvisorapiv2.F
 	return fsStats
 }
 
-func buildRootfsStats(cstat *cadvisorapiv2.ContainerStats, imageFs *cadvisorapiv2.FsInfo) *statsapi.FsStats {
+func buildRootfsStats(cstat *cadvisorapiv2.ContainerStats, imageFs *machine.FsInfo) *statsapi.FsStats {
 	return &statsapi.FsStats{
 		Time:           metav1.NewTime(cstat.Timestamp),
 		AvailableBytes: &imageFs.Available,
@@ -423,7 +425,7 @@ func buildRootfsStats(cstat *cadvisorapiv2.ContainerStats, imageFs *cadvisorapiv
 	}
 }
 
-func calcEphemeralStorage(containers []statsapi.ContainerStats, volumes []statsapi.VolumeStats, rootFsInfo *cadvisorapiv2.FsInfo,
+func calcEphemeralStorage(containers []statsapi.ContainerStats, volumes []statsapi.VolumeStats, rootFsInfo *machine.FsInfo,
 	podLogStats *statsapi.FsStats, etcHostsStats *statsapi.FsStats, isCRIStatsProvider bool) *statsapi.FsStats {
 	result := &statsapi.FsStats{
 		Time:           metav1.NewTime(rootFsInfo.Timestamp),
@@ -486,7 +488,7 @@ func addUsage(first, second *uint64) *uint64 {
 	return &total
 }
 
-func makePodStorageStats(logger klog.Logger, s *statsapi.PodStats, rootFsInfo *cadvisorapiv2.FsInfo, resourceAnalyzer stats.ResourceAnalyzer, hostStatsProvider HostStatsProvider, isCRIStatsProvider bool) {
+func makePodStorageStats(logger klog.Logger, s *statsapi.PodStats, rootFsInfo *machine.FsInfo, resourceAnalyzer stats.ResourceAnalyzer, hostStatsProvider HostStatsProvider, isCRIStatsProvider bool) {
 	podNs := s.PodRef.Namespace
 	podName := s.PodRef.Name
 	podUID := types.UID(s.PodRef.UID)

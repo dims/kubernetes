@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/Microsoft/hnslib"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,6 +30,8 @@ import (
 	"k8s.io/klog/v2"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	"k8s.io/utils/ptr"
+
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 // windowsNetworkStatsProvider creates an interface that allows for testing the logic without needing to create a container
@@ -83,10 +84,10 @@ func (p *criStatsProvider) listContainerNetworkStats(logger klog.Logger) (map[st
 }
 
 func (p *criStatsProvider) addCRIPodContainerStats(logger klog.Logger, criSandboxStat *runtimeapi.PodSandboxStats,
-	ps *statsapi.PodStats, fsIDtoInfo map[string]*cadvisorapiv2.FsInfo,
+	ps *statsapi.PodStats, fsIDtoInfo map[string]*machine.FsInfo,
 	containerMap map[string]*runtimeapi.Container,
 	podSandbox *runtimeapi.PodSandbox,
-	rootFsInfo *cadvisorapiv2.FsInfo,
+	rootFsInfo *machine.FsInfo,
 	updateCPUNanoCoreUsage bool) error {
 	for _, criContainerStat := range criSandboxStat.GetWindows().GetContainers() {
 		container, found := containerMap[criContainerStat.Attributes.Id]
@@ -109,8 +110,8 @@ func (p *criStatsProvider) makeWinContainerStats(
 	logger klog.Logger,
 	stats *runtimeapi.WindowsContainerStats,
 	container *runtimeapi.Container,
-	rootFsInfo *cadvisorapiv2.FsInfo,
-	fsIDtoInfo map[string]*cadvisorapiv2.FsInfo,
+	rootFsInfo *machine.FsInfo,
+	fsIDtoInfo map[string]*machine.FsInfo,
 	meta *runtimeapi.PodSandboxMetadata) (*statsapi.ContainerStats, error) {
 	result := &statsapi.ContainerStats{
 		Name: stats.Attributes.Metadata.Name,

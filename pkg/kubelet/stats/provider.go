@@ -28,6 +28,8 @@ import (
 	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/klog/v2"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -35,7 +37,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/stats/pidlimit"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
-	"k8s.io/utils/ptr"
 )
 
 // PodManager is the subset of methods the manager needs to observe the actual state of the kubelet.

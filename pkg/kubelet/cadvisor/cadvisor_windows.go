@@ -24,6 +24,8 @@ import (
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"k8s.io/klog/v2"
+
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/winstats"
 )
 
@@ -64,20 +66,24 @@ func (cu *cadvisorClient) VersionInfo() (*cadvisorapi.VersionInfo, error) {
 	return cu.winStatsClient.WinVersionInfo()
 }
 
-func (cu *cadvisorClient) ImagesFsInfo(context.Context) (cadvisorapiv2.FsInfo, error) {
-	return cadvisorapiv2.FsInfo{}, nil
+func (cu *cadvisorClient) ImagesFsInfo(context.Context) (machine.FsInfo, error) {
+	return machine.FsInfo{}, nil
 }
 
-func (cu *cadvisorClient) ContainerFsInfo(context.Context) (cadvisorapiv2.FsInfo, error) {
-	return cadvisorapiv2.FsInfo{}, nil
+func (cu *cadvisorClient) ContainerFsInfo(context.Context) (machine.FsInfo, error) {
+	return machine.FsInfo{}, nil
 }
 
-func (cu *cadvisorClient) RootFsInfo() (cadvisorapiv2.FsInfo, error) {
+func (cu *cadvisorClient) RootFsInfo() (machine.FsInfo, error) {
 	return cu.GetDirFsInfo(cu.rootPath)
 }
 
-func (cu *cadvisorClient) GetDirFsInfo(path string) (cadvisorapiv2.FsInfo, error) {
-	return cu.winStatsClient.GetDirFsInfo(path)
+func (cu *cadvisorClient) GetDirFsInfo(path string) (machine.FsInfo, error) {
+	fs, err := cu.winStatsClient.GetDirFsInfo(path)
+	if err != nil {
+		return machine.FsInfo{}, err
+	}
+	return ToFsInfo(fs), nil
 }
 
 func IsPsiEnabled(_ klog.Logger) bool {

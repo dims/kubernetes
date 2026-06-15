@@ -33,12 +33,14 @@ import (
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	kubelettypes "k8s.io/kubelet/pkg/types"
+
 	"k8s.io/kubernetes/pkg/features"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	cmtesting "k8s.io/kubernetes/pkg/kubelet/cm/testing"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
 	statustest "k8s.io/kubernetes/pkg/kubelet/status/testing"
 	"k8s.io/kubernetes/pkg/volume"
@@ -197,7 +199,7 @@ func TestCadvisorListPodStats(t *testing.T) {
 
 	freeRootfsInodes := rootfsInodesFree
 	totalRootfsInodes := rootfsInodes
-	rootfs := cadvisorapiv2.FsInfo{
+	rootfs := machine.FsInfo{
 		Capacity:   rootfsCapacity,
 		Available:  rootfsAvailable,
 		InodesFree: &freeRootfsInodes,
@@ -206,7 +208,7 @@ func TestCadvisorListPodStats(t *testing.T) {
 
 	freeImagefsInodes := imagefsInodesFree
 	totalImagefsInodes := imagefsInodes
-	imagefs := cadvisorapiv2.FsInfo{
+	imagefs := machine.FsInfo{
 		Capacity:   imagefsCapacity,
 		Available:  imagefsAvailable,
 		InodesFree: &freeImagefsInodes,
@@ -958,7 +960,7 @@ func TestCadvisorListPodStatsWhenContainerLogFound(t *testing.T) {
 
 	freeRootfsInodes := rootfsInodesFree
 	totalRootfsInodes := rootfsInodes
-	rootfs := cadvisorapiv2.FsInfo{
+	rootfs := machine.FsInfo{
 		Capacity:   rootfsCapacity,
 		Available:  rootfsAvailable,
 		InodesFree: &freeRootfsInodes,
@@ -967,7 +969,7 @@ func TestCadvisorListPodStatsWhenContainerLogFound(t *testing.T) {
 
 	freeImagefsInodes := imagefsInodesFree
 	totalImagefsInodes := imagefsInodes
-	imagefs := cadvisorapiv2.FsInfo{
+	imagefs := machine.FsInfo{
 		Capacity:   imagefsCapacity,
 		Available:  imagefsAvailable,
 		InodesFree: &freeImagefsInodes,

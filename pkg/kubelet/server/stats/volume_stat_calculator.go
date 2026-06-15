@@ -29,10 +29,11 @@ import (
 	"k8s.io/component-helpers/storage/ephemeral"
 	"k8s.io/klog/v2"
 	stats "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+	utiltrace "k8s.io/utils/trace"
+
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util"
-	utiltrace "k8s.io/utils/trace"
 )
 
 // volumeStatCalculator calculates volume metrics for a given pod periodically in the background and caches the result

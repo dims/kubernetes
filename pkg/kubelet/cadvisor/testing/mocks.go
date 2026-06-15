@@ -23,10 +23,12 @@ package testing
 import (
 	"context"
 
-	"github.com/google/cadvisor/info/v1"
-	"github.com/google/cadvisor/info/v2"
+	v1 "github.com/google/cadvisor/info/v1"
+	v2 "github.com/google/cadvisor/info/v2"
 	mock "github.com/stretchr/testify/mock"
 	"k8s.io/klog/v2"
+
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 // NewMockInterface creates a new instance of MockInterface. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
@@ -57,22 +59,22 @@ func (_m *MockInterface) EXPECT() *MockInterface_Expecter {
 }
 
 // ContainerFsInfo provides a mock function for the type MockInterface
-func (_mock *MockInterface) ContainerFsInfo(context1 context.Context) (v2.FsInfo, error) {
+func (_mock *MockInterface) ContainerFsInfo(context1 context.Context) (machine.FsInfo, error) {
 	ret := _mock.Called(context1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerFsInfo")
 	}
 
-	var r0 v2.FsInfo
+	var r0 machine.FsInfo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) (v2.FsInfo, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (machine.FsInfo, error)); ok {
 		return returnFunc(context1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) v2.FsInfo); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context) machine.FsInfo); ok {
 		r0 = returnFunc(context1)
 	} else {
-		r0 = ret.Get(0).(v2.FsInfo)
+		r0 = ret.Get(0).(machine.FsInfo)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
 		r1 = returnFunc(context1)
@@ -106,12 +108,12 @@ func (_c *MockInterface_ContainerFsInfo_Call) Run(run func(context1 context.Cont
 	return _c
 }
 
-func (_c *MockInterface_ContainerFsInfo_Call) Return(fsInfo v2.FsInfo, err error) *MockInterface_ContainerFsInfo_Call {
+func (_c *MockInterface_ContainerFsInfo_Call) Return(fsInfo machine.FsInfo, err error) *MockInterface_ContainerFsInfo_Call {
 	_c.Call.Return(fsInfo, err)
 	return _c
 }
 
-func (_c *MockInterface_ContainerFsInfo_Call) RunAndReturn(run func(context1 context.Context) (v2.FsInfo, error)) *MockInterface_ContainerFsInfo_Call {
+func (_c *MockInterface_ContainerFsInfo_Call) RunAndReturn(run func(context1 context.Context) (machine.FsInfo, error)) *MockInterface_ContainerFsInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -185,22 +187,22 @@ func (_c *MockInterface_ContainerInfoV2_Call) RunAndReturn(run func(name string,
 }
 
 // GetDirFsInfo provides a mock function for the type MockInterface
-func (_mock *MockInterface) GetDirFsInfo(path string) (v2.FsInfo, error) {
+func (_mock *MockInterface) GetDirFsInfo(path string) (machine.FsInfo, error) {
 	ret := _mock.Called(path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDirFsInfo")
 	}
 
-	var r0 v2.FsInfo
+	var r0 machine.FsInfo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string) (v2.FsInfo, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(string) (machine.FsInfo, error)); ok {
 		return returnFunc(path)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string) v2.FsInfo); ok {
+	if returnFunc, ok := ret.Get(0).(func(string) machine.FsInfo); ok {
 		r0 = returnFunc(path)
 	} else {
-		r0 = ret.Get(0).(v2.FsInfo)
+		r0 = ret.Get(0).(machine.FsInfo)
 	}
 	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
 		r1 = returnFunc(path)
@@ -234,12 +236,12 @@ func (_c *MockInterface_GetDirFsInfo_Call) Run(run func(path string)) *MockInter
 	return _c
 }
 
-func (_c *MockInterface_GetDirFsInfo_Call) Return(fsInfo v2.FsInfo, err error) *MockInterface_GetDirFsInfo_Call {
+func (_c *MockInterface_GetDirFsInfo_Call) Return(fsInfo machine.FsInfo, err error) *MockInterface_GetDirFsInfo_Call {
 	_c.Call.Return(fsInfo, err)
 	return _c
 }
 
-func (_c *MockInterface_GetDirFsInfo_Call) RunAndReturn(run func(path string) (v2.FsInfo, error)) *MockInterface_GetDirFsInfo_Call {
+func (_c *MockInterface_GetDirFsInfo_Call) RunAndReturn(run func(path string) (machine.FsInfo, error)) *MockInterface_GetDirFsInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -313,22 +315,22 @@ func (_c *MockInterface_GetRequestedContainersInfo_Call) RunAndReturn(run func(c
 }
 
 // ImagesFsInfo provides a mock function for the type MockInterface
-func (_mock *MockInterface) ImagesFsInfo(context1 context.Context) (v2.FsInfo, error) {
+func (_mock *MockInterface) ImagesFsInfo(context1 context.Context) (machine.FsInfo, error) {
 	ret := _mock.Called(context1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ImagesFsInfo")
 	}
 
-	var r0 v2.FsInfo
+	var r0 machine.FsInfo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) (v2.FsInfo, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (machine.FsInfo, error)); ok {
 		return returnFunc(context1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) v2.FsInfo); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context) machine.FsInfo); ok {
 		r0 = returnFunc(context1)
 	} else {
-		r0 = ret.Get(0).(v2.FsInfo)
+		r0 = ret.Get(0).(machine.FsInfo)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
 		r1 = returnFunc(context1)
@@ -362,12 +364,12 @@ func (_c *MockInterface_ImagesFsInfo_Call) Run(run func(context1 context.Context
 	return _c
 }
 
-func (_c *MockInterface_ImagesFsInfo_Call) Return(fsInfo v2.FsInfo, err error) *MockInterface_ImagesFsInfo_Call {
+func (_c *MockInterface_ImagesFsInfo_Call) Return(fsInfo machine.FsInfo, err error) *MockInterface_ImagesFsInfo_Call {
 	_c.Call.Return(fsInfo, err)
 	return _c
 }
 
-func (_c *MockInterface_ImagesFsInfo_Call) RunAndReturn(run func(context1 context.Context) (v2.FsInfo, error)) *MockInterface_ImagesFsInfo_Call {
+func (_c *MockInterface_ImagesFsInfo_Call) RunAndReturn(run func(context1 context.Context) (machine.FsInfo, error)) *MockInterface_ImagesFsInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -435,22 +437,22 @@ func (_c *MockInterface_MachineInfo_Call) RunAndReturn(run func(logger klog.Logg
 }
 
 // RootFsInfo provides a mock function for the type MockInterface
-func (_mock *MockInterface) RootFsInfo() (v2.FsInfo, error) {
+func (_mock *MockInterface) RootFsInfo() (machine.FsInfo, error) {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for RootFsInfo")
 	}
 
-	var r0 v2.FsInfo
+	var r0 machine.FsInfo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func() (v2.FsInfo, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func() (machine.FsInfo, error)); ok {
 		return returnFunc()
 	}
-	if returnFunc, ok := ret.Get(0).(func() v2.FsInfo); ok {
+	if returnFunc, ok := ret.Get(0).(func() machine.FsInfo); ok {
 		r0 = returnFunc()
 	} else {
-		r0 = ret.Get(0).(v2.FsInfo)
+		r0 = ret.Get(0).(machine.FsInfo)
 	}
 	if returnFunc, ok := ret.Get(1).(func() error); ok {
 		r1 = returnFunc()
@@ -477,12 +479,12 @@ func (_c *MockInterface_RootFsInfo_Call) Run(run func()) *MockInterface_RootFsIn
 	return _c
 }
 
-func (_c *MockInterface_RootFsInfo_Call) Return(fsInfo v2.FsInfo, err error) *MockInterface_RootFsInfo_Call {
+func (_c *MockInterface_RootFsInfo_Call) Return(fsInfo machine.FsInfo, err error) *MockInterface_RootFsInfo_Call {
 	_c.Call.Return(fsInfo, err)
 	return _c
 }
 
-func (_c *MockInterface_RootFsInfo_Call) RunAndReturn(run func() (v2.FsInfo, error)) *MockInterface_RootFsInfo_Call {
+func (_c *MockInterface_RootFsInfo_Call) RunAndReturn(run func() (machine.FsInfo, error)) *MockInterface_RootFsInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

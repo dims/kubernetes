@@ -25,6 +25,8 @@ import (
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"k8s.io/klog/v2"
+
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 type cadvisorUnsupported struct {
@@ -59,20 +61,20 @@ func (cu *cadvisorUnsupported) VersionInfo() (*cadvisorapi.VersionInfo, error) {
 	return nil, errUnsupported
 }
 
-func (cu *cadvisorUnsupported) ImagesFsInfo(context.Context) (cadvisorapiv2.FsInfo, error) {
-	return cadvisorapiv2.FsInfo{}, errUnsupported
+func (cu *cadvisorUnsupported) ImagesFsInfo(context.Context) (machine.FsInfo, error) {
+	return machine.FsInfo{}, errUnsupported
 }
 
-func (cu *cadvisorUnsupported) RootFsInfo() (cadvisorapiv2.FsInfo, error) {
-	return cadvisorapiv2.FsInfo{}, errUnsupported
+func (cu *cadvisorUnsupported) RootFsInfo() (machine.FsInfo, error) {
+	return machine.FsInfo{}, errUnsupported
 }
 
-func (cu *cadvisorUnsupported) ContainerFsInfo(context.Context) (cadvisorapiv2.FsInfo, error) {
-	return cadvisorapiv2.FsInfo{}, errUnsupported
+func (cu *cadvisorUnsupported) ContainerFsInfo(context.Context) (machine.FsInfo, error) {
+	return machine.FsInfo{}, errUnsupported
 }
 
-func (cu *cadvisorUnsupported) GetDirFsInfo(path string) (cadvisorapiv2.FsInfo, error) {
-	return cadvisorapiv2.FsInfo{}, nil
+func (cu *cadvisorUnsupported) GetDirFsInfo(path string) (machine.FsInfo, error) {
+	return machine.FsInfo{}, nil
 }
 
 func IsPsiEnabled(_ klog.Logger) bool {

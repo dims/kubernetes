@@ -51,8 +51,10 @@ import (
 	cgroupfs2 "github.com/opencontainers/cgroups/fs2"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/utils/ptr"
+
+	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 type cadvisorClient struct {
@@ -161,10 +163,10 @@ func (cc *cadvisorClient) MachineInfo(logger klog.Logger) (*cadvisorapi.MachineI
 	return cc.GetMachineInfo()
 }
 
-func (cc *cadvisorClient) ImagesFsInfo(ctx context.Context) (cadvisorapiv2.FsInfo, error) {
+func (cc *cadvisorClient) ImagesFsInfo(ctx context.Context) (machine.FsInfo, error) {
 	label, err := cc.imageFsInfoProvider.ImageFsInfoLabel()
 	if err != nil {
-		return cadvisorapiv2.FsInfo{}, err
+		return machine.FsInfo{}, err
 	}
 	return cc.getFsInfo(ctx, label)
 }
@@ -189,30 +191,38 @@ func isPsiEnabled(logger klog.Logger, cgroupDir, psiFile string) bool {
 	return true
 }
 
-func (cc *cadvisorClient) RootFsInfo() (cadvisorapiv2.FsInfo, error) {
+func (cc *cadvisorClient) RootFsInfo() (machine.FsInfo, error) {
 	return cc.GetDirFsInfo(cc.rootPath)
 }
 
-func (cc *cadvisorClient) getFsInfo(ctx context.Context, label string) (cadvisorapiv2.FsInfo, error) {
+func (cc *cadvisorClient) GetDirFsInfo(path string) (machine.FsInfo, error) {
+	fs, err := cc.Manager.GetDirFsInfo(path)
+	if err != nil {
+		return machine.FsInfo{}, err
+	}
+	return ToFsInfo(fs), nil
+}
+
+func (cc *cadvisorClient) getFsInfo(ctx context.Context, label string) (machine.FsInfo, error) {
 	res, err := cc.GetFsInfo(label)
 	if err != nil {
-		return cadvisorapiv2.FsInfo{}, err
+		return machine.FsInfo{}, err
 	}
 	if len(res) == 0 {
-		return cadvisorapiv2.FsInfo{}, fmt.Errorf("failed to find information for the filesystem labeled %q", label)
+		return machine.FsInfo{}, fmt.Errorf("failed to find information for the filesystem labeled %q", label)
 	}
 	// TODO(vmarmol): Handle this better when a label has more than one image filesystem.
 	if len(res) > 1 {
 		klog.FromContext(ctx).Info("More than one filesystem labeled. Only using the first one", "label", label, "fileSystem", res)
 	}
 
-	return res[0], nil
+	return ToFsInfo(res[0]), nil
 }
 
-func (cc *cadvisorClient) ContainerFsInfo(ctx context.Context) (cadvisorapiv2.FsInfo, error) {
+func (cc *cadvisorClient) ContainerFsInfo(ctx context.Context) (machine.FsInfo, error) {
 	label, err := cc.imageFsInfoProvider.ContainerFsInfoLabel()
 	if err != nil {
-		return cadvisorapiv2.FsInfo{}, err
+		return machine.FsInfo{}, err
 	}
 	return cc.getFsInfo(ctx, label)
 }

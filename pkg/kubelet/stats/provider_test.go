@@ -35,14 +35,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/kubernetes/pkg/features"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	kubepodtest "k8s.io/kubernetes/pkg/kubelet/pod/testing"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/test/utils/ktesting"
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -210,7 +212,7 @@ func TestHasDedicatedImageFs(t *testing.T) {
 			mockCadvisor   = cadvisortest.NewMockInterface(t)
 			mockPodManager = new(kubepodtest.MockManager)
 		)
-		mockCadvisor.EXPECT().RootFsInfo().Return(cadvisorapiv2.FsInfo{Device: test.rootfsDevice}, nil)
+		mockCadvisor.EXPECT().RootFsInfo().Return(machine.FsInfo{Device: test.rootfsDevice}, nil)
 		provider := newStatsProvider(mockCadvisor, mockPodManager, fakeContainerStatsProvider{
 			device:      test.imagefsDevice,
 			imageFs:     test.imageFsStats,
@@ -358,12 +360,12 @@ func getTestPSIData(seed int) cadvisorapiv1.PSIData {
 	}
 }
 
-func getTestFsInfo(seed int) cadvisorapiv2.FsInfo {
+func getTestFsInfo(seed int) machine.FsInfo {
 	var (
 		inodes     = uint64(seed + offsetFsInodes)
 		inodesFree = uint64(seed + offsetFsInodesFree)
 	)
-	return cadvisorapiv2.FsInfo{
+	return machine.FsInfo{
 		Timestamp:  time.Now(),
 		Device:     "test-device",
 		Mountpoint: "test-mount-point",
@@ -375,12 +377,12 @@ func getTestFsInfo(seed int) cadvisorapiv2.FsInfo {
 	}
 }
 
-func getTestFsInfoWithDifferentMount(seed int, device string) cadvisorapiv2.FsInfo {
+func getTestFsInfoWithDifferentMount(seed int, device string) machine.FsInfo {
 	var (
 		inodes     = uint64(seed + offsetFsInodes)
 		inodesFree = uint64(seed + offsetFsInodesFree)
 	)
-	return cadvisorapiv2.FsInfo{
+	return machine.FsInfo{
 		Timestamp:  time.Now(),
 		Device:     device,
 		Mountpoint: "test-mount-point",

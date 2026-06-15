@@ -20,11 +20,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"k8s.io/apimachinery/pkg/types"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/volume"
 )
 
@@ -48,7 +49,7 @@ func NewFakeHostStatsProviderWithData(fakeStats map[string]*volume.Metrics, osIn
 	}
 }
 
-func (f *fakeHostStatsProvider) getPodLogStats(podNamespace, podName string, podUID types.UID, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func (f *fakeHostStatsProvider) getPodLogStats(podNamespace, podName string, podUID types.UID, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	path := kuberuntime.BuildPodLogsDirectory("/var/log/kube/pods/", podNamespace, podName, podUID)
 	files, err := f.osInterface.ReadDir(path)
 	if err != nil {
@@ -66,17 +67,17 @@ func (f *fakeHostStatsProvider) getPodLogStats(podNamespace, podName string, pod
 	return fakeMetricsProvidersToStats(results, rootFsInfo)
 }
 
-func (f *fakeHostStatsProvider) getPodContainerLogStats(podNamespace, podName string, podUID types.UID, containerName string, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func (f *fakeHostStatsProvider) getPodContainerLogStats(podNamespace, podName string, podUID types.UID, containerName string, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	path := kuberuntime.BuildContainerLogsDirectory("/var/log/kube/pods/", podNamespace, podName, podUID, containerName)
 	metricsProvider := NewFakeMetricsDu(path, f.fakeStats[path])
 	return fakeMetricsProvidersToStats([]volume.MetricsProvider{metricsProvider}, rootFsInfo)
 }
 
-func (f *fakeHostStatsProvider) getPodEtcHostsStats(podUID types.UID, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func (f *fakeHostStatsProvider) getPodEtcHostsStats(podUID types.UID, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func fakeMetricsProvidersToStats(metricsProviders []volume.MetricsProvider, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func fakeMetricsProvidersToStats(metricsProviders []volume.MetricsProvider, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	result := rootFsInfoToFsStats(rootFsInfo)
 	for i, metricsProvider := range metricsProviders {
 		hostMetrics, err := metricsProvider.GetMetrics()

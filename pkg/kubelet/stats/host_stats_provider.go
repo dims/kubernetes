@@ -21,12 +21,13 @@ import (
 	"os"
 	"path/filepath"
 
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
+
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/volume"
 )
 
@@ -39,11 +40,11 @@ type metricsProviderByPath map[string]volume.MetricsProvider
 // HostStatsProvider defines an interface for providing host stats associated with pod.
 type HostStatsProvider interface {
 	// getPodLogStats gets stats associated with pod log usage
-	getPodLogStats(podNamespace, podName string, podUID types.UID, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error)
+	getPodLogStats(podNamespace, podName string, podUID types.UID, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error)
 	// getPodContainerLogStats gets stats associated with container log usage
-	getPodContainerLogStats(podNamespace, podName string, podUID types.UID, containerName string, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error)
+	getPodContainerLogStats(podNamespace, podName string, podUID types.UID, containerName string, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error)
 	// getPodEtcHostsStats gets stats associated with pod etc-hosts usage
-	getPodEtcHostsStats(podUID types.UID, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error)
+	getPodEtcHostsStats(podUID types.UID, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error)
 }
 
 type hostStatsProvider struct {
@@ -64,7 +65,7 @@ func NewHostStatsProvider(osInterface kubecontainer.OSInterface, podEtcHostsPath
 	}
 }
 
-func (h hostStatsProvider) getPodLogStats(podNamespace, podName string, podUID types.UID, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func (h hostStatsProvider) getPodLogStats(podNamespace, podName string, podUID types.UID, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	metricsByPath, err := h.podLogMetrics(podNamespace, podName, podUID)
 	if err != nil {
 		return nil, err
@@ -73,7 +74,7 @@ func (h hostStatsProvider) getPodLogStats(podNamespace, podName string, podUID t
 }
 
 // getPodContainerLogStats gets stats for container
-func (h hostStatsProvider) getPodContainerLogStats(podNamespace, podName string, podUID types.UID, containerName string, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func (h hostStatsProvider) getPodContainerLogStats(podNamespace, podName string, podUID types.UID, containerName string, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	metricsByPath, err := h.podContainerLogMetrics(podNamespace, podName, podUID, containerName)
 	if err != nil {
 		return nil, err
@@ -82,7 +83,7 @@ func (h hostStatsProvider) getPodContainerLogStats(podNamespace, podName string,
 }
 
 // getPodEtcHostsStats gets status for pod etc hosts usage
-func (h hostStatsProvider) getPodEtcHostsStats(podUID types.UID, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func (h hostStatsProvider) getPodEtcHostsStats(podUID types.UID, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	// Runtimes may not support etc hosts file (Windows with docker)
 	podEtcHostsPath := h.podEtcHostsPathFunc(podUID)
 	// Some pods have an explicit /etc/hosts mount and the Kubelet will not create an etc-hosts file for them
@@ -133,7 +134,7 @@ func (h hostStatsProvider) fileMetricsByDir(dirname string) (metricsProviderByPa
 }
 
 // metricsByPathToFsStats converts a metrics provider by path to fs stats
-func metricsByPathToFsStats(metricsByPath metricsProviderByPath, rootFsInfo *cadvisorapiv2.FsInfo) (*statsapi.FsStats, error) {
+func metricsByPathToFsStats(metricsByPath metricsProviderByPath, rootFsInfo *machine.FsInfo) (*statsapi.FsStats, error) {
 	result := rootFsInfoToFsStats(rootFsInfo)
 	for fpath, metrics := range metricsByPath {
 		hostMetrics, err := metrics.GetMetrics()
@@ -150,7 +151,7 @@ func metricsByPathToFsStats(metricsByPath metricsProviderByPath, rootFsInfo *cad
 }
 
 // rootFsInfoToFsStats is a utility to convert rootFsInfo into statsapi.FsStats
-func rootFsInfoToFsStats(rootFsInfo *cadvisorapiv2.FsInfo) *statsapi.FsStats {
+func rootFsInfoToFsStats(rootFsInfo *machine.FsInfo) *statsapi.FsStats {
 	return &statsapi.FsStats{
 		Time:           metav1.NewTime(rootFsInfo.Timestamp),
 		AvailableBytes: &rootFsInfo.Available,
