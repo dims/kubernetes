@@ -29,8 +29,8 @@ import (
 	"sync"
 	"time"
 
-	cadvisorv1 "github.com/google/cadvisor/info/v1"
 	libcontainercgroups "github.com/opencontainers/cgroups"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -473,11 +473,11 @@ func initSwapControllerAvailabilityCheck(ctx context.Context) func() bool {
 }
 
 type swapConfigurationHelper struct {
-	machineInfo                cadvisorv1.MachineInfo
+	machineInfo                machine.MachineInfo
 	getSwapControllerAvailable func() bool
 }
 
-func newSwapConfigurationHelper(machineInfo cadvisorv1.MachineInfo, getSwapControllerAvailable func() bool) *swapConfigurationHelper {
+func newSwapConfigurationHelper(machineInfo machine.MachineInfo, getSwapControllerAvailable func() bool) *swapConfigurationHelper {
 	return &swapConfigurationHelper{
 		machineInfo:                machineInfo,
 		getSwapControllerAvailable: getSwapControllerAvailable,

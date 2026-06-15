@@ -27,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"go.opentelemetry.io/otel/trace"
 	grpcstatus "google.golang.org/grpc/status"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -117,7 +117,7 @@ type kubeGenericRuntimeManager struct {
 	osInterface kubecontainer.OSInterface
 
 	// machineInfo contains the machine information.
-	machineInfo *cadvisorapi.MachineInfo
+	machineInfo *machine.MachineInfo
 
 	// Container GC manager
 	containerGC *containerGC
@@ -219,7 +219,7 @@ func NewKubeGenericRuntimeManager(
 	startupManager proberesults.Manager,
 	rootDirectory string,
 	podLogsDirectory string,
-	machineInfo *cadvisorapi.MachineInfo,
+	machineInfo *machine.MachineInfo,
 	podStateProvider podStateProvider,
 	maxPods int32,
 	osInterface kubecontainer.OSInterface,

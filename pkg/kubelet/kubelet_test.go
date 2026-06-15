@@ -68,10 +68,15 @@ import (
 	remote "k8s.io/cri-client/pkg"
 	fakeremote "k8s.io/cri-client/pkg/fake"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/clock"
+	testingclock "k8s.io/utils/clock/testing"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/allocation"
 	"k8s.io/kubernetes/pkg/kubelet/allocation/state"
 	kubeletconfiginternal "k8s.io/kubernetes/pkg/kubelet/apis/config"
+	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/clustertrustbundle"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
@@ -120,9 +125,6 @@ import (
 	"k8s.io/kubernetes/pkg/volume/util/hostutil"
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
 	"k8s.io/kubernetes/test/utils/ktesting"
-	"k8s.io/utils/clock"
-	testingclock "k8s.io/utils/clock/testing"
-	"k8s.io/utils/ptr"
 )
 
 func init() {
@@ -3653,7 +3655,7 @@ func TestSyncPodSpans(t *testing.T) {
 		kubelet.startupManager,
 		kubelet.rootDirectory,
 		kubelet.podLogsDirectory,
-		kubelet.machineInfo,
+		cadvisor.ToMachineInfo(kubelet.machineInfo),
 		kubelet.podWorkers,
 		kubeCfg.MaxPods,
 		kubelet.os,
