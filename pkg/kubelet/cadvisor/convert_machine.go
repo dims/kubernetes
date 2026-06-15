@@ -23,7 +23,7 @@ import (
 )
 
 // ToMachineInfo converts a cAdvisor MachineInfo into the kubelet-owned
-// machine.MachineInfo, copying the topology-relevant fields.
+// machine.MachineInfo, copying the topology and identity fields.
 func ToMachineInfo(mi *cadvisorapi.MachineInfo) *machine.MachineInfo {
 	if mi == nil {
 		return nil
@@ -36,6 +36,25 @@ func ToMachineInfo(mi *cadvisorapi.MachineInfo) *machine.MachineInfo {
 		SwapCapacity:     mi.SwapCapacity,
 		HugePages:        hugePagesToTopology(mi.HugePages),
 		Topology:         nodesToTopology(mi.Topology),
+		MachineID:        mi.MachineID,
+		SystemUUID:       mi.SystemUUID,
+		BootID:           mi.BootID,
+	}
+}
+
+// ToVersionInfo converts a cAdvisor VersionInfo into the kubelet-owned
+// machine.VersionInfo.
+func ToVersionInfo(vi *cadvisorapi.VersionInfo) *machine.VersionInfo {
+	if vi == nil {
+		return nil
+	}
+	return &machine.VersionInfo{
+		KernelVersion:      vi.KernelVersion,
+		ContainerOsVersion: vi.ContainerOsVersion,
+		DockerVersion:      vi.DockerVersion,
+		DockerAPIVersion:   vi.DockerAPIVersion,
+		CadvisorVersion:    vi.CadvisorVersion,
+		CadvisorRevision:   vi.CadvisorRevision,
 	}
 }
 

@@ -26,8 +26,6 @@ import (
 	"sync"
 	"time"
 
-	cadvisorapiv1 "github.com/google/cadvisor/info/v1"
-
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,10 +35,10 @@ import (
 	"k8s.io/component-base/version"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/events"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	netutils "k8s.io/utils/net"
 	"k8s.io/utils/ptr"
 
@@ -195,7 +193,7 @@ func NodeAddress(nodeIPs []net.IP, // typically Kubelet.nodeIPs
 func MachineInfo(nodeName string,
 	maxPods int,
 	podsPerCore int,
-	machineInfoFunc func() (*cadvisorapiv1.MachineInfo, error), // typically Kubelet.GetCachedMachineInfo
+	machineInfoFunc func() (*machine.MachineInfo, error), // typically wraps Kubelet.GetCachedMachineInfo
 	capacityFunc func(localStorageCapacityIsolation bool) v1.ResourceList, // typically Kubelet.containerManager.GetCapacity
 	devicePluginResourceCapacityFunc func() (v1.ResourceList, v1.ResourceList, []string), // typically Kubelet.containerManager.GetDevicePluginResourceCapacity
 	nodeAllocatableReservationFunc func() v1.ResourceList, // typically Kubelet.containerManager.GetNodeAllocatableReservation
@@ -228,7 +226,7 @@ func MachineInfo(nodeName string,
 			node.Status.NodeInfo.MachineID = info.MachineID
 			node.Status.NodeInfo.SystemUUID = info.SystemUUID
 
-			for rName, rCap := range cadvisor.CapacityFromMachineInfo(info) {
+			for rName, rCap := range info.Capacity() {
 				node.Status.Capacity[rName] = rCap
 			}
 
@@ -339,7 +337,7 @@ func MachineInfo(nodeName string,
 }
 
 // VersionInfo returns a Setter that updates version-related information on the node.
-func VersionInfo(versionInfoFunc func() (*cadvisorapiv1.VersionInfo, error), // typically Kubelet.cadvisor.VersionInfo
+func VersionInfo(versionInfoFunc func() (*machine.VersionInfo, error), // typically wraps Kubelet.cadvisor.VersionInfo
 	runtimeTypeFunc func() string, // typically Kubelet.containerRuntime.Type
 	runtimeVersionFunc func(ctx context.Context) (kubecontainer.Version, error), // typically Kubelet.containerRuntime.Version
 ) Setter {

@@ -39,9 +39,12 @@ import (
 	nodeutil "k8s.io/component-helpers/node/util"
 	"k8s.io/klog/v2"
 	kubeletapis "k8s.io/kubelet/pkg/apis"
+
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/events"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/nodestatus"
 	volutil "k8s.io/kubernetes/pkg/volume/util"
 )
@@ -682,11 +685,25 @@ func (kl *Kubelet) setNodeStatus(ctx context.Context, node *v1.Node) {
 // setNodeStatus funcs
 func (kl *Kubelet) defaultNodeStatusFuncs() []func(context.Context, *v1.Node) error {
 	var setters []func(ctx context.Context, n *v1.Node) error
+	machineInfoFunc := func() (*machine.MachineInfo, error) {
+		mi, err := kl.GetCachedMachineInfo()
+		if err != nil {
+			return nil, err
+		}
+		return cadvisor.ToMachineInfo(mi), nil
+	}
+	versionInfoFunc := func() (*machine.VersionInfo, error) {
+		vi, err := kl.cadvisor.VersionInfo()
+		if err != nil {
+			return nil, err
+		}
+		return cadvisor.ToVersionInfo(vi), nil
+	}
 	setters = append(setters,
 		nodestatus.NodeAddress(kl.nodeIPs, kl.nodeIPValidator, kl.hostname, kl.externalCloudProvider, utilnet.ResolveBindAddress),
-		nodestatus.MachineInfo(string(kl.nodeName), kl.maxPods, kl.podsPerCore, kl.GetCachedMachineInfo, kl.containerManager.GetCapacity,
+		nodestatus.MachineInfo(string(kl.nodeName), kl.maxPods, kl.podsPerCore, machineInfoFunc, kl.containerManager.GetCapacity,
 			kl.containerManager.GetDevicePluginResourceCapacity, kl.containerManager.GetNodeAllocatableReservation, kl.recordEvent, kl.supportLocalStorageCapacityIsolation()),
-		nodestatus.VersionInfo(kl.cadvisor.VersionInfo, kl.containerRuntime.Type, kl.containerRuntime.Version),
+		nodestatus.VersionInfo(versionInfoFunc, kl.containerRuntime.Type, kl.containerRuntime.Version),
 		nodestatus.DaemonEndpoints(kl.daemonEndpoints),
 		nodestatus.Images(kl.nodeStatusMaxImages, kl.imageManager.GetImageList),
 		nodestatus.GoRuntime(),

@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package machine defines kubelet-owned types describing the host machine
-// CPU/NUMA/memory topology, consumed by the node resource managers. It imports
-// no cAdvisor package; pkg/kubelet/cadvisor converts cAdvisor's MachineInfo into
-// these types.
+// Package machine defines kubelet-owned types describing the host machine —
+// its CPU/NUMA/memory topology, identity, and software versions — consumed
+// across the kubelet. It imports no cAdvisor package; pkg/kubelet/cadvisor
+// converts cAdvisor's types into these.
 package machine
 
-// MachineInfo describes the topology-relevant properties of a machine that the
-// node resource managers need. The fields mirror the corresponding fields of
+// MachineInfo describes the host machine's topology, identity, and
+// capacity-relevant properties. The fields mirror the corresponding fields of
 // github.com/google/cadvisor/info/v1.MachineInfo.
 type MachineInfo struct {
 	// NumCores is the number of logical cores in this machine.
@@ -38,6 +38,23 @@ type MachineInfo struct {
 	HugePages []HugePagesInfo
 	// Topology describes the cpu/memory layout and hierarchy.
 	Topology []Node
+	// MachineID is the host's machine-id.
+	MachineID string
+	// SystemUUID is the host's system uuid.
+	SystemUUID string
+	// BootID is the host's boot id.
+	BootID string
+}
+
+// VersionInfo describes the kernel, OS, and container-runtime versions of the
+// host. The fields mirror github.com/google/cadvisor/info/v1.VersionInfo.
+type VersionInfo struct {
+	KernelVersion      string
+	ContainerOsVersion string
+	DockerVersion      string
+	DockerAPIVersion   string
+	CadvisorVersion    string
+	CadvisorRevision   string
 }
 
 // Node describes a single NUMA node.
