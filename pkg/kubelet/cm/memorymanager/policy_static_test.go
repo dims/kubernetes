@@ -22,9 +22,9 @@ import (
 	"strconv"
 	"testing"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
+	cadvisorapi "k8s.io/kubernetes/pkg/kubelet/cadvisor/api"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

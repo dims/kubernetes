@@ -48,6 +48,7 @@ import (
 	internalapi "k8s.io/cri-api/pkg/apis"
 	pluginwatcherapi "k8s.io/kubelet/pkg/apis/pluginregistration/v1"
 	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
+
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
@@ -245,6 +246,9 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	for k, v := range capacity {
 		internalCapacity[k] = v
 	}
+	// apiMachineInfo is the kubelet-owned, cAdvisor-free view of the machine
+	// topology consumed by the node resource managers below.
+	apiMachineInfo := cadvisor.MachineInfoToAPI(machineInfo)
 	pidlimits, err := pidlimit.Stats()
 	if err == nil && pidlimits != nil && pidlimits.MaxPID != nil {
 		internalCapacity[pidlimit.PIDs] = *resource.NewQuantity(
@@ -296,7 +300,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	}
 
 	cm.topologyManager, err = topologymanager.NewManager(
-		machineInfo.Topology,
+		apiMachineInfo.Topology,
 		nodeConfig.TopologyManagerPolicy,
 		nodeConfig.TopologyManagerScope,
 		nodeConfig.TopologyManagerPolicyOptions,
@@ -307,7 +311,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	}
 
 	logger.Info("Creating device plugin manager")
-	cm.deviceManager, err = devicemanager.NewManagerImpl(machineInfo.Topology, cm.topologyManager)
+	cm.deviceManager, err = devicemanager.NewManagerImpl(apiMachineInfo.Topology, cm.topologyManager)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +334,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 		nodeConfig.CPUManagerPolicy,
 		nodeConfig.CPUManagerPolicyOptions,
 		nodeConfig.CPUManagerReconcilePeriod,
-		machineInfo,
+		apiMachineInfo,
 		nodeConfig.NodeAllocatableConfig.ReservedSystemCPUs,
 		cm.GetNodeAllocatableReservation(),
 		nodeConfig.KubeletRootDir,
@@ -345,7 +349,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	cm.memoryManager, err = memorymanager.NewManager(
 		logger,
 		nodeConfig.MemoryManagerPolicy,
-		machineInfo,
+		apiMachineInfo,
 		cm.GetNodeAllocatableReservation(),
 		nodeConfig.MemoryManagerReservedMemory,
 		nodeConfig.KubeletRootDir,

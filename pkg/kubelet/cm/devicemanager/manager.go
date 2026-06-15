@@ -27,8 +27,8 @@ import (
 	"sync"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/klog/v2"
+	cadvisorapi "k8s.io/kubernetes/pkg/kubelet/cadvisor/api"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

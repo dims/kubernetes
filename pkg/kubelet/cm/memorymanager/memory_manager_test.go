@@ -25,9 +25,9 @@ import (
 	"strings"
 	"testing"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/klog/v2"
+	cadvisorapi "k8s.io/kubernetes/pkg/kubelet/cadvisor/api"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

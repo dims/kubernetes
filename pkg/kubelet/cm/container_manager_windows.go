@@ -27,6 +27,7 @@ import (
 	"sync"
 
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cm/memorymanager"
 
@@ -42,6 +43,7 @@ import (
 	internalapi "k8s.io/cri-api/pkg/apis"
 	pluginwatcherapi "k8s.io/kubelet/pkg/apis/pluginregistration/v1"
 	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
+
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	"k8s.io/kubernetes/pkg/kubelet/cm/devicemanager"
@@ -128,6 +130,9 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 		return nil, err
 	}
 	capacity := cadvisor.CapacityFromMachineInfo(machineInfo)
+	// apiMachineInfo is the kubelet-owned, cAdvisor-free view of the machine
+	// topology consumed by the node resource managers below.
+	apiMachineInfo := cadvisor.MachineInfoToAPI(machineInfo)
 
 	cm := &containerManagerImpl{
 		capacity:          capacity,
@@ -141,7 +146,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 
 	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WindowsCPUAndMemoryAffinity) {
 		logger.Info("Creating topology manager")
-		cm.topologyManager, err = topologymanager.NewManager(machineInfo.Topology,
+		cm.topologyManager, err = topologymanager.NewManager(apiMachineInfo.Topology,
 			nodeConfig.TopologyManagerPolicy,
 			nodeConfig.TopologyManagerScope,
 			nodeConfig.TopologyManagerPolicyOptions)
@@ -156,7 +161,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 			nodeConfig.CPUManagerPolicy,
 			nodeConfig.CPUManagerPolicyOptions,
 			nodeConfig.CPUManagerReconcilePeriod,
-			machineInfo,
+			apiMachineInfo,
 			nodeConfig.NodeAllocatableConfig.ReservedSystemCPUs,
 			cm.GetNodeAllocatableReservation(),
 			nodeConfig.KubeletRootDir,
@@ -172,7 +177,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 		cm.memoryManager, err = memorymanager.NewManager(
 			logger,
 			nodeConfig.MemoryManagerPolicy,
-			machineInfo,
+			apiMachineInfo,
 			cm.GetNodeAllocatableReservation(),
 			nodeConfig.MemoryManagerReservedMemory,
 			nodeConfig.KubeletRootDir,

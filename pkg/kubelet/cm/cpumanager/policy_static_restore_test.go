@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,6 +28,7 @@ import (
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	resourcehelper "k8s.io/component-helpers/resource"
 	pkgfeatures "k8s.io/kubernetes/pkg/features"
+	cadvisorapi "k8s.io/kubernetes/pkg/kubelet/cadvisor/api"
 	"k8s.io/kubernetes/pkg/kubelet/cm/containermap"
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager"
 	"k8s.io/kubernetes/test/utils/ktesting"
