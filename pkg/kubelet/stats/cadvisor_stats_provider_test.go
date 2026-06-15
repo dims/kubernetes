@@ -20,7 +20,6 @@ import (
 	"runtime"
 	"testing"
 
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -39,6 +38,7 @@ import (
 	cmtesting "k8s.io/kubernetes/pkg/kubelet/cm/testing"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
 	"k8s.io/kubernetes/pkg/kubelet/machine"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
@@ -64,7 +64,7 @@ func TestFilterTerminatedContainerInfoAndAssembleByPodCgroupKey(t *testing.T) {
 		cName22   = "c2"
 		cName222  = "c222"
 	)
-	infos := map[string]cadvisorapiv2.ContainerInfo{
+	infos := map[string]containerstats.ContainerInfo{
 		// ContainerInfo with past creation time and no CPU/memory usage for
 		// simulating uncleaned cgroups of already terminated containers, which
 		// should not be shown in the results.
@@ -174,7 +174,7 @@ func TestCadvisorListPodStats(t *testing.T) {
 	prf1 := statsapi.PodReference{Name: pName1, Namespace: namespace0, UID: "UID" + pName1}
 	prf2 := statsapi.PodReference{Name: pName2, Namespace: namespace2, UID: "UID" + pName2}
 	prf3 := statsapi.PodReference{Name: pName3, Namespace: namespace0, UID: "UID" + pName3}
-	infos := map[string]cadvisorapiv2.ContainerInfo{
+	infos := map[string]containerstats.ContainerInfo{
 		"/":              getTestContainerInfo(seedRoot, "", "", ""),
 		"/docker-daemon": getTestContainerInfo(seedRuntime, "", "", ""),
 		"/kubelet":       getTestContainerInfo(seedKubelet, "", "", ""),
@@ -237,16 +237,15 @@ func TestCadvisorListPodStats(t *testing.T) {
 		if !found {
 			t.Errorf("No container defined with name %v", name)
 		}
-		info.Spec.Memory = cadvisorapiv2.MemorySpec{}
-		info.Spec.Cpu = cadvisorapiv2.CpuSpec{}
+		info.Spec.Memory = containerstats.MemorySpec{}
 		info.Spec.HasMemory = false
 		info.Spec.HasCpu = false
 		info.Spec.HasNetwork = false
 		infos[name] = info
 	}
 
-	options := cadvisorapiv2.RequestOptions{
-		IdType:    cadvisorapiv2.TypeName,
+	options := containerstats.RequestOptions{
+		IdType:    containerstats.TypeName,
 		Count:     2,
 		Recursive: true,
 	}
@@ -393,7 +392,7 @@ func TestCadvisorPodCPUAndMemoryStats(t *testing.T) {
 			UID:       podUID,
 		},
 	}
-	infos := map[string]cadvisorapiv2.ContainerInfo{
+	infos := map[string]containerstats.ContainerInfo{
 		"/pods/pod0":    getTestContainerInfo(seedPod0, podName, namespace, ""),
 		"/pods/pod0-i":  getTestContainerInfo(seedPod0Infra, podName, namespace, ""),
 		"/pods/pod0-c0": getTestContainerInfo(seedPod0Container0, podName, namespace, cName0),
@@ -504,7 +503,7 @@ func TestCadvisorListPodCPUAndMemoryStats(t *testing.T) {
 	prf0 := statsapi.PodReference{Name: pName0, Namespace: namespace0, UID: "UID" + pName0}
 	prf1 := statsapi.PodReference{Name: pName1, Namespace: namespace0, UID: "UID" + pName1}
 	prf2 := statsapi.PodReference{Name: pName2, Namespace: namespace2, UID: "UID" + pName2}
-	infos := map[string]cadvisorapiv2.ContainerInfo{
+	infos := map[string]containerstats.ContainerInfo{
 		"/":              getTestContainerInfo(seedRoot, "", "", ""),
 		"/docker-daemon": getTestContainerInfo(seedRuntime, "", "", ""),
 		"/kubelet":       getTestContainerInfo(seedKubelet, "", "", ""),
@@ -537,8 +536,8 @@ func TestCadvisorListPodCPUAndMemoryStats(t *testing.T) {
 		infos[name] = info
 	}
 
-	options := cadvisorapiv2.RequestOptions{
-		IdType:    cadvisorapiv2.TypeName,
+	options := containerstats.RequestOptions{
+		IdType:    containerstats.TypeName,
 		Count:     2,
 		Recursive: true,
 	}
@@ -938,7 +937,7 @@ func TestCadvisorListPodStatsWhenContainerLogFound(t *testing.T) {
 	)
 
 	prf0 := statsapi.PodReference{Name: pName0, Namespace: namespace0, UID: "UID" + pName0}
-	infos := map[string]cadvisorapiv2.ContainerInfo{
+	infos := map[string]containerstats.ContainerInfo{
 		"/":              getTestContainerInfo(seedRoot, "", "", ""),
 		"/docker-daemon": getTestContainerInfo(seedRuntime, "", "", ""),
 		"/kubelet":       getTestContainerInfo(seedKubelet, "", "", ""),
@@ -976,8 +975,8 @@ func TestCadvisorListPodStatsWhenContainerLogFound(t *testing.T) {
 		Inodes:     &totalImagefsInodes,
 	}
 
-	options := cadvisorapiv2.RequestOptions{
-		IdType:    cadvisorapiv2.TypeName,
+	options := containerstats.RequestOptions{
+		IdType:    containerstats.TypeName,
 		Count:     2,
 		Recursive: true,
 	}

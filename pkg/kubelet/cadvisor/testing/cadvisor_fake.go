@@ -24,6 +24,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
@@ -51,8 +52,8 @@ func (c *Fake) Start() error {
 }
 
 // ContainerInfoV2 is a fake implementation of Interface.ContainerInfoV2.
-func (c *Fake) ContainerInfoV2(name string, options cadvisorapiv2.RequestOptions) (map[string]cadvisorapiv2.ContainerInfo, error) {
-	return map[string]cadvisorapiv2.ContainerInfo{}, nil
+func (c *Fake) ContainerInfoV2(name string, options containerstats.RequestOptions) (map[string]containerstats.ContainerInfo, error) {
+	return map[string]containerstats.ContainerInfo{}, nil
 }
 
 // GetRequestedContainersInfo is a fake implementation if Interface.GetRequestedContainersInfo

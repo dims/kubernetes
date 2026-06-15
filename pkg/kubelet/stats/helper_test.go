@@ -21,8 +21,6 @@ import (
 	"testing"
 	"time"
 
-	cadvisorapiv1 "github.com/google/cadvisor/info/v1"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 
@@ -31,27 +29,28 @@ import (
 	statsapi "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	"k8s.io/utils/ptr"
 
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/test/utils/ktesting"
 )
 
 func TestCustomMetrics(t *testing.T) {
-	spec := []cadvisorapiv1.MetricSpec{
+	spec := []containerstats.MetricSpec{
 		{
 			Name:   "qos",
-			Type:   cadvisorapiv1.MetricGauge,
-			Format: cadvisorapiv1.IntType,
+			Type:   containerstats.MetricGauge,
+			Format: containerstats.IntType,
 			Units:  "per second",
 		},
 		{
 			Name:   "cpuLoad",
-			Type:   cadvisorapiv1.MetricCumulative,
-			Format: cadvisorapiv1.FloatType,
+			Type:   containerstats.MetricCumulative,
+			Format: containerstats.FloatType,
 			Units:  "count",
 		},
 	}
 	timestamp1 := time.Now()
 	timestamp2 := time.Now().Add(time.Minute)
-	metrics := map[string][]cadvisorapiv1.MetricVal{
+	metrics := map[string][]containerstats.MetricVal{
 		"qos": {
 			{
 				Timestamp: timestamp1,
@@ -73,11 +72,11 @@ func TestCustomMetrics(t *testing.T) {
 			},
 		},
 	}
-	cInfo := cadvisorapiv2.ContainerInfo{
-		Spec: cadvisorapiv2.ContainerSpec{
+	cInfo := containerstats.ContainerInfo{
+		Spec: containerstats.ContainerSpec{
 			CustomMetrics: spec,
 		},
-		Stats: []*cadvisorapiv2.ContainerStats{
+		Stats: []*containerstats.ContainerStats{
 			{
 				CustomMetrics: metrics,
 			},
@@ -150,12 +149,12 @@ func TestMergeProcessStats(t *testing.T) {
 // PSI structs change, the conversion between cadvisor PSI structs and kubelet stats API structs needs to be re-evaluated and updated.
 func TestCadvisorPSIStructs(t *testing.T) {
 	psiStatsFields := sets.New("Full", "Some")
-	s := cadvisorapiv1.PSIStats{}
+	s := containerstats.PSIStats{}
 	st := reflect.TypeOf(s)
 	for i := 0; i < st.NumField(); i++ {
 		field := st.Field(i)
 		if !psiStatsFields.Has(field.Name) {
-			t.Errorf("cadvisorapiv1.PSIStats contains unknown field: %s. The conversion between cadvisor PSIStats and kubelet stats API PSIStats needs to be re-evaluated and updated.", field.Name)
+			t.Errorf("containerstats.PSIStats contains unknown field: %s. The conversion between cadvisor PSIStats and kubelet stats API PSIStats needs to be re-evaluated and updated.", field.Name)
 		}
 	}
 
@@ -165,16 +164,16 @@ func TestCadvisorPSIStructs(t *testing.T) {
 		"Avg60":  reflect.Float64,
 		"Avg300": reflect.Float64,
 	}
-	d := cadvisorapiv1.PSIData{}
+	d := containerstats.PSIData{}
 	dt := reflect.TypeOf(d)
 	for i := 0; i < dt.NumField(); i++ {
 		field := dt.Field(i)
 		wantKind, fieldExist := psiDataFields[field.Name]
 		if !fieldExist {
-			t.Errorf("cadvisorapiv1.PSIData contains unknown field: %s. The conversion between cadvisor PSIData and kubelet stats API PSIData needs to be re-evaluated and updated.", field.Name)
+			t.Errorf("containerstats.PSIData contains unknown field: %s. The conversion between cadvisor PSIData and kubelet stats API PSIData needs to be re-evaluated and updated.", field.Name)
 		}
 		if field.Type.Kind() != wantKind {
-			t.Errorf("unexpected cadvisorapiv1.PSIStats field %s type, want: %s, got: %s. The conversion between cadvisor PSIStats and kubelet stats API PSIStats needs to be re-evaluated and updated.", field.Name, wantKind, field.Type.Kind())
+			t.Errorf("unexpected containerstats.PSIStats field %s type, want: %s, got: %s. The conversion between cadvisor PSIStats and kubelet stats API PSIStats needs to be re-evaluated and updated.", field.Name, wantKind, field.Type.Kind())
 		}
 	}
 

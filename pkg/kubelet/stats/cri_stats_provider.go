@@ -28,7 +28,6 @@ import (
 
 	cadvisormemory "github.com/google/cadvisor/cache/memory"
 	cadvisorfs "github.com/google/cadvisor/fs"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -47,6 +46,7 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
@@ -604,7 +604,7 @@ func (p *criStatsProvider) addPodNetworkStats(
 	logger klog.Logger,
 	ps *statsapi.PodStats,
 	podSandboxID string,
-	caInfos map[string]cadvisorapiv2.ContainerInfo,
+	caInfos map[string]containerstats.ContainerInfo,
 	cs *statsapi.ContainerStats,
 	netStats *statsapi.NetworkStats,
 ) {
@@ -631,7 +631,7 @@ func (p *criStatsProvider) addPodNetworkStats(
 func (p *criStatsProvider) addPodCPUMemoryStats(
 	ps *statsapi.PodStats,
 	podUID types.UID,
-	allInfos map[string]cadvisorapiv2.ContainerInfo,
+	allInfos map[string]containerstats.ContainerInfo,
 	cs *statsapi.ContainerStats,
 ) {
 	// try get cpu and memory stats from cadvisor first.
@@ -682,7 +682,7 @@ func (p *criStatsProvider) addPodCPUMemoryStats(
 func (p *criStatsProvider) addSwapStats(
 	ps *statsapi.PodStats,
 	podUID types.UID,
-	allInfos map[string]cadvisorapiv2.ContainerInfo,
+	allInfos map[string]containerstats.ContainerInfo,
 	cs *statsapi.ContainerStats,
 ) {
 	// try get swap stats from cadvisor first.
@@ -734,7 +734,7 @@ func aggregatePodSwapStats(ps *statsapi.PodStats) {
 func (p *criStatsProvider) addIOStats(
 	ps *statsapi.PodStats,
 	podUID types.UID,
-	allInfos map[string]cadvisorapiv2.ContainerInfo,
+	allInfos map[string]containerstats.ContainerInfo,
 	cs *statsapi.ContainerStats,
 ) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.KubeletPSI) {
@@ -757,7 +757,7 @@ func (p *criStatsProvider) addIOStats(
 
 func (p *criStatsProvider) addProcessStats(
 	ps *statsapi.PodStats,
-	container *cadvisorapiv2.ContainerInfo,
+	container *containerstats.ContainerInfo,
 ) {
 	processStats := cadvisorInfoToProcessStats(container)
 	// Sum up all of the process stats for each of the containers to obtain the cumulative pod level process count
@@ -1154,7 +1154,7 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 func (p *criStatsProvider) addCadvisorContainerStats(
 	logger klog.Logger,
 	cs *statsapi.ContainerStats,
-	caPodStats *cadvisorapiv2.ContainerInfo,
+	caPodStats *containerstats.ContainerInfo,
 ) {
 	if caPodStats.Spec.HasCustomMetrics {
 		cs.UserDefinedMetrics = cadvisorInfoToUserDefinedMetrics(logger, caPodStats)
@@ -1184,7 +1184,7 @@ func (p *criStatsProvider) addCadvisorContainerStats(
 func (p *criStatsProvider) addCadvisorContainerCPUAndMemoryStats(
 	logger klog.Logger,
 	cs *statsapi.ContainerStats,
-	caPodStats *cadvisorapiv2.ContainerInfo,
+	caPodStats *containerstats.ContainerInfo,
 ) {
 	if caPodStats.Spec.HasCustomMetrics {
 		cs.UserDefinedMetrics = cadvisorInfoToUserDefinedMetrics(logger, caPodStats)
@@ -1204,8 +1204,8 @@ func (p *criStatsProvider) addCadvisorContainerCPUAndMemoryStats(
 	}
 }
 
-func getCRICadvisorStats(logger klog.Logger, infos map[string]cadvisorapiv2.ContainerInfo) (map[string]cadvisorapiv2.ContainerInfo, map[string]cadvisorapiv2.ContainerInfo) {
-	stats := make(map[string]cadvisorapiv2.ContainerInfo)
+func getCRICadvisorStats(logger klog.Logger, infos map[string]containerstats.ContainerInfo) (map[string]containerstats.ContainerInfo, map[string]containerstats.ContainerInfo) {
+	stats := make(map[string]containerstats.ContainerInfo)
 	filteredInfos, cinfosByPodCgroupKey := filterTerminatedContainerInfoAndAssembleByPodCgroupKey(logger, infos)
 	for key, info := range filteredInfos {
 		// On systemd using devicemapper each mount into the container has an

@@ -28,6 +28,7 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	"k8s.io/klog/v2"
 
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
@@ -119,26 +120,26 @@ func (_c *MockInterface_ContainerFsInfo_Call) RunAndReturn(run func(context1 con
 }
 
 // ContainerInfoV2 provides a mock function for the type MockInterface
-func (_mock *MockInterface) ContainerInfoV2(name string, options v2.RequestOptions) (map[string]v2.ContainerInfo, error) {
+func (_mock *MockInterface) ContainerInfoV2(name string, options containerstats.RequestOptions) (map[string]containerstats.ContainerInfo, error) {
 	ret := _mock.Called(name, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerInfoV2")
 	}
 
-	var r0 map[string]v2.ContainerInfo
+	var r0 map[string]containerstats.ContainerInfo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string, v2.RequestOptions) (map[string]v2.ContainerInfo, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(string, containerstats.RequestOptions) (map[string]containerstats.ContainerInfo, error)); ok {
 		return returnFunc(name, options)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string, v2.RequestOptions) map[string]v2.ContainerInfo); ok {
+	if returnFunc, ok := ret.Get(0).(func(string, containerstats.RequestOptions) map[string]containerstats.ContainerInfo); ok {
 		r0 = returnFunc(name, options)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]v2.ContainerInfo)
+			r0 = ret.Get(0).(map[string]containerstats.ContainerInfo)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(string, v2.RequestOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(string, containerstats.RequestOptions) error); ok {
 		r1 = returnFunc(name, options)
 	} else {
 		r1 = ret.Error(1)
@@ -153,20 +154,20 @@ type MockInterface_ContainerInfoV2_Call struct {
 
 // ContainerInfoV2 is a helper method to define mock.On call
 //   - name string
-//   - options v2.RequestOptions
+//   - options containerstats.RequestOptions
 func (_e *MockInterface_Expecter) ContainerInfoV2(name interface{}, options interface{}) *MockInterface_ContainerInfoV2_Call {
 	return &MockInterface_ContainerInfoV2_Call{Call: _e.mock.On("ContainerInfoV2", name, options)}
 }
 
-func (_c *MockInterface_ContainerInfoV2_Call) Run(run func(name string, options v2.RequestOptions)) *MockInterface_ContainerInfoV2_Call {
+func (_c *MockInterface_ContainerInfoV2_Call) Run(run func(name string, options containerstats.RequestOptions)) *MockInterface_ContainerInfoV2_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 string
 		if args[0] != nil {
 			arg0 = args[0].(string)
 		}
-		var arg1 v2.RequestOptions
+		var arg1 containerstats.RequestOptions
 		if args[1] != nil {
-			arg1 = args[1].(v2.RequestOptions)
+			arg1 = args[1].(containerstats.RequestOptions)
 		}
 		run(
 			arg0,
@@ -176,12 +177,12 @@ func (_c *MockInterface_ContainerInfoV2_Call) Run(run func(name string, options 
 	return _c
 }
 
-func (_c *MockInterface_ContainerInfoV2_Call) Return(stringToContainerInfo map[string]v2.ContainerInfo, err error) *MockInterface_ContainerInfoV2_Call {
+func (_c *MockInterface_ContainerInfoV2_Call) Return(stringToContainerInfo map[string]containerstats.ContainerInfo, err error) *MockInterface_ContainerInfoV2_Call {
 	_c.Call.Return(stringToContainerInfo, err)
 	return _c
 }
 
-func (_c *MockInterface_ContainerInfoV2_Call) RunAndReturn(run func(name string, options v2.RequestOptions) (map[string]v2.ContainerInfo, error)) *MockInterface_ContainerInfoV2_Call {
+func (_c *MockInterface_ContainerInfoV2_Call) RunAndReturn(run func(name string, options containerstats.RequestOptions) (map[string]containerstats.ContainerInfo, error)) *MockInterface_ContainerInfoV2_Call {
 	_c.Call.Return(run)
 	return _c
 }

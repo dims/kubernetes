@@ -25,6 +25,7 @@ import (
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"k8s.io/klog/v2"
 
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/winstats"
 )
@@ -50,8 +51,9 @@ func (cu *cadvisorClient) Start() error {
 }
 
 // ContainerInfoV2 is only expected to be used for the root container. Returns info for all containers in the node.
-func (cu *cadvisorClient) ContainerInfoV2(name string, options cadvisorapiv2.RequestOptions) (map[string]cadvisorapiv2.ContainerInfo, error) {
-	return cu.winStatsClient.WinContainerInfos()
+func (cu *cadvisorClient) ContainerInfoV2(name string, options containerstats.RequestOptions) (map[string]containerstats.ContainerInfo, error) {
+	infos, err := cu.winStatsClient.WinContainerInfos()
+	return ToContainerInfoMap(infos), err
 }
 
 func (cu *cadvisorClient) GetRequestedContainersInfo(containerName string, options cadvisorapiv2.RequestOptions) (map[string]*cadvisorapi.ContainerInfo, error) {

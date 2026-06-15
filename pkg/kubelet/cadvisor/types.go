@@ -24,13 +24,14 @@ import (
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"k8s.io/klog/v2"
 
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 // Interface is an abstract interface for testability.  It abstracts the interface to cAdvisor.
 type Interface interface {
 	Start() error
-	ContainerInfoV2(name string, options cadvisorapiv2.RequestOptions) (map[string]cadvisorapiv2.ContainerInfo, error)
+	ContainerInfoV2(name string, options containerstats.RequestOptions) (map[string]containerstats.ContainerInfo, error)
 	GetRequestedContainersInfo(containerName string, options cadvisorapiv2.RequestOptions) (map[string]*cadvisorapi.ContainerInfo, error)
 	MachineInfo(logger klog.Logger) (*cadvisorapi.MachineInfo, error)
 

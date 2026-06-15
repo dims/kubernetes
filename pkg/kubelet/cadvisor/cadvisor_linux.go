@@ -44,7 +44,6 @@ import (
 	"github.com/google/cadvisor/cache/memory"
 	cadvisormetrics "github.com/google/cadvisor/container"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"github.com/google/cadvisor/manager"
 	"github.com/google/cadvisor/utils/sysfs"
 	"github.com/opencontainers/cgroups"
@@ -54,6 +53,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/pkg/kubelet/containerstats"
 	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
@@ -151,8 +151,9 @@ func (cc *cadvisorClient) Start() error {
 	return cc.Manager.Start()
 }
 
-func (cc *cadvisorClient) ContainerInfoV2(name string, options cadvisorapiv2.RequestOptions) (map[string]cadvisorapiv2.ContainerInfo, error) {
-	return cc.GetContainerInfoV2(name, options)
+func (cc *cadvisorClient) ContainerInfoV2(name string, options containerstats.RequestOptions) (map[string]containerstats.ContainerInfo, error) {
+	infos, err := cc.GetContainerInfoV2(name, RequestOptionsToCadvisor(options))
+	return ToContainerInfoMap(infos), err
 }
 
 func (cc *cadvisorClient) VersionInfo() (*cadvisorapi.VersionInfo, error) {
