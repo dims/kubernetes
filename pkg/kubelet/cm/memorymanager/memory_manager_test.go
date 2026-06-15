@@ -25,9 +25,9 @@ import (
 	"strings"
 	"testing"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -50,7 +50,7 @@ const policyTypeMock policyType = "mock"
 
 type testMemoryManager struct {
 	description                string
-	machineInfo                cadvisorapi.MachineInfo
+	machineInfo                machine.MachineInfo
 	assignments                state.ContainerMemoryAssignments
 	expectedAssignments        state.ContainerMemoryAssignments
 	machineState               state.NUMANodeMap
@@ -176,8 +176,8 @@ func getPodWithInitContainers(podUID string, containers []v1.Container, initCont
 }
 
 func TestValidateReservedMemory(t *testing.T) {
-	machineInfo := &cadvisorapi.MachineInfo{
-		Topology: []cadvisorapi.Node{
+	machineInfo := &machine.MachineInfo{
+		Topology: []machine.Node{
 			{Id: 0},
 			{Id: 1},
 		},
@@ -186,7 +186,7 @@ func TestValidateReservedMemory(t *testing.T) {
 	testCases := []struct {
 		description                string
 		nodeAllocatableReservation v1.ResourceList
-		machineInfo                *cadvisorapi.MachineInfo
+		machineInfo                *machine.MachineInfo
 		systemReservedMemory       []kubeletconfig.MemoryReservation
 		expectedError              string
 	}{
@@ -331,8 +331,8 @@ func TestValidateReservedMemory(t *testing.T) {
 }
 
 func TestConvertPreReserved(t *testing.T) {
-	machineInfo := cadvisorapi.MachineInfo{
-		Topology: []cadvisorapi.Node{
+	machineInfo := machine.MachineInfo{
+		Topology: []machine.Node{
 			{Id: 0},
 			{Id: 1},
 		},
@@ -2392,13 +2392,13 @@ func TestAllocateAndAddPodWithInitContainers(t *testing.T) {
 	}
 }
 
-func returnMachineInfo() cadvisorapi.MachineInfo {
-	return cadvisorapi.MachineInfo{
-		Topology: []cadvisorapi.Node{
+func returnMachineInfo() machine.MachineInfo {
+	return machine.MachineInfo{
+		Topology: []machine.Node{
 			{
 				Id:     0,
 				Memory: 10 * gb,
-				HugePages: []cadvisorapi.HugePagesInfo{
+				HugePages: []machine.HugePagesInfo{
 					{
 						PageSize: pageSize1Gb,
 						NumPages: 5,
@@ -2408,7 +2408,7 @@ func returnMachineInfo() cadvisorapi.MachineInfo {
 			{
 				Id:     1,
 				Memory: 10 * gb,
-				HugePages: []cadvisorapi.HugePagesInfo{
+				HugePages: []machine.HugePagesInfo{
 					{
 						PageSize: pageSize1Gb,
 						NumPages: 5,

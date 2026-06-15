@@ -30,6 +30,7 @@ import (
 	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/config"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 )
 
@@ -43,6 +44,6 @@ func (unsupportedContainerManager) Start(_ context.Context, _ *v1.Node, _ Active
 	return fmt.Errorf("Container Manager is unsupported in this build")
 }
 
-func NewContainerManager(_ context.Context, _ mount.Interface, _ cadvisor.Interface, _ NodeConfig, failSwapOn bool, recorder record.EventRecorder, kubeClient clientset.Interface) (ContainerManager, error) {
+func NewContainerManager(_ context.Context, _ mount.Interface, _ cadvisor.Interface, _ v1.ResourceList, _ *machine.MachineInfo, _ NodeConfig, failSwapOn bool, recorder record.EventRecorder, kubeClient clientset.Interface) (ContainerManager, error) {
 	return &unsupportedContainerManager{}, nil
 }

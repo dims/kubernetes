@@ -27,8 +27,8 @@ import (
 	"sync"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -131,7 +131,7 @@ func (s *sourcesReadyStub) AddSource(source string) {}
 func (s *sourcesReadyStub) AllReady() bool          { return true }
 
 // NewManagerImpl creates a new manager.
-func NewManagerImpl(topology []cadvisorapi.Node, topologyAffinityStore topologymanager.Store) (*ManagerImpl, error) {
+func NewManagerImpl(topology []machine.Node, topologyAffinityStore topologymanager.Store) (*ManagerImpl, error) {
 	// Use klog.TODO() because we currently do not have a proper logger to pass in.
 	// Replace this with an appropriate context when refactoring this function to accept a logger parameter.
 	logger := klog.TODO()
@@ -142,7 +142,7 @@ func NewManagerImpl(topology []cadvisorapi.Node, topologyAffinityStore topologym
 	return newManagerImpl(logger, socketPath, topology, topologyAffinityStore)
 }
 
-func newManagerImpl(logger klog.Logger, socketPath string, topology []cadvisorapi.Node, topologyAffinityStore topologymanager.Store) (*ManagerImpl, error) {
+func newManagerImpl(logger klog.Logger, socketPath string, topology []machine.Node, topologyAffinityStore topologymanager.Store) (*ManagerImpl, error) {
 	logger.V(2).Info("Creating Device Plugin manager", "path", socketPath)
 
 	var numaNodes []int

@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -49,7 +49,7 @@ type reusableMemory map[string]map[string]map[v1.ResourceName]uint64
 // staticPolicy is implementation of the policy interface for the static policy
 type staticPolicy struct {
 	// machineInfo contains machine memory related information
-	machineInfo *cadvisorapi.MachineInfo
+	machineInfo *machine.MachineInfo
 	// reserved contains memory that reserved for kube
 	systemReserved systemReservedMemory
 	// topology manager reference to get container Topology affinity
@@ -64,7 +64,7 @@ type staticPolicy struct {
 var _ Policy = &staticPolicy{}
 
 // NewPolicyStatic returns new static policy instance
-func NewPolicyStatic(logger klog.Logger, machineInfo *cadvisorapi.MachineInfo, reserved systemReservedMemory, affinity topologymanager.Store) (Policy, error) {
+func NewPolicyStatic(logger klog.Logger, machineInfo *machine.MachineInfo, reserved systemReservedMemory, affinity topologymanager.Store) (Policy, error) {
 	var totalSystemReserved uint64
 	for _, node := range reserved {
 		if _, ok := node[v1.ResourceMemory]; !ok {

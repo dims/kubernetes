@@ -50,6 +50,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/pluginmanager/cache"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework"
@@ -85,11 +86,11 @@ func (cm *containerManagerImpl) Start(ctx context.Context, node *v1.Node,
 	cm.nodeInfo = node
 
 	if localStorageCapacityIsolation {
-		rootfs, err := cm.cadvisorInterface.RootFsInfo()
+		ephemeralCapacity, err := cadvisor.EphemeralStorageCapacity(cm.cadvisorInterface)
 		if err != nil {
 			return fmt.Errorf("failed to get rootfs info: %v", err)
 		}
-		for rName, rCap := range cadvisor.EphemeralStorageCapacityFromFsInfo(rootfs) {
+		for rName, rCap := range ephemeralCapacity {
 			cm.capacity[rName] = rCap
 		}
 	}
@@ -118,16 +119,8 @@ func (cm *containerManagerImpl) Start(ctx context.Context, node *v1.Node,
 }
 
 // NewContainerManager creates windows container manager.
-func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig, failSwapOn bool, recorder record.EventRecorder, kubeClient clientset.Interface) (ContainerManager, error) {
+func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, capacity v1.ResourceList, machineTopology *machine.MachineInfo, nodeConfig NodeConfig, failSwapOn bool, recorder record.EventRecorder, kubeClient clientset.Interface) (ContainerManager, error) {
 	logger := klog.FromContext(ctx)
-	// It is safe to invoke `MachineInfo` on cAdvisor before logically initializing cAdvisor here because
-	// machine info is computed and cached once as part of cAdvisor object creation.
-	// But `RootFsInfo` and `ImagesFsInfo` are not available at this moment so they will be called later during manager starts
-	machineInfo, err := cadvisorInterface.MachineInfo(logger)
-	if err != nil {
-		return nil, err
-	}
-	capacity := cadvisor.CapacityFromMachineInfo(machineInfo)
 
 	cm := &containerManagerImpl{
 		capacity:          capacity,
@@ -139,9 +132,10 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	cm.cpuManager = cpumanager.NewFakeManager(logger)
 	cm.memoryManager = memorymanager.NewFakeManager(logger)
 
+	var err error
 	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WindowsCPUAndMemoryAffinity) {
 		logger.Info("Creating topology manager")
-		cm.topologyManager, err = topologymanager.NewManager(machineInfo.Topology,
+		cm.topologyManager, err = topologymanager.NewManager(machineTopology.Topology,
 			nodeConfig.TopologyManagerPolicy,
 			nodeConfig.TopologyManagerScope,
 			nodeConfig.TopologyManagerPolicyOptions)
@@ -156,7 +150,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 			nodeConfig.CPUManagerPolicy,
 			nodeConfig.CPUManagerPolicyOptions,
 			nodeConfig.CPUManagerReconcilePeriod,
-			machineInfo,
+			machineTopology,
 			nodeConfig.NodeAllocatableConfig.ReservedSystemCPUs,
 			cm.GetNodeAllocatableReservation(),
 			nodeConfig.KubeletRootDir,
@@ -172,7 +166,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 		cm.memoryManager, err = memorymanager.NewManager(
 			logger,
 			nodeConfig.MemoryManagerPolicy,
-			machineInfo,
+			machineTopology,
 			cm.GetNodeAllocatableReservation(),
 			nodeConfig.MemoryManagerReservedMemory,
 			nodeConfig.KubeletRootDir,

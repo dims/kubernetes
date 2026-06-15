@@ -18,7 +18,7 @@ package memorymanager
 
 import (
 	"github.com/go-logr/logr"
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -40,7 +40,7 @@ type bestEffortPolicy struct {
 
 var _ Policy = &bestEffortPolicy{}
 
-func NewPolicyBestEffort(logger logr.Logger, machineInfo *cadvisorapi.MachineInfo, reserved systemReservedMemory, affinity topologymanager.Store) (Policy, error) {
+func NewPolicyBestEffort(logger logr.Logger, machineInfo *machine.MachineInfo, reserved systemReservedMemory, affinity topologymanager.Store) (Policy, error) {
 	p, err := NewPolicyStatic(logger, machineInfo, reserved, affinity)
 
 	if err != nil {

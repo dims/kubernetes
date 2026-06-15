@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,6 +30,7 @@ import (
 	pkgfeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cm/containermap"
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/test/utils/ktesting"
 	"k8s.io/utils/cpuset"
 )
@@ -106,11 +106,11 @@ func TestCPUManagerRestoreState(t *testing.T) {
 				"static",
 				nil,
 				5*time.Second,
-				&cadvisorapi.MachineInfo{
+				&machine.MachineInfo{
 					NumCores: 4,
-					Topology: []cadvisorapi.Node{
+					Topology: []machine.Node{
 						{
-							Cores: []cadvisorapi.Core{
+							Cores: []machine.Core{
 								{Id: 0, Threads: []int{0}},
 								{Id: 1, Threads: []int{1}},
 								{Id: 2, Threads: []int{2}},
@@ -181,11 +181,11 @@ func TestCPUManagerRestoreState(t *testing.T) {
 				"static",
 				nil,
 				5*time.Second,
-				&cadvisorapi.MachineInfo{
+				&machine.MachineInfo{
 					NumCores: 4,
-					Topology: []cadvisorapi.Node{
+					Topology: []machine.Node{
 						{
-							Cores: []cadvisorapi.Core{
+							Cores: []machine.Core{
 								{Id: 0, Threads: []int{0}},
 								{Id: 1, Threads: []int{1}},
 								{Id: 2, Threads: []int{2}},

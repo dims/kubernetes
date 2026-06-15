@@ -19,8 +19,8 @@ package topologymanager
 import (
 	"fmt"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 type NUMADistances map[int][]uint64
@@ -30,7 +30,7 @@ type NUMAInfo struct {
 	NUMADistances NUMADistances
 }
 
-func NewNUMAInfo(topology []cadvisorapi.Node, opts PolicyOptions) (*NUMAInfo, error) {
+func NewNUMAInfo(topology []machine.Node, opts PolicyOptions) (*NUMAInfo, error) {
 	var numaNodes []int
 	distances := map[int][]uint64{}
 	for _, node := range topology {

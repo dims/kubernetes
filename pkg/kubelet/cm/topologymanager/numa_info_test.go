@@ -22,21 +22,21 @@ import (
 	"strings"
 	"testing"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 )
 
 func TestNUMAInfo(t *testing.T) {
 	tcases := []struct {
 		name             string
-		topology         []cadvisorapi.Node
+		topology         []machine.Node
 		expectedNUMAInfo *NUMAInfo
 		expectedErr      error
 		opts             PolicyOptions
 	}{
 		{
 			name: "positive test 1 node",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 				},
@@ -51,7 +51,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "positive test 1 node, with PreferClosestNUMA",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 					Distances: []uint64{
@@ -79,7 +79,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "positive test 2 nodes",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 				},
@@ -97,7 +97,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "positive test 2 nodes, with PreferClosestNUMA",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 					Distances: []uint64{
@@ -140,7 +140,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "positive test 3 nodes",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 				},
@@ -162,7 +162,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "positive test 3 nodes, with PreferClosestNUMA",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 					Distances: []uint64{
@@ -220,7 +220,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "positive test 4 nodes",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 				},
@@ -246,7 +246,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "positive test 4 nodes, with PreferClosestNUMA",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 					Distances: []uint64{
@@ -319,7 +319,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "negative test 1 node, no distance file with PreferClosestNUMA",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 9,
 				},
@@ -332,7 +332,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "one node and its id is 1",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 1,
 				},
@@ -346,7 +346,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "one node and its id is 1, with PreferClosestNUMA",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 1,
 					Distances: []uint64{
@@ -374,7 +374,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "two nodes not sequential",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 					Distances: []uint64{
@@ -404,7 +404,7 @@ func TestNUMAInfo(t *testing.T) {
 		},
 		{
 			name: "two nodes not sequential, with PreferClosestNUMA",
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 					Distances: []uint64{

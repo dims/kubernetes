@@ -24,7 +24,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
@@ -44,7 +44,7 @@ func TestNewManager(t *testing.T) {
 		expectedError  error
 		topologyError  error
 		policyOptions  map[string]string
-		topology       []cadvisorapi.Node
+		topology       []machine.Node
 	}{
 		{
 			description:    "Policy is set to none",
@@ -97,7 +97,7 @@ func TestNewManager(t *testing.T) {
 				PreferClosestNUMANodes: "true",
 			},
 			expectedError: fmt.Errorf("error getting NUMA distances from cadvisor"),
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 				},
@@ -108,7 +108,7 @@ func TestNewManager(t *testing.T) {
 			policyName:     "best-effort",
 			expectedPolicy: "best-effort",
 			expectedError:  fmt.Errorf("unsupported on machines with more than %v NUMA Nodes", defaultMaxAllowableNUMANodes),
-			topology: []cadvisorapi.Node{
+			topology: []machine.Node{
 				{
 					Id: 0,
 				},

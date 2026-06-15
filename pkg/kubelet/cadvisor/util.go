@@ -69,6 +69,16 @@ func EphemeralStorageCapacityFromFsInfo(info cadvisorapi2.FsInfo) v1.ResourceLis
 	return c
 }
 
+// EphemeralStorageCapacity returns the ephemeral storage capacity of the node's
+// root filesystem.
+func EphemeralStorageCapacity(iface Interface) (v1.ResourceList, error) {
+	rootfs, err := iface.RootFsInfo()
+	if err != nil {
+		return nil, err
+	}
+	return EphemeralStorageCapacityFromFsInfo(rootfs), nil
+}
+
 // UsingLegacyCadvisorStats returns true if container stats are provided by cadvisor instead of through the CRI.
 // CRI integrations should get container metrics via CRI.
 // TODO: cri-o relies on cadvisor as a temporary workaround. The code should

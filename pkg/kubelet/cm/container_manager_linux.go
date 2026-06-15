@@ -63,6 +63,7 @@ import (
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/metrics"
 	"k8s.io/kubernetes/pkg/kubelet/pluginmanager/cache"
 	"k8s.io/kubernetes/pkg/kubelet/stats/pidlimit"
@@ -206,7 +207,7 @@ func validateSystemRequirements(logger klog.Logger, mountUtil mount.Interface) (
 // TODO(vmarmol): Add limits to the system containers.
 // Takes the absolute name of the specified containers.
 // Empty container name disables use of the specified container.
-func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig, failSwapOn bool, recorder record.EventRecorder, kubeClient clientset.Interface) (ContainerManager, error) {
+func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, capacity v1.ResourceList, machineTopology *machine.MachineInfo, nodeConfig NodeConfig, failSwapOn bool, recorder record.EventRecorder, kubeClient clientset.Interface) (ContainerManager, error) {
 	logger := klog.FromContext(ctx)
 
 	subsystems, err := GetCgroupSubsystems()
@@ -234,14 +235,6 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	}
 
 	var internalCapacity = v1.ResourceList{}
-	// It is safe to invoke `MachineInfo` on cAdvisor before logically initializing cAdvisor here because
-	// machine info is computed and cached once as part of cAdvisor object creation.
-	// But `RootFsInfo` and `ImagesFsInfo` are not available at this moment so they will be called later during manager starts
-	machineInfo, err := cadvisorInterface.MachineInfo(logger)
-	if err != nil {
-		return nil, err
-	}
-	capacity := cadvisor.CapacityFromMachineInfo(machineInfo)
 	for k, v := range capacity {
 		internalCapacity[k] = v
 	}
@@ -296,7 +289,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	}
 
 	cm.topologyManager, err = topologymanager.NewManager(
-		machineInfo.Topology,
+		machineTopology.Topology,
 		nodeConfig.TopologyManagerPolicy,
 		nodeConfig.TopologyManagerScope,
 		nodeConfig.TopologyManagerPolicyOptions,
@@ -307,7 +300,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	}
 
 	logger.Info("Creating device plugin manager")
-	cm.deviceManager, err = devicemanager.NewManagerImpl(machineInfo.Topology, cm.topologyManager)
+	cm.deviceManager, err = devicemanager.NewManagerImpl(machineTopology.Topology, cm.topologyManager)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +323,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 		nodeConfig.CPUManagerPolicy,
 		nodeConfig.CPUManagerPolicyOptions,
 		nodeConfig.CPUManagerReconcilePeriod,
-		machineInfo,
+		machineTopology,
 		nodeConfig.NodeAllocatableConfig.ReservedSystemCPUs,
 		cm.GetNodeAllocatableReservation(),
 		nodeConfig.KubeletRootDir,
@@ -345,7 +338,7 @@ func NewContainerManager(ctx context.Context, mountUtil mount.Interface, cadviso
 	cm.memoryManager, err = memorymanager.NewManager(
 		logger,
 		nodeConfig.MemoryManagerPolicy,
-		machineInfo,
+		machineTopology,
 		cm.GetNodeAllocatableReservation(),
 		nodeConfig.MemoryManagerReservedMemory,
 		nodeConfig.KubeletRootDir,
@@ -673,12 +666,12 @@ func (cm *containerManagerImpl) Start(ctx context.Context, node *v1.Node,
 	cm.nodeInfo = node
 
 	if localStorageCapacityIsolation {
-		rootfs, err := cm.cadvisorInterface.RootFsInfo()
+		ephemeralCapacity, err := cadvisor.EphemeralStorageCapacity(cm.cadvisorInterface)
 		if err != nil {
 			return fmt.Errorf("failed to get rootfs info: %v", err)
 		}
 		cm.Lock()
-		for rName, rCap := range cadvisor.EphemeralStorageCapacityFromFsInfo(rootfs) {
+		for rName, rCap := range ephemeralCapacity {
 			cm.capacity[rName] = rCap
 		}
 		cm.Unlock()
@@ -982,7 +975,7 @@ func (cm *containerManagerImpl) GetCapacity(localStorageCapacityIsolation bool) 
 		if _, ok := cm.capacity[v1.ResourceEphemeralStorage]; !ok {
 			// If we haven't yet stored the capacity for ephemeral-storage, we can try to fetch it directly from cAdvisor,
 			if cm.cadvisorInterface != nil {
-				rootfs, err := cm.cadvisorInterface.RootFsInfo()
+				ephemeralCapacity, err := cadvisor.EphemeralStorageCapacity(cm.cadvisorInterface)
 				if err != nil {
 					logger.Error(err, "Unable to get rootfs data from cAdvisor interface")
 					// If the rootfsinfo retrieval from cAdvisor fails for any reason, fallback to returning the capacity property with no ephemeral storage data
@@ -994,7 +987,7 @@ func (cm *containerManagerImpl) GetCapacity(localStorageCapacityIsolation bool) 
 				for rName, rQuant := range cm.capacity {
 					capacityWithEphemeralStorage[rName] = rQuant
 				}
-				capacityWithEphemeralStorage[v1.ResourceEphemeralStorage] = cadvisor.EphemeralStorageCapacityFromFsInfo(rootfs)[v1.ResourceEphemeralStorage]
+				capacityWithEphemeralStorage[v1.ResourceEphemeralStorage] = ephemeralCapacity[v1.ResourceEphemeralStorage]
 				return capacityWithEphemeralStorage
 			}
 		}

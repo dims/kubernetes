@@ -32,7 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 
 	"github.com/go-logr/logr"
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -743,30 +743,30 @@ func TestCPUManagerGenerate(t *testing.T) {
 		},
 	}
 
-	mockedMachineInfo := cadvisorapi.MachineInfo{
+	mockedMachineInfo := machine.MachineInfo{
 		NumCores: 4,
-		Topology: []cadvisorapi.Node{
+		Topology: []machine.Node{
 			{
-				Cores: []cadvisorapi.Core{
+				Cores: []machine.Core{
 					{
 						Id:           0,
 						Threads:      []int{0},
-						UncoreCaches: []cadvisorapi.Cache{{Id: 1}},
+						UncoreCaches: []machine.Cache{{Id: 1}},
 					},
 					{
 						Id:           1,
 						Threads:      []int{1},
-						UncoreCaches: []cadvisorapi.Cache{{Id: 1}},
+						UncoreCaches: []machine.Cache{{Id: 1}},
 					},
 					{
 						Id:           2,
 						Threads:      []int{2},
-						UncoreCaches: []cadvisorapi.Cache{{Id: 1}},
+						UncoreCaches: []machine.Cache{{Id: 1}},
 					},
 					{
 						Id:           3,
 						Threads:      []int{3},
-						UncoreCaches: []cadvisorapi.Cache{{Id: 1}},
+						UncoreCaches: []machine.Cache{{Id: 1}},
 					},
 				},
 			},
@@ -777,7 +777,7 @@ func TestCPUManagerGenerate(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			machineInfo := &mockedMachineInfo
 			if testCase.isTopologyBroken {
-				machineInfo = &cadvisorapi.MachineInfo{}
+				machineInfo = &machine.MachineInfo{}
 			}
 			sDir, err := os.MkdirTemp("", "cpu_manager_test")
 			if err != nil {
@@ -1485,11 +1485,11 @@ func TestCPUManagerHandlePolicyOptions(t *testing.T) {
 	}
 
 	// any correct realistic topology is fine. We pick a simple one.
-	mockedMachineInfo := cadvisorapi.MachineInfo{
+	mockedMachineInfo := machine.MachineInfo{
 		NumCores: 4,
-		Topology: []cadvisorapi.Node{
+		Topology: []machine.Node{
 			{
-				Cores: []cadvisorapi.Core{
+				Cores: []machine.Core{
 					{
 						Id:      0,
 						Threads: []int{0},

@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/test/utils/ktesting"
 	"k8s.io/utils/cpuset"
 )
@@ -31,22 +31,22 @@ func Test_Discover(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		machineInfo cadvisorapi.MachineInfo
+		machineInfo machine.MachineInfo
 		want        *CPUTopology
 		wantErr     bool
 	}{
 		{
 			name: "EmptyUncoreCache",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   8,
 				NumSockets: 1,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []cadvisorapi.Cache{}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []cadvisorapi.Cache{}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 6}, UncoreCaches: []cadvisorapi.Cache{}},
-							{SocketID: 0, Id: 3, Threads: []int{3, 7}, UncoreCaches: []cadvisorapi.Cache{}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []machine.Cache{}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []machine.Cache{}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 6}, UncoreCaches: []machine.Cache{}},
+							{SocketID: 0, Id: 3, Threads: []int{3, 7}, UncoreCaches: []machine.Cache{}},
 						},
 					},
 				},
@@ -72,7 +72,7 @@ func Test_Discover(t *testing.T) {
 		},
 		{
 			name: "FailNumCores",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores: 0,
 			},
 			want:    &CPUTopology{},
@@ -80,16 +80,16 @@ func Test_Discover(t *testing.T) {
 		},
 		{
 			name: "OneSocketHT",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   8,
 				NumSockets: 1,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 6}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 3, Threads: []int{3, 7}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 6}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 3, Threads: []int{3, 7}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 				},
@@ -116,64 +116,64 @@ func Test_Discover(t *testing.T) {
 		{
 			// dual xeon gold 6230
 			name: "DualSocketMultiNumaPerSocketHT",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   80,
 				NumSockets: 2,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 40}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 41}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 42}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 8, Threads: []int{3, 43}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 9, Threads: []int{4, 44}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 16, Threads: []int{5, 45}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 17, Threads: []int{6, 46}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 18, Threads: []int{7, 47}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 24, Threads: []int{8, 48}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 25, Threads: []int{9, 49}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 40}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 41}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 42}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 8, Threads: []int{3, 43}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 9, Threads: []int{4, 44}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 16, Threads: []int{5, 45}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 17, Threads: []int{6, 46}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 18, Threads: []int{7, 47}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 24, Threads: []int{8, 48}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 25, Threads: []int{9, 49}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 					{Id: 1,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 3, Threads: []int{10, 50}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 4, Threads: []int{11, 51}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 10, Threads: []int{12, 52}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 11, Threads: []int{13, 53}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 12, Threads: []int{14, 54}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 19, Threads: []int{15, 55}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 20, Threads: []int{16, 56}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 26, Threads: []int{17, 57}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 27, Threads: []int{18, 58}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 28, Threads: []int{19, 59}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 3, Threads: []int{10, 50}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 4, Threads: []int{11, 51}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 10, Threads: []int{12, 52}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 11, Threads: []int{13, 53}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 12, Threads: []int{14, 54}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 19, Threads: []int{15, 55}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 20, Threads: []int{16, 56}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 26, Threads: []int{17, 57}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 27, Threads: []int{18, 58}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 28, Threads: []int{19, 59}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 					{Id: 2,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 1, Id: 0, Threads: []int{20, 60}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 1, Threads: []int{21, 61}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 2, Threads: []int{22, 62}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 8, Threads: []int{23, 63}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 9, Threads: []int{24, 64}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 16, Threads: []int{25, 65}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 17, Threads: []int{26, 66}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 18, Threads: []int{27, 67}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 24, Threads: []int{28, 68}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 25, Threads: []int{29, 69}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 1, Id: 0, Threads: []int{20, 60}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 1, Threads: []int{21, 61}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 2, Threads: []int{22, 62}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 8, Threads: []int{23, 63}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 9, Threads: []int{24, 64}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 16, Threads: []int{25, 65}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 17, Threads: []int{26, 66}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 18, Threads: []int{27, 67}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 24, Threads: []int{28, 68}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 25, Threads: []int{29, 69}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 					{Id: 3,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 1, Id: 3, Threads: []int{30, 70}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 4, Threads: []int{31, 71}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 10, Threads: []int{32, 72}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 11, Threads: []int{33, 73}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 12, Threads: []int{34, 74}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 19, Threads: []int{35, 75}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 20, Threads: []int{36, 76}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 26, Threads: []int{37, 77}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 27, Threads: []int{38, 78}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 28, Threads: []int{39, 79}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 1, Id: 3, Threads: []int{30, 70}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 4, Threads: []int{31, 71}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 10, Threads: []int{32, 72}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 11, Threads: []int{33, 73}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 12, Threads: []int{34, 74}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 19, Threads: []int{35, 75}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 20, Threads: []int{36, 76}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 26, Threads: []int{37, 77}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 27, Threads: []int{38, 78}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 28, Threads: []int{39, 79}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 				},
@@ -282,56 +282,56 @@ func Test_Discover(t *testing.T) {
 			// 2. be as close as possible as existing HW topologies
 			// 3. if possible, minimize chances wrt existing HW topologies.
 			name: "DualNumaMultiSocketPerNumaHT",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   80,
 				NumSockets: 4,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 40}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 41}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 42}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 8, Threads: []int{3, 43}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 9, Threads: []int{4, 44}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 16, Threads: []int{5, 45}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 17, Threads: []int{6, 46}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 18, Threads: []int{7, 47}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 24, Threads: []int{8, 48}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 25, Threads: []int{9, 49}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 3, Threads: []int{10, 50}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 4, Threads: []int{11, 51}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 10, Threads: []int{12, 52}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 11, Threads: []int{13, 53}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 12, Threads: []int{14, 54}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 19, Threads: []int{15, 55}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 20, Threads: []int{16, 56}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 26, Threads: []int{17, 57}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 27, Threads: []int{18, 58}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 1, Id: 28, Threads: []int{19, 59}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 40}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 41}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 42}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 8, Threads: []int{3, 43}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 9, Threads: []int{4, 44}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 16, Threads: []int{5, 45}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 17, Threads: []int{6, 46}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 18, Threads: []int{7, 47}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 24, Threads: []int{8, 48}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 25, Threads: []int{9, 49}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 3, Threads: []int{10, 50}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 4, Threads: []int{11, 51}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 10, Threads: []int{12, 52}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 11, Threads: []int{13, 53}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 12, Threads: []int{14, 54}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 19, Threads: []int{15, 55}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 20, Threads: []int{16, 56}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 26, Threads: []int{17, 57}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 27, Threads: []int{18, 58}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 1, Id: 28, Threads: []int{19, 59}, UncoreCaches: []machine.Cache{{Id: 1}}},
 						},
 					},
 					{Id: 1,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 2, Id: 0, Threads: []int{20, 60}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 1, Threads: []int{21, 61}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 2, Threads: []int{22, 62}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 8, Threads: []int{23, 63}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 9, Threads: []int{24, 64}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 16, Threads: []int{25, 65}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 17, Threads: []int{26, 66}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 18, Threads: []int{27, 67}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 24, Threads: []int{28, 68}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 2, Id: 25, Threads: []int{29, 69}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 3, Threads: []int{30, 70}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 4, Threads: []int{31, 71}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 10, Threads: []int{32, 72}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 11, Threads: []int{33, 73}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 12, Threads: []int{34, 74}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 19, Threads: []int{35, 75}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 20, Threads: []int{36, 76}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 26, Threads: []int{37, 77}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 27, Threads: []int{38, 78}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 3, Id: 28, Threads: []int{39, 79}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
+						Cores: []machine.Core{
+							{SocketID: 2, Id: 0, Threads: []int{20, 60}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 1, Threads: []int{21, 61}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 2, Threads: []int{22, 62}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 8, Threads: []int{23, 63}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 9, Threads: []int{24, 64}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 16, Threads: []int{25, 65}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 17, Threads: []int{26, 66}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 18, Threads: []int{27, 67}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 24, Threads: []int{28, 68}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 2, Id: 25, Threads: []int{29, 69}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 3, Threads: []int{30, 70}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 4, Threads: []int{31, 71}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 10, Threads: []int{32, 72}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 11, Threads: []int{33, 73}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 12, Threads: []int{34, 74}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 19, Threads: []int{35, 75}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 20, Threads: []int{36, 76}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 26, Threads: []int{37, 77}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 27, Threads: []int{38, 78}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 3, Id: 28, Threads: []int{39, 79}, UncoreCaches: []machine.Cache{{Id: 1}}},
 						},
 					},
 				},
@@ -429,20 +429,20 @@ func Test_Discover(t *testing.T) {
 		},
 		{
 			name: "DualSocketNoHT",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   4,
 				NumSockets: 2,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 2, Threads: []int{2}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 2, Threads: []int{2}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 					{Id: 1,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 1, Id: 1, Threads: []int{1}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 3, Threads: []int{3}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 1, Id: 1, Threads: []int{1}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 3, Threads: []int{3}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 				},
@@ -464,22 +464,22 @@ func Test_Discover(t *testing.T) {
 		},
 		{
 			name: "DualSocketHT - non unique Core'ID's",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   12,
 				NumSockets: 2,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 6}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 7}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 8}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 6}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 7}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 8}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 					{Id: 1,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 1, Id: 0, Threads: []int{3, 9}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 1, Threads: []int{4, 10}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 1, Id: 2, Threads: []int{5, 11}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
+						Cores: []machine.Core{
+							{SocketID: 1, Id: 0, Threads: []int{3, 9}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 1, Threads: []int{4, 10}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 1, Id: 2, Threads: []int{5, 11}, UncoreCaches: []machine.Cache{{Id: 0}}},
 						},
 					},
 				},
@@ -509,16 +509,16 @@ func Test_Discover(t *testing.T) {
 		},
 		{
 			name: "OneSocketHT fail",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   8,
 				NumSockets: 1,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 2}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}}, // Wrong case - should fail here
-							{SocketID: 0, Id: 3, Threads: []int{3, 7}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 2}, UncoreCaches: []machine.Cache{{Id: 1}}}, // Wrong case - should fail here
+							{SocketID: 0, Id: 3, Threads: []int{3, 7}, UncoreCaches: []machine.Cache{{Id: 1}}},
 						},
 					},
 				},
@@ -528,16 +528,16 @@ func Test_Discover(t *testing.T) {
 		},
 		{
 			name: "OneSocketHT fail",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   8,
 				NumSockets: 1,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 6}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 3, Threads: []int{}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}}, // Wrong case - should fail here
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 4}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 5}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 6}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 3, Threads: []int{}, UncoreCaches: []machine.Cache{{Id: 1}}}, // Wrong case - should fail here
 						},
 					},
 				},
@@ -551,44 +551,44 @@ func Test_Discover(t *testing.T) {
 			// Single-socket SMT-disabled
 			// NPS=1
 			name: "UncoreOneSocketNoSMT",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   32,
 				NumSockets: 1,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 1, Threads: []int{1}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 2, Threads: []int{2}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 3, Threads: []int{3}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 4, Threads: []int{4}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 5, Threads: []int{5}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 6, Threads: []int{6}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 7, Threads: []int{7}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 8, Threads: []int{8}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
-							{SocketID: 0, Id: 9, Threads: []int{9}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
-							{SocketID: 0, Id: 10, Threads: []int{10}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
-							{SocketID: 0, Id: 11, Threads: []int{11}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
-							{SocketID: 0, Id: 12, Threads: []int{12}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 13, Threads: []int{13}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 14, Threads: []int{14}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 15, Threads: []int{15}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 16, Threads: []int{16}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 17, Threads: []int{17}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 18, Threads: []int{18}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 19, Threads: []int{19}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 20, Threads: []int{20}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
-							{SocketID: 0, Id: 21, Threads: []int{21}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
-							{SocketID: 0, Id: 22, Threads: []int{22}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
-							{SocketID: 0, Id: 23, Threads: []int{23}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
-							{SocketID: 0, Id: 24, Threads: []int{24}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 0, Id: 25, Threads: []int{25}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 0, Id: 26, Threads: []int{26}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 0, Id: 27, Threads: []int{27}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 0, Id: 28, Threads: []int{28}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
-							{SocketID: 0, Id: 29, Threads: []int{29}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
-							{SocketID: 0, Id: 30, Threads: []int{30}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
-							{SocketID: 0, Id: 31, Threads: []int{31}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 1, Threads: []int{1}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 2, Threads: []int{2}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 3, Threads: []int{3}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 4, Threads: []int{4}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 5, Threads: []int{5}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 6, Threads: []int{6}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 7, Threads: []int{7}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 8, Threads: []int{8}, UncoreCaches: []machine.Cache{{Id: 2}}},
+							{SocketID: 0, Id: 9, Threads: []int{9}, UncoreCaches: []machine.Cache{{Id: 2}}},
+							{SocketID: 0, Id: 10, Threads: []int{10}, UncoreCaches: []machine.Cache{{Id: 2}}},
+							{SocketID: 0, Id: 11, Threads: []int{11}, UncoreCaches: []machine.Cache{{Id: 2}}},
+							{SocketID: 0, Id: 12, Threads: []int{12}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 13, Threads: []int{13}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 14, Threads: []int{14}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 15, Threads: []int{15}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 16, Threads: []int{16}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 17, Threads: []int{17}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 18, Threads: []int{18}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 19, Threads: []int{19}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 20, Threads: []int{20}, UncoreCaches: []machine.Cache{{Id: 5}}},
+							{SocketID: 0, Id: 21, Threads: []int{21}, UncoreCaches: []machine.Cache{{Id: 5}}},
+							{SocketID: 0, Id: 22, Threads: []int{22}, UncoreCaches: []machine.Cache{{Id: 5}}},
+							{SocketID: 0, Id: 23, Threads: []int{23}, UncoreCaches: []machine.Cache{{Id: 5}}},
+							{SocketID: 0, Id: 24, Threads: []int{24}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 0, Id: 25, Threads: []int{25}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 0, Id: 26, Threads: []int{26}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 0, Id: 27, Threads: []int{27}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 0, Id: 28, Threads: []int{28}, UncoreCaches: []machine.Cache{{Id: 7}}},
+							{SocketID: 0, Id: 29, Threads: []int{29}, UncoreCaches: []machine.Cache{{Id: 7}}},
+							{SocketID: 0, Id: 30, Threads: []int{30}, UncoreCaches: []machine.Cache{{Id: 7}}},
+							{SocketID: 0, Id: 31, Threads: []int{31}, UncoreCaches: []machine.Cache{{Id: 7}}},
 						},
 					},
 				},
@@ -642,72 +642,72 @@ func Test_Discover(t *testing.T) {
 			// Dual-socket SMT-enabled
 			// NPS=2
 			name: "UncoreDualSocketSMT",
-			machineInfo: cadvisorapi.MachineInfo{
+			machineInfo: machine.MachineInfo{
 				NumCores:   96,
 				NumSockets: 2,
-				Topology: []cadvisorapi.Node{
+				Topology: []machine.Node{
 					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 0, Threads: []int{0, 48}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 1, Threads: []int{1, 49}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 2, Threads: []int{2, 50}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 3, Threads: []int{3, 51}, UncoreCaches: []cadvisorapi.Cache{{Id: 0}}},
-							{SocketID: 0, Id: 4, Threads: []int{4, 52}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 5, Threads: []int{5, 53}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 6, Threads: []int{6, 54}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 7, Threads: []int{7, 55}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-							{SocketID: 0, Id: 8, Threads: []int{8, 56}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
-							{SocketID: 0, Id: 9, Threads: []int{9, 57}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
-							{SocketID: 0, Id: 10, Threads: []int{10, 58}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
-							{SocketID: 0, Id: 11, Threads: []int{11, 59}, UncoreCaches: []cadvisorapi.Cache{{Id: 2}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 0, Threads: []int{0, 48}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 1, Threads: []int{1, 49}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 2, Threads: []int{2, 50}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 3, Threads: []int{3, 51}, UncoreCaches: []machine.Cache{{Id: 0}}},
+							{SocketID: 0, Id: 4, Threads: []int{4, 52}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 5, Threads: []int{5, 53}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 6, Threads: []int{6, 54}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 7, Threads: []int{7, 55}, UncoreCaches: []machine.Cache{{Id: 1}}},
+							{SocketID: 0, Id: 8, Threads: []int{8, 56}, UncoreCaches: []machine.Cache{{Id: 2}}},
+							{SocketID: 0, Id: 9, Threads: []int{9, 57}, UncoreCaches: []machine.Cache{{Id: 2}}},
+							{SocketID: 0, Id: 10, Threads: []int{10, 58}, UncoreCaches: []machine.Cache{{Id: 2}}},
+							{SocketID: 0, Id: 11, Threads: []int{11, 59}, UncoreCaches: []machine.Cache{{Id: 2}}},
 						},
 					},
 					{Id: 1,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 0, Id: 12, Threads: []int{12, 60}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 13, Threads: []int{13, 61}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 14, Threads: []int{14, 62}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 15, Threads: []int{15, 63}, UncoreCaches: []cadvisorapi.Cache{{Id: 3}}},
-							{SocketID: 0, Id: 16, Threads: []int{16, 64}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 17, Threads: []int{17, 65}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 18, Threads: []int{18, 66}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 19, Threads: []int{19, 67}, UncoreCaches: []cadvisorapi.Cache{{Id: 4}}},
-							{SocketID: 0, Id: 20, Threads: []int{20, 68}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
-							{SocketID: 0, Id: 21, Threads: []int{21, 69}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
-							{SocketID: 0, Id: 22, Threads: []int{22, 70}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
-							{SocketID: 0, Id: 23, Threads: []int{23, 71}, UncoreCaches: []cadvisorapi.Cache{{Id: 5}}},
+						Cores: []machine.Core{
+							{SocketID: 0, Id: 12, Threads: []int{12, 60}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 13, Threads: []int{13, 61}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 14, Threads: []int{14, 62}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 15, Threads: []int{15, 63}, UncoreCaches: []machine.Cache{{Id: 3}}},
+							{SocketID: 0, Id: 16, Threads: []int{16, 64}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 17, Threads: []int{17, 65}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 18, Threads: []int{18, 66}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 19, Threads: []int{19, 67}, UncoreCaches: []machine.Cache{{Id: 4}}},
+							{SocketID: 0, Id: 20, Threads: []int{20, 68}, UncoreCaches: []machine.Cache{{Id: 5}}},
+							{SocketID: 0, Id: 21, Threads: []int{21, 69}, UncoreCaches: []machine.Cache{{Id: 5}}},
+							{SocketID: 0, Id: 22, Threads: []int{22, 70}, UncoreCaches: []machine.Cache{{Id: 5}}},
+							{SocketID: 0, Id: 23, Threads: []int{23, 71}, UncoreCaches: []machine.Cache{{Id: 5}}},
 						},
 					},
 					{Id: 2,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 1, Id: 24, Threads: []int{24, 72}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 1, Id: 25, Threads: []int{25, 73}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 1, Id: 26, Threads: []int{26, 74}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 1, Id: 27, Threads: []int{27, 75}, UncoreCaches: []cadvisorapi.Cache{{Id: 6}}},
-							{SocketID: 1, Id: 28, Threads: []int{28, 76}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
-							{SocketID: 1, Id: 29, Threads: []int{29, 77}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
-							{SocketID: 1, Id: 30, Threads: []int{30, 78}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
-							{SocketID: 1, Id: 31, Threads: []int{31, 79}, UncoreCaches: []cadvisorapi.Cache{{Id: 7}}},
-							{SocketID: 1, Id: 32, Threads: []int{32, 80}, UncoreCaches: []cadvisorapi.Cache{{Id: 8}}},
-							{SocketID: 1, Id: 33, Threads: []int{33, 81}, UncoreCaches: []cadvisorapi.Cache{{Id: 8}}},
-							{SocketID: 1, Id: 34, Threads: []int{34, 82}, UncoreCaches: []cadvisorapi.Cache{{Id: 8}}},
-							{SocketID: 1, Id: 35, Threads: []int{35, 83}, UncoreCaches: []cadvisorapi.Cache{{Id: 8}}},
+						Cores: []machine.Core{
+							{SocketID: 1, Id: 24, Threads: []int{24, 72}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 1, Id: 25, Threads: []int{25, 73}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 1, Id: 26, Threads: []int{26, 74}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 1, Id: 27, Threads: []int{27, 75}, UncoreCaches: []machine.Cache{{Id: 6}}},
+							{SocketID: 1, Id: 28, Threads: []int{28, 76}, UncoreCaches: []machine.Cache{{Id: 7}}},
+							{SocketID: 1, Id: 29, Threads: []int{29, 77}, UncoreCaches: []machine.Cache{{Id: 7}}},
+							{SocketID: 1, Id: 30, Threads: []int{30, 78}, UncoreCaches: []machine.Cache{{Id: 7}}},
+							{SocketID: 1, Id: 31, Threads: []int{31, 79}, UncoreCaches: []machine.Cache{{Id: 7}}},
+							{SocketID: 1, Id: 32, Threads: []int{32, 80}, UncoreCaches: []machine.Cache{{Id: 8}}},
+							{SocketID: 1, Id: 33, Threads: []int{33, 81}, UncoreCaches: []machine.Cache{{Id: 8}}},
+							{SocketID: 1, Id: 34, Threads: []int{34, 82}, UncoreCaches: []machine.Cache{{Id: 8}}},
+							{SocketID: 1, Id: 35, Threads: []int{35, 83}, UncoreCaches: []machine.Cache{{Id: 8}}},
 						},
 					},
 					{Id: 3,
-						Cores: []cadvisorapi.Core{
-							{SocketID: 1, Id: 36, Threads: []int{36, 84}, UncoreCaches: []cadvisorapi.Cache{{Id: 9}}},
-							{SocketID: 1, Id: 37, Threads: []int{37, 85}, UncoreCaches: []cadvisorapi.Cache{{Id: 9}}},
-							{SocketID: 1, Id: 38, Threads: []int{38, 86}, UncoreCaches: []cadvisorapi.Cache{{Id: 9}}},
-							{SocketID: 1, Id: 39, Threads: []int{39, 87}, UncoreCaches: []cadvisorapi.Cache{{Id: 9}}},
-							{SocketID: 1, Id: 40, Threads: []int{40, 88}, UncoreCaches: []cadvisorapi.Cache{{Id: 10}}},
-							{SocketID: 1, Id: 41, Threads: []int{41, 89}, UncoreCaches: []cadvisorapi.Cache{{Id: 10}}},
-							{SocketID: 1, Id: 42, Threads: []int{42, 90}, UncoreCaches: []cadvisorapi.Cache{{Id: 10}}},
-							{SocketID: 1, Id: 43, Threads: []int{43, 91}, UncoreCaches: []cadvisorapi.Cache{{Id: 10}}},
-							{SocketID: 1, Id: 44, Threads: []int{44, 92}, UncoreCaches: []cadvisorapi.Cache{{Id: 11}}},
-							{SocketID: 1, Id: 45, Threads: []int{45, 93}, UncoreCaches: []cadvisorapi.Cache{{Id: 11}}},
-							{SocketID: 1, Id: 46, Threads: []int{46, 94}, UncoreCaches: []cadvisorapi.Cache{{Id: 11}}},
-							{SocketID: 1, Id: 47, Threads: []int{47, 95}, UncoreCaches: []cadvisorapi.Cache{{Id: 11}}},
+						Cores: []machine.Core{
+							{SocketID: 1, Id: 36, Threads: []int{36, 84}, UncoreCaches: []machine.Cache{{Id: 9}}},
+							{SocketID: 1, Id: 37, Threads: []int{37, 85}, UncoreCaches: []machine.Cache{{Id: 9}}},
+							{SocketID: 1, Id: 38, Threads: []int{38, 86}, UncoreCaches: []machine.Cache{{Id: 9}}},
+							{SocketID: 1, Id: 39, Threads: []int{39, 87}, UncoreCaches: []machine.Cache{{Id: 9}}},
+							{SocketID: 1, Id: 40, Threads: []int{40, 88}, UncoreCaches: []machine.Cache{{Id: 10}}},
+							{SocketID: 1, Id: 41, Threads: []int{41, 89}, UncoreCaches: []machine.Cache{{Id: 10}}},
+							{SocketID: 1, Id: 42, Threads: []int{42, 90}, UncoreCaches: []machine.Cache{{Id: 10}}},
+							{SocketID: 1, Id: 43, Threads: []int{43, 91}, UncoreCaches: []machine.Cache{{Id: 10}}},
+							{SocketID: 1, Id: 44, Threads: []int{44, 92}, UncoreCaches: []machine.Cache{{Id: 11}}},
+							{SocketID: 1, Id: 45, Threads: []int{45, 93}, UncoreCaches: []machine.Cache{{Id: 11}}},
+							{SocketID: 1, Id: 46, Threads: []int{46, 94}, UncoreCaches: []machine.Cache{{Id: 11}}},
+							{SocketID: 1, Id: 47, Threads: []int{47, 95}, UncoreCaches: []machine.Cache{{Id: 11}}},
 						},
 					},
 				},
@@ -1594,14 +1594,14 @@ func TestCPUsPerUncore(t *testing.T) {
 func Test_getUncoreCacheID(t *testing.T) {
 	tests := []struct {
 		name string
-		args cadvisorapi.Core
+		args machine.Core
 		want int
 	}{
 		{
 			name: "Core with uncore cache info",
-			args: cadvisorapi.Core{
+			args: machine.Core{
 				SocketID: 1,
-				UncoreCaches: []cadvisorapi.Cache{
+				UncoreCaches: []machine.Cache{
 					{Id: 5},
 					{Id: 6},
 				},
@@ -1610,15 +1610,15 @@ func Test_getUncoreCacheID(t *testing.T) {
 		},
 		{
 			name: "Core with empty uncore cache info",
-			args: cadvisorapi.Core{
+			args: machine.Core{
 				SocketID:     2,
-				UncoreCaches: []cadvisorapi.Cache{},
+				UncoreCaches: []machine.Cache{},
 			},
 			want: 2,
 		},
 		{
 			name: "Core with nil uncore cache info",
-			args: cadvisorapi.Core{
+			args: machine.Core{
 				SocketID: 1,
 			},
 			want: 1,

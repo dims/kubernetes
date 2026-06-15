@@ -47,7 +47,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/mount-utils"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
@@ -113,6 +112,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	"k8s.io/kubernetes/pkg/kubelet/kubeletconfig/configfiles"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	kubeletmetrics "k8s.io/kubernetes/pkg/kubelet/metrics"
 	"k8s.io/kubernetes/pkg/kubelet/server"
 	"k8s.io/kubernetes/pkg/kubelet/stats/pidlimit"
@@ -599,14 +599,14 @@ func makeEventRecorder(ctx context.Context, kubeDeps *kubelet.Dependencies, node
 	}
 }
 
-func getReservedCPUs(logger logr.Logger, machineInfo *cadvisorapi.MachineInfo, cpus string) (cpuset.CPUSet, error) {
+func getReservedCPUs(logger logr.Logger, machineTopology *machine.MachineInfo, cpus string) (cpuset.CPUSet, error) {
 	emptyCPUSet := cpuset.New()
 
 	if cpus == "" {
 		return emptyCPUSet, nil
 	}
 
-	topo, err := topology.Discover(logger, machineInfo)
+	topo, err := topology.Discover(logger, machineTopology)
 	if err != nil {
 		return emptyCPUSet, fmt.Errorf("unable to discover CPU topology info: %s", err)
 	}
@@ -819,7 +819,9 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 		if err != nil {
 			return err
 		}
-		reservedSystemCPUs, err := getReservedCPUs(logger, machineInfo, s.ReservedSystemCPUs)
+		capacity := cadvisor.CapacityFromMachineInfo(machineInfo)
+		machineTopology := cadvisor.ToMachineInfo(machineInfo)
+		reservedSystemCPUs, err := getReservedCPUs(logger, machineTopology, s.ReservedSystemCPUs)
 		if err != nil {
 			return err
 		}
@@ -880,6 +882,8 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 			ctx,
 			kubeDeps.Mounter,
 			kubeDeps.CAdvisorInterface,
+			capacity,
+			machineTopology,
 			cm.NodeConfig{
 				NodeName:              nodeName,
 				RuntimeCgroupsName:    s.RuntimeCgroups,

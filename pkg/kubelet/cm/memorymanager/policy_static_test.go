@@ -22,9 +22,9 @@ import (
 	"strconv"
 	"testing"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -159,7 +159,7 @@ type testStaticPolicy struct {
 	expectedMachineState            state.NUMANodeMap
 	systemReserved                  systemReservedMemory
 	expectedError                   error
-	machineInfo                     *cadvisorapi.MachineInfo
+	machineInfo                     *machine.MachineInfo
 	pod                             *v1.Pod
 	topologyHint                    *topologymanager.TopologyHint
 	expectedTopologyHints           map[string][]topologymanager.TopologyHint
@@ -308,12 +308,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 3 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -353,12 +353,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -369,7 +369,7 @@ func TestStaticPolicyStart(t *testing.T) {
 					{
 						Id:     1,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -398,12 +398,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					NumberOfAssignments: 0,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -442,12 +442,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -481,12 +481,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -531,12 +531,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -577,12 +577,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -623,12 +623,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -689,12 +689,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -746,12 +746,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -808,12 +808,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -870,12 +870,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -1041,12 +1041,12 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 512 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 2176 * mb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -1057,7 +1057,7 @@ func TestStaticPolicyStart(t *testing.T) {
 					{
 						Id:     1,
 						Memory: 2176 * mb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								// size in KB
 								PageSize: pageSize1Gb,
@@ -1174,8 +1174,8 @@ func TestStaticPolicyStart(t *testing.T) {
 					v1.ResourceMemory: 20 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 240 * mb,
@@ -3895,12 +3895,12 @@ func TestStaticPolicyGetTopologyHints(t *testing.T) {
 					v1.ResourceMemory: 1024 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 3 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								PageSize: pageSize1Gb,
 								NumPages: 1,
@@ -3910,7 +3910,7 @@ func TestStaticPolicyGetTopologyHints(t *testing.T) {
 					{
 						Id:     1,
 						Memory: 3 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								PageSize: pageSize1Gb,
 								NumPages: 1,
@@ -4041,12 +4041,12 @@ func TestStaticPolicyGetPodTopologyHints(t *testing.T) {
 					v1.ResourceMemory: 1024 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 3 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								PageSize: pageSize1Gb,
 								NumPages: 1,
@@ -4056,7 +4056,7 @@ func TestStaticPolicyGetPodTopologyHints(t *testing.T) {
 					{
 						Id:     1,
 						Memory: 3 * gb,
-						HugePages: []cadvisorapi.HugePagesInfo{
+						HugePages: []machine.HugePagesInfo{
 							{
 								PageSize: pageSize1Gb,
 								NumPages: 1,
@@ -4159,8 +4159,8 @@ func TestStaticPolicyGetPodTopologyHints(t *testing.T) {
 					v1.ResourceMemory: 1024 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 3 * gb,
@@ -4227,8 +4227,8 @@ func TestStaticPolicyGetPodTopologyHints(t *testing.T) {
 					v1.ResourceMemory: 1024 * mb,
 				},
 			},
-			machineInfo: &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo: &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 3 * gb,
@@ -4936,8 +4936,8 @@ func TestValidatePodScopeResources(t *testing.T) {
 			}
 
 			logger, _ := ktesting.NewTestContext(t)
-			machineInfo := &cadvisorapi.MachineInfo{
-				Topology: []cadvisorapi.Node{
+			machineInfo := &machine.MachineInfo{
+				Topology: []machine.Node{
 					{
 						Id:     0,
 						Memory: 8 * gb,
@@ -5066,8 +5066,8 @@ func getPodWithContainersAndPodLevelResources(podName, podMemRequest, podMemLimi
 func TestStaticPolicyAllocatePod(t *testing.T) {
 	logger, _ := ktesting.NewTestContext(t)
 
-	machineInfo := &cadvisorapi.MachineInfo{
-		Topology: []cadvisorapi.Node{
+	machineInfo := &machine.MachineInfo{
+		Topology: []machine.Node{
 			{Id: 0, Memory: 2 * gb},
 			{Id: 1, Memory: 2 * gb},
 		},

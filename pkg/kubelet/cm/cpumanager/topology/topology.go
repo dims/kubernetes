@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	cadvisorapi "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/utils/cpuset"
 )
 
@@ -327,7 +327,7 @@ func (d CPUDetails) CPUsInCores(ids ...int) cpuset.CPUSet {
 	return cpuset.New(cpuIDs...)
 }
 
-func getUncoreCacheID(core cadvisorapi.Core) int {
+func getUncoreCacheID(core machine.Core) int {
 	if len(core.UncoreCaches) < 1 {
 		// In case cAdvisor is nil, failback to socket alignment since uncorecache is not shared
 		return core.SocketID
@@ -338,7 +338,7 @@ func getUncoreCacheID(core cadvisorapi.Core) int {
 }
 
 // Discover returns CPUTopology based on cadvisor node info
-func Discover(logger logr.Logger, machineInfo *cadvisorapi.MachineInfo) (*CPUTopology, error) {
+func Discover(logger logr.Logger, machineInfo *machine.MachineInfo) (*CPUTopology, error) {
 	if machineInfo.NumCores == 0 {
 		return nil, fmt.Errorf("could not detect number of cpus")
 	}

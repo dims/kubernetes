@@ -29,7 +29,6 @@ import (
 	"testing"
 	"time"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -56,6 +55,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/pkg/kubelet/pluginmanager"
 	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/test/utils/ktesting"
@@ -287,7 +287,7 @@ func TestDevicePluginReRegistrationProbeMode(t *testing.T) {
 }
 
 func setupDeviceManager(t *testing.T, devs []*pluginapi.Device, callback monitorCallback, socketName string,
-	topology []cadvisorapi.Node, logger klog.Logger) (Manager, <-chan interface{}) {
+	topology []machine.Node, logger klog.Logger) (Manager, <-chan interface{}) {
 	topologyStore := topologymanager.NewFakeManager()
 	m, err := newManagerImpl(logger, socketName, topology, topologyStore)
 	require.NoError(t, err)
@@ -1836,7 +1836,7 @@ func TestGetTopologyHintsWithUpdates(t *testing.T) {
 	testPod := makePod(v1.ResourceList{
 		testResourceName: *resource.NewQuantity(int64(1), resource.DecimalSI),
 	})
-	topology := []cadvisorapi.Node{
+	topology := []machine.Node{
 		{Id: 0},
 	}
 	testCases := []struct {

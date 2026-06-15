@@ -21,7 +21,6 @@ import (
 	"sort"
 	"testing"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -31,6 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager"
 	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
+	"k8s.io/kubernetes/pkg/kubelet/machine"
 	"k8s.io/kubernetes/test/utils/ktesting"
 	"k8s.io/utils/cpuset"
 )
@@ -46,22 +46,22 @@ type testCase struct {
 	podLevelResourceManagersEnabled bool
 }
 
-func returnMachineInfo() cadvisorapi.MachineInfo {
-	return cadvisorapi.MachineInfo{
+func returnMachineInfo() machine.MachineInfo {
+	return machine.MachineInfo{
 		NumCores: 12,
-		Topology: []cadvisorapi.Node{
+		Topology: []machine.Node{
 			{Id: 0,
-				Cores: []cadvisorapi.Core{
-					{SocketID: 0, Id: 0, Threads: []int{0, 6}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-					{SocketID: 0, Id: 1, Threads: []int{1, 7}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-					{SocketID: 0, Id: 2, Threads: []int{2, 8}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
+				Cores: []machine.Core{
+					{SocketID: 0, Id: 0, Threads: []int{0, 6}, UncoreCaches: []machine.Cache{{Id: 1}}},
+					{SocketID: 0, Id: 1, Threads: []int{1, 7}, UncoreCaches: []machine.Cache{{Id: 1}}},
+					{SocketID: 0, Id: 2, Threads: []int{2, 8}, UncoreCaches: []machine.Cache{{Id: 1}}},
 				},
 			},
 			{Id: 1,
-				Cores: []cadvisorapi.Core{
-					{SocketID: 1, Id: 0, Threads: []int{3, 9}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-					{SocketID: 1, Id: 1, Threads: []int{4, 10}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
-					{SocketID: 1, Id: 2, Threads: []int{5, 11}, UncoreCaches: []cadvisorapi.Cache{{Id: 1}}},
+				Cores: []machine.Core{
+					{SocketID: 1, Id: 0, Threads: []int{3, 9}, UncoreCaches: []machine.Cache{{Id: 1}}},
+					{SocketID: 1, Id: 1, Threads: []int{4, 10}, UncoreCaches: []machine.Cache{{Id: 1}}},
+					{SocketID: 1, Id: 2, Threads: []int{5, 11}, UncoreCaches: []machine.Cache{{Id: 1}}},
 				},
 			},
 		},
