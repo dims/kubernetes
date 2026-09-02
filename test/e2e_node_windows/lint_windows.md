@@ -17,10 +17,10 @@ walks through the full setup on a Linux host.
 
 ## One-time setup
 
-The Kubernetes repo pins its own version of `golangci-lint` and several custom
-plugins (`logcheck.so`, `kube-api-linter.so`, `sorted.so`) under
-`hack/tools/golangci-lint/`. The wrapper script
-`hack/verify-golangci-lint.sh` installs them into `_output/local/bin/`.
+The Kubernetes repo pins its own version of `golangci-lint` and compiles the
+custom linters (`logcheck`, `kubeapilinter`, `sorted`) into it as module
+plugins under `hack/tools/golangci-lint/`. The wrapper script
+`hack/verify-golangci-lint.sh` installs the binary into `_output/local/bin/`.
 
 The tricky part: `go install` refuses to cross-compile binaries when `GOBIN` is
 set, which is exactly what the wrapper does. So the install pass must run
@@ -33,15 +33,7 @@ natively (no `GOOS=windows`). Once installed, the binary is reusable.
 hack/verify-golangci-lint.sh -- ./test/e2e_node/builder/... 2>&1 | tail -20
 ```
 
-After this runs, you should have:
-
-```
-_output/local/bin/
-├── golangci-lint
-├── kube-api-linter.so
-├── logcheck.so
-└── sorted.so
-```
+After this runs, you should have `_output/local/bin/golangci-lint`.
 
 Quick sanity check:
 
@@ -57,30 +49,11 @@ using the pinned Go toolchain from `hack/tools/golangci-lint/go.mod`:
 ```bash
 mkdir -p _output/local/bin
 GOBIN=$PWD/_output/local/bin \
-  go -C hack/tools/golangci-lint install \
-  github.com/golangci/golangci-lint/v2/cmd/golangci-lint
-
-GOBIN=$PWD/_output/local/bin \
-  go -C hack/tools/golangci-lint build \
-  -o $PWD/_output/local/bin/logcheck.so \
-  -buildmode=plugin \
-  sigs.k8s.io/logtools/logcheck/plugin
-
-GOBIN=$PWD/_output/local/bin \
-  go -C hack/tools/golangci-lint build \
-  -o $PWD/_output/local/bin/kube-api-linter.so \
-  -buildmode=plugin \
-  sigs.k8s.io/kube-api-linter/pkg/plugin
-
-GOBIN=$PWD/_output/local/bin \
-  go -C hack/tools/golangci-lint build \
-  -o $PWD/_output/local/bin/sorted.so \
-  -buildmode=plugin \
-  k8s.io/kubernetes/hack/tools/golangci-lint/sorted/plugin
+  go -C hack/tools/golangci-lint install .
 ```
 
 Note: `GOOS` and `GOARCH` must **not** be set during installation. The lint
-tool and its plugins are host-native (Linux); they analyse Windows code via
+tool is host-native (Linux); it analyses Windows code via
 Go's `types` package, which doesn't care about the target platform of the code
 under analysis.
 

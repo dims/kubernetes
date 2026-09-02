@@ -54,23 +54,20 @@ const FeatureB featuregate.Feature = "FeatureB"
 
 ## Installation
 
-### As a golangci-lint plugin
+### As a golangci-lint module plugin
 
-1. Build the plugin:
-
-```bash
-cd hack/tools/golangci-lint/sorted
-go build -buildmode=plugin -o sorted.so ./plugin/
-```
-
-2. Add the plugin to your `.golangci.yml` configuration:
+The `plugin` package registers the linter as a golangci-lint
+[module plugin](https://golangci-lint.run/plugins/module-plugins/) named `sorted`.
+`hack/tools/golangci-lint/main.go` imports it, so `hack/verify-golangci-lint.sh`
+compiles it into the `golangci-lint` binary. Enable it in your `.golangci.yml`
+configuration:
 
 ```yaml
 linters:
   settings:
     custom:
       sorted:
-        path: /path/to/sorted.so
+        type: module
         description: Checks if feature gates are sorted alphabetically
         original-url: k8s.io/kubernetes/hack/tools/golangci-lint/sorted
         settings:
@@ -221,7 +218,7 @@ codebase. Run it locally before submitting pull requests that modify feature gat
 ## Troubleshooting
 
 1. **Enable debug mode**: Set `debug: true` in your configuration to see processing details
-2. **Check plugin build**: Ensure the plugin is correctly built with `go build -buildmode=plugin`
+2. **Check the build**: Ensure `hack/tools/golangci-lint/main.go` imports the `plugin` package
 3. **Verify file paths**: Confirm target files are in the default list or explicitly configured
 4. **Test with standalone tool**: Run `go run main.go path/to/file.go` to test specific files
 
