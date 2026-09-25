@@ -24,7 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/peterbourgon/diskv"
+	"k8s.io/client-go/third_party/forked/diskv"
 	"k8s.io/client-go/third_party/forked/httpcache"
 	"k8s.io/klog/v2"
 )

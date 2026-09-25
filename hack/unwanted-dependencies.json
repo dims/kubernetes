@@ -228,7 +228,6 @@
       "github.com/davecgh/go-spew",
       "github.com/gogo/protobuf",
       "github.com/golang/protobuf",
-      "github.com/google/btree",
       "golang.org/x/exp"
     ]
   }

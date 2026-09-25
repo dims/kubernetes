@@ -1,3 +1,11 @@
+// This package is copied from github.com/peterbourgon/diskv v2.0.1
+// (commit 5f041e8faa004a95c88a202771f4cc3e991971e6) with the following changes:
+// - index.go and the Index/IndexLess options are removed; this drops the
+//   dependency on the archived github.com/google/btree module
+// - compression.go and the Compression option are removed (unused)
+// - ioutil.TempFile, ioutil.ReadAll and ioutil.NopCloser replaced with
+//   os.CreateTemp, io.ReadAll and io.NopCloser (deprecated)
+
 // Diskv (disk-vee) is a simple, persistent, key-value store.
 // It stores all data flatly on the filesystem.
 
@@ -8,7 +16,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,11 +59,6 @@ type Options struct {
 	// Note that TempDir MUST be on the same device/partition as
 	// BasePath.
 	TempDir string
-
-	Index     Index
-	IndexLess LessFunction
-
-	Compression Compression
 }
 
 // Diskv implements the Diskv interface. You shouldn't construct Diskv
@@ -89,10 +91,6 @@ func New(o Options) *Diskv {
 		Options:   o,
 		cache:     map[string][]byte{},
 		cacheSize: 0,
-	}
-
-	if d.Index != nil && d.IndexLess != nil {
-		d.Index.Initialize(d.IndexLess, d.Keys(nil))
 	}
 
 	return d
@@ -128,7 +126,7 @@ func (d *Diskv) createKeyFileWithLock(key string) (*os.File, error) {
 		if err := os.MkdirAll(d.TempDir, d.PathPerm); err != nil {
 			return nil, fmt.Errorf("temp mkdir: %s", err)
 		}
-		f, err := ioutil.TempFile(d.TempDir, "")
+		f, err := os.CreateTemp(d.TempDir, "")
 		if err != nil {
 			return nil, fmt.Errorf("temp file: %s", err)
 		}
@@ -161,14 +159,6 @@ func (d *Diskv) writeStreamWithLock(key string, r io.Reader, sync bool) error {
 	}
 
 	wc := io.WriteCloser(&nopWriteCloser{f})
-	if d.Compression != nil {
-		wc, err = d.Compression.Writer(f)
-		if err != nil {
-			f.Close()           // error deliberately ignored
-			os.Remove(f.Name()) // error deliberately ignored
-			return fmt.Errorf("compression writer: %s", err)
-		}
-	}
 
 	if _, err := io.Copy(wc, r); err != nil {
 		f.Close()           // error deliberately ignored
@@ -199,10 +189,6 @@ func (d *Diskv) writeStreamWithLock(key string, r io.Reader, sync bool) error {
 			os.Remove(f.Name()) // error deliberately ignored
 			return fmt.Errorf("rename: %s", err)
 		}
-	}
-
-	if d.Index != nil {
-		d.Index.Insert(key)
 	}
 
 	d.bustCacheWithLock(key) // cache only on read
@@ -263,7 +249,7 @@ func (d *Diskv) Read(key string) ([]byte, error) {
 		return []byte{}, err
 	}
 	defer rc.Close()
-	return ioutil.ReadAll(rc)
+	return io.ReadAll(rc)
 }
 
 // ReadStream reads the key and returns the value (data) as an io.ReadCloser.
@@ -283,10 +269,7 @@ func (d *Diskv) ReadStream(key string, direct bool) (io.ReadCloser, error) {
 	if val, ok := d.cache[key]; ok {
 		if !direct {
 			buf := bytes.NewBuffer(val)
-			if d.Compression != nil {
-				return d.Compression.Reader(buf)
-			}
-			return ioutil.NopCloser(buf), nil
+			return io.NopCloser(buf), nil
 		}
 
 		go func() {
@@ -326,13 +309,7 @@ func (d *Diskv) readWithRLock(key string) (io.ReadCloser, error) {
 		r = &closingReader{f}
 	}
 
-	var rc = io.ReadCloser(ioutil.NopCloser(r))
-	if d.Compression != nil {
-		rc, err = d.Compression.Reader(r)
-		if err != nil {
-			return nil, err
-		}
-	}
+	var rc = io.ReadCloser(io.NopCloser(r))
 
 	return rc, nil
 }
@@ -399,11 +376,6 @@ func (d *Diskv) Erase(key string) error {
 	defer d.mu.Unlock()
 
 	d.bustCacheWithLock(key)
-
-	// erase from index
-	if d.Index != nil {
-		d.Index.Delete(key)
-	}
 
 	// erase from disk
 	filename := d.completeFilename(key)

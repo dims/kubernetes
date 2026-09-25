@@ -26,8 +26,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/peterbourgon/diskv"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/third_party/forked/diskv"
 )
 
 // copied from k8s.io/client-go/transport/round_trippers_test.go
