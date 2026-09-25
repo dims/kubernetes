@@ -6,8 +6,8 @@
         "reason": "pin to v1.9.0 until we figure out what the future of fsnotify library is, see #138812"
       },
       "github.com/google/cel-go": {
-        "version": "v0.29.2",
-        "reason": "pin to v0.29.2 until the CEL runtime cost changes in newer releases are handled, see #141056"
+        "version": "v0.30.0",
+        "reason": "pin to v0.30.0: v0.31.0 and later raise the estimated cost of optMap expressions, which CRD cost compatibility does not allow, see #141056, #141830, cel-expr/cel-go#1476 and #1477"
       },
       "github.com/grpc-ecosystem/grpc-gateway/v2": {
         "version": "v2.29.0",
