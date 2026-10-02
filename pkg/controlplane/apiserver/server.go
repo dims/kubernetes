@@ -46,6 +46,7 @@ import (
 	"k8s.io/kubernetes/pkg/controlplane/controller/leaderelection"
 	"k8s.io/kubernetes/pkg/controlplane/controller/legacytokentracking"
 	"k8s.io/kubernetes/pkg/controlplane/controller/systemnamespaces"
+	"k8s.io/kubernetes/pkg/controlplane/identity"
 	"k8s.io/kubernetes/pkg/routes"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 )
@@ -70,9 +71,9 @@ const (
 	// IdentityLeaseComponentLabelKey is used to apply a component label to identity lease objects, indicating:
 	//   1. the lease is an identity lease (different from leader election leases)
 	//   2. which component owns this lease
-	IdentityLeaseComponentLabelKey = "apiserver.kubernetes.io/identity"
+	IdentityLeaseComponentLabelKey = identity.LeaseComponentLabelKey
 	// KubeAPIServer defines variable used internally when referring to kube-apiserver component
-	KubeAPIServer = "kube-apiserver"
+	KubeAPIServer = identity.KubeAPIServer
 )
 
 // Server is a struct that contains a generic control plane apiserver instance
