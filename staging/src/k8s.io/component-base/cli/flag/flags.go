@@ -21,17 +21,15 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
+	"k8s.io/component-base/cli/flagvalue"
 	"k8s.io/klog/v2"
 )
 
 var underscoreWarnings = make(map[string]struct{})
 
-// WordSepNormalizeFunc changes all flags that contain "_" separators
+// WordSepNormalizeFunc is flagvalue.WordSepNormalizeFunc.
 func WordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
-	if strings.Contains(name, "_") {
-		return pflag.NormalizedName(strings.Replace(name, "_", "-", -1))
-	}
-	return pflag.NormalizedName(name)
+	return flagvalue.WordSepNormalizeFunc(f, name)
 }
 
 // WarnWordSepNormalizeFunc changes and warns for flags that contain "_" separators

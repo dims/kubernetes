@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/component-base/cli/flagvalue"
 	"k8s.io/component-base/featuregate"
 	"k8s.io/component-base/logs/internal/setverbositylevel"
 	"k8s.io/component-base/logs/klogflags"
@@ -144,7 +144,7 @@ func Validate(c *LoggingConfiguration, featureGate featuregate.FeatureGate, fldP
 	if c.Format != DefaultLogFormat {
 		// WordSepNormalizeFunc is just a guess. Commands should use it,
 		// but we cannot know for sure.
-		allFlags := unsupportedLoggingFlags(cliflag.WordSepNormalizeFunc)
+		allFlags := unsupportedLoggingFlags(flagvalue.WordSepNormalizeFunc)
 		for _, f := range allFlags {
 			if f.DefValue != f.Value.String() {
 				errs = append(errs, field.Invalid(fldPath.Child("format"), c.Format, fmt.Sprintf("Non-default format doesn't honor flag: %s", f.Name)))

@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/pflag"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/version"
-	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/component-base/cli/flagvalue"
 	"k8s.io/component-base/featuregate"
 	"k8s.io/component-base/metrics/prometheus/compatversion"
 	"k8s.io/klog/v2"
@@ -106,7 +106,7 @@ type componentGlobalsRegistry struct {
 	featureGatesConfig map[string][]string
 	// featureGatesConfigFlags stores a pointer to the flag value, allowing other commands
 	// to append to the feature gates configuration rather than overwriting it
-	featureGatesConfigFlags *cliflag.ColonSeparatedMultimapStringString
+	featureGatesConfigFlags *flagvalue.ColonSeparatedMultimapStringString
 	// set stores if the Set() function for the registry is already called.
 	set bool
 }
@@ -259,7 +259,7 @@ func (r *componentGlobalsRegistry) AddFlags(fs *pflag.FlagSet) {
 		"\nIf the component is not specified, defaults to \"kube\"")
 
 	if r.featureGatesConfigFlags == nil {
-		r.featureGatesConfigFlags = cliflag.NewColonSeparatedMultimapStringStringAllowDefaultEmptyKey(&r.featureGatesConfig)
+		r.featureGatesConfigFlags = flagvalue.NewColonSeparatedMultimapStringStringAllowDefaultEmptyKey(&r.featureGatesConfig)
 	}
 	fs.Var(r.featureGatesConfigFlags, "feature-gates", "Comma-separated list of component:key=value pairs that describe feature gates for alpha/experimental features of different components.\n"+
 		"If the component is not specified, defaults to \"kube\". This flag can be repeatedly invoked. For example: --feature-gates 'wardle:featureA=true,wardle:featureB=false' --feature-gates 'kube:featureC=true'"+
