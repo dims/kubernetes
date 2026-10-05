@@ -20,12 +20,12 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"text/template"
 	"unicode"
 
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 
+	"k8s.io/cli-runtime/third_party/forked/golang/text/template"
 	"k8s.io/kubectl/pkg/util/term"
 )
 
