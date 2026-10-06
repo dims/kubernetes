@@ -47,7 +47,7 @@ data:
       user:
         tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
   {{ .ProxyConfigMapKey }}: |-
-{{ .ProxyConfig}}
+{{ .ProxyConfig }}
 `
 
 	// KubeProxyDaemonSet19 is the proxy DaemonSet manifest for Kubernetes 1.9 and above

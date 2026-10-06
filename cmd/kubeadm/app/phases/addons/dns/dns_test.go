@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/lithammer/dedent"
 
@@ -37,46 +38,7 @@ import (
 
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
-	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 )
-
-func TestCompileManifests(t *testing.T) {
-	replicas := int32(coreDNSReplicas)
-	var tests = []struct {
-		name     string
-		manifest string
-		data     interface{}
-	}{
-		{
-			name:     "CoreDNSDeployment manifest",
-			manifest: CoreDNSDeployment,
-			data: struct {
-				DeploymentName, Image, ControlPlaneTaintKey string
-				Replicas                                    *int32
-			}{
-				DeploymentName:       "foo",
-				Image:                "foo",
-				ControlPlaneTaintKey: "foo",
-				Replicas:             &replicas,
-			},
-		},
-		{
-			name:     "CoreDNSConfigMap manifest",
-			manifest: CoreDNSConfigMap,
-			data: struct{ DNSDomain string }{
-				DNSDomain: "foo",
-			},
-		},
-	}
-	for _, rt := range tests {
-		t.Run(rt.name, func(t *testing.T) {
-			_, err := kubeadmutil.ParseTemplate(rt.manifest, rt.data)
-			if err != nil {
-				t.Errorf("unexpected ParseTemplate failure: %+v", err)
-			}
-		})
-	}
-}
 
 func TestGetDNSIP(t *testing.T) {
 	var tests = []struct {
@@ -124,32 +86,16 @@ func TestGetDNSIP(t *testing.T) {
 }
 
 func TestDeploymentsHaveSystemClusterCriticalPriorityClassName(t *testing.T) {
-	replicas := int32(coreDNSReplicas)
 	testCases := []struct {
-		name     string
-		manifest string
-		data     interface{}
+		name            string
+		deploymentBytes []byte
 	}{
-		{
-			name:     "CoreDNSDeployment",
-			manifest: CoreDNSDeployment,
-			data: struct {
-				DeploymentName, Image, ControlPlaneTaintKey, CoreDNSConfigMapName string
-				Replicas                                                          *int32
-			}{
-				DeploymentName:       "foo",
-				Image:                "foo",
-				ControlPlaneTaintKey: "foo",
-				CoreDNSConfigMapName: "foo",
-				Replicas:             &replicas,
-			},
-		},
+		{name: "CoreDNSDeployment", deploymentBytes: coreDNSDeploymentManifest("foo", "foo", "foo", coreDNSReplicas)},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			deploymentBytes, _ := kubeadmutil.ParseTemplate(testCase.manifest, testCase.data)
 			deployment := &apps.Deployment{}
-			if err := runtime.DecodeInto(clientsetscheme.Codecs.UniversalDecoder(), deploymentBytes, deployment); err != nil {
+			if err := runtime.DecodeInto(clientsetscheme.Codecs.UniversalDecoder(), testCase.deploymentBytes, deployment); err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
 			if deployment.Spec.Template.Spec.PriorityClassName != "system-cluster-critical" {
@@ -503,16 +449,8 @@ func TestCreateCoreDNSAddon(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := createClientAndCoreDNSManifest(t, tc.initialCorefileData, tc.coreDNSVersion)
 
-			configMapBytes, err := kubeadmutil.ParseTemplate(CoreDNSConfigMap, struct{ DNSDomain, UpstreamNameserver, StubDomain string }{
-				DNSDomain:          "cluster.local",
-				UpstreamNameserver: "/etc/resolv.conf",
-				StubDomain:         "",
-			})
-			if err != nil {
-				t.Errorf("unexpected ParseTemplate failure: %+v", err)
-			}
-
-			err = createCoreDNSAddon(nil, nil, configMapBytes, client)
+			configMapBytes := coreDNSConfigMapManifest("cluster.local")
+			err := createCoreDNSAddon(nil, nil, configMapBytes, client)
 			if err != nil {
 				t.Fatalf("error creating the CoreDNS Addon: %v", err)
 			}
@@ -1181,9 +1119,7 @@ metadata:
 }
 
 func TestCreateDNSService(t *testing.T) {
-	coreDNSServiceBytes, _ := kubeadmutil.ParseTemplate(CoreDNSService, struct{ DNSIP string }{
-		DNSIP: "10.233.0.3",
-	})
+	coreDNSServiceBytes := coreDNSServiceManifest("10.233.0.3")
 	type args struct {
 		dnsService   *v1.Service
 		serviceBytes []byte
@@ -1785,4 +1721,51 @@ func newMockClientForTest(t *testing.T, replicas int32, deploymentSize int, imag
 		}
 	}
 	return client
+}
+
+// The Corefile cache block as the manifest template carried it before the placeholder.
+const coreDNSCacheTemplate = `
+        {{- if .DNSDomain }} {
+           disable success {{ .DNSDomain }}
+           disable denial {{ .DNSDomain }}
+        }
+        {{- end }}`
+
+// TestManifestsMatchTemplates renders the manifests with text/template, the previous renderer, and compares.
+func TestManifestsMatchTemplates(t *testing.T) {
+	render := func(text string, data any) string {
+		var b strings.Builder
+		if err := template.Must(template.New("").Parse(text)).Execute(&b, data); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	for name, tc := range map[string]struct{ want, got string }{
+		"deployment": {
+			want: render(CoreDNSDeployment, struct {
+				DeploymentName, Image, ControlPlaneTaintKey string
+				Replicas                                    int32
+			}{"coredns", "registry.k8s.io/coredns/coredns:v1.14.7", "node-role.kubernetes.io/control-plane", 2}),
+			got: string(coreDNSDeploymentManifest("coredns", "registry.k8s.io/coredns/coredns:v1.14.7", "node-role.kubernetes.io/control-plane", 2)),
+		},
+		"configmap": {
+			want: render(strings.Replace(CoreDNSConfigMap, "{{ .CacheOptions }}", coreDNSCacheTemplate, 1), struct{ DNSDomain string }{"cluster.local"}),
+			got:  string(coreDNSConfigMapManifest("cluster.local")),
+		},
+		"configmap without domain": {
+			want: render(strings.Replace(CoreDNSConfigMap, "{{ .CacheOptions }}", coreDNSCacheTemplate, 1), struct{ DNSDomain string }{""}),
+			got:  string(coreDNSConfigMapManifest("")),
+		},
+		"service": {
+			want: render(CoreDNSService, struct{ DNSIP string }{"10.96.0.10"}),
+			got:  string(coreDNSServiceManifest("10.96.0.10")),
+		},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: got\n%s\nwant\n%s", name, tc.got, tc.want)
+		}
+		if strings.Contains(tc.got, "{{") {
+			t.Errorf("%s: placeholder left in\n%s", name, tc.got)
+		}
+	}
 }

@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -214,21 +215,7 @@ func createKubeProxyConfigMap(cfg *kubeadmapi.ClusterConfiguration, localEndpoin
 		fmt.Fprintf(&prefixBytes, "    %s\n", scanner.Text())
 	}
 
-	configMapBytes, err := kubeadmutil.ParseTemplate(KubeProxyConfigMap19,
-		struct {
-			ControlPlaneEndpoint string
-			ProxyConfig          string
-			ProxyConfigMap       string
-			ProxyConfigMapKey    string
-		}{
-			ControlPlaneEndpoint: controlPlaneEndpoint,
-			ProxyConfig:          prefixBytes.String(),
-			ProxyConfigMap:       constants.KubeProxyConfigMap,
-			ProxyConfigMapKey:    constants.KubeProxyConfigMapKey,
-		})
-	if err != nil {
-		return []byte(""), errors.Wrap(err, "error when parsing kube-proxy configmap template")
-	}
+	configMapBytes := kubeProxyConfigMapManifest(controlPlaneEndpoint, prefixBytes.String())
 
 	if printManifest {
 		return configMapBytes, nil
@@ -248,16 +235,10 @@ func createKubeProxyConfigMap(cfg *kubeadmapi.ClusterConfiguration, localEndpoin
 }
 
 func createKubeProxyAddon(cfg *kubeadmapi.ClusterConfiguration, client clientset.Interface, patchesDir string, output io.Writer, printManifest bool) ([]byte, error) {
-	daemonSetbytes, err := kubeadmutil.ParseTemplate(KubeProxyDaemonSet19, struct{ Image, ProxyConfigMap, ProxyConfigMapKey string }{
-		Image:             images.GetKubernetesImage(constants.KubeProxy, cfg),
-		ProxyConfigMap:    constants.KubeProxyConfigMap,
-		ProxyConfigMapKey: constants.KubeProxyConfigMapKey,
-	})
-	if err != nil {
-		return []byte(""), errors.Wrap(err, "error when parsing kube-proxy daemonset template")
-	}
+	daemonSetbytes := kubeProxyDaemonSetManifest(images.GetKubernetesImage(constants.KubeProxy, cfg))
 
 	if len(patchesDir) != 0 {
+		var err error
 		daemonSetbytes, err = applyKubeProxyDaemonSetPatches(daemonSetbytes, patchesDir, output)
 		if err != nil {
 			return []byte(""), errors.Wrap(err, "could not apply patches to the kube-proxy DaemonSet")
@@ -302,4 +283,23 @@ func applyKubeProxyDaemonSetPatches(kubeProxyDaemonSetBytes []byte, patchesDir s
 	}
 
 	return kubeProxyDaemonSetBytes, nil
+}
+
+// kubeProxyConfigMapManifest fills the placeholders of the kube-proxy ConfigMap manifest.
+func kubeProxyConfigMapManifest(controlPlaneEndpoint, proxyConfig string) []byte {
+	return []byte(strings.NewReplacer(
+		"{{ .ControlPlaneEndpoint }}", controlPlaneEndpoint,
+		"{{ .ProxyConfig }}", proxyConfig,
+		"{{ .ProxyConfigMap }}", constants.KubeProxyConfigMap,
+		"{{ .ProxyConfigMapKey }}", constants.KubeProxyConfigMapKey,
+	).Replace(KubeProxyConfigMap19))
+}
+
+// kubeProxyDaemonSetManifest fills the placeholders of the kube-proxy DaemonSet manifest.
+func kubeProxyDaemonSetManifest(image string) []byte {
+	return []byte(strings.NewReplacer(
+		"{{ .Image }}", image,
+		"{{ .ProxyConfigMap }}", constants.KubeProxyConfigMap,
+		"{{ .ProxyConfigMapKey }}", constants.KubeProxyConfigMapKey,
+	).Replace(KubeProxyDaemonSet19))
 }

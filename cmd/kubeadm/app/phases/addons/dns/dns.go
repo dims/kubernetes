@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/coredns/corefile-migration/migration"
@@ -39,7 +40,6 @@ import (
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/images"
-	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/errors"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/image"
@@ -103,48 +103,27 @@ func EnsureDNSAddon(cfg *kubeadmapi.ClusterConfiguration, client clientset.Inter
 }
 
 func coreDNSAddon(cfg *kubeadmapi.ClusterConfiguration, client clientset.Interface, replicas *int32, patchesDir string, out io.Writer, printManifest bool) error {
-	// Get the YAML manifest
-	coreDNSDeploymentBytes, err := kubeadmutil.ParseTemplate(CoreDNSDeployment, struct {
-		DeploymentName, Image, ControlPlaneTaintKey string
-		Replicas                                    *int32
-	}{
-		DeploymentName:       kubeadmconstants.CoreDNSDeploymentName,
-		Image:                images.GetDNSImage(cfg),
-		ControlPlaneTaintKey: kubeadmconstants.LabelNodeRoleControlPlane,
-		Replicas:             replicas,
-	})
-	if err != nil {
-		return errors.Wrap(err, "error when parsing CoreDNS deployment template")
+	if replicas == nil {
+		return errors.New("the CoreDNS replica count is nil")
 	}
+	coreDNSDeploymentBytes := coreDNSDeploymentManifest(kubeadmconstants.CoreDNSDeploymentName, images.GetDNSImage(cfg), kubeadmconstants.LabelNodeRoleControlPlane, *replicas)
 
 	// Apply patches to the CoreDNS Deployment
 	if len(patchesDir) != 0 {
+		var err error
 		coreDNSDeploymentBytes, err = applyCoreDNSDeploymentPatches(coreDNSDeploymentBytes, patchesDir, out)
 		if err != nil {
 			return errors.Wrap(err, "could not apply patches to the CoreDNS Deployment")
 		}
 	}
 
-	// Get the config file for CoreDNS
-	coreDNSConfigMapBytes, err := kubeadmutil.ParseTemplate(CoreDNSConfigMap, struct{ DNSDomain, UpstreamNameserver, StubDomain string }{
-		DNSDomain: cfg.Networking.DNSDomain,
-	})
-	if err != nil {
-		return errors.Wrap(err, "error when parsing CoreDNS configMap template")
-	}
+	coreDNSConfigMapBytes := coreDNSConfigMapManifest(cfg.Networking.DNSDomain)
 
 	dnsip, err := kubeadmconstants.GetDNSIP(cfg.Networking.ServiceSubnet)
 	if err != nil {
 		return err
 	}
-
-	coreDNSServiceBytes, err := kubeadmutil.ParseTemplate(CoreDNSService, struct{ DNSIP string }{
-		DNSIP: dnsip.String(),
-	})
-
-	if err != nil {
-		return errors.Wrap(err, "error when parsing CoreDNS service template")
-	}
+	coreDNSServiceBytes := coreDNSServiceManifest(dnsip.String())
 
 	if printManifest {
 		fmt.Fprint(out, "---")
@@ -413,4 +392,27 @@ func applyCoreDNSDeploymentPatches(coreDNSDeploymentBytes []byte, patchesDir str
 	}
 
 	return coreDNSDeploymentBytes, nil
+}
+
+// coreDNSDeploymentManifest fills the placeholders of the CoreDNS Deployment manifest.
+func coreDNSDeploymentManifest(deploymentName, image, controlPlaneTaintKey string, replicas int32) []byte {
+	return []byte(strings.NewReplacer(
+		"{{ .DeploymentName }}", deploymentName,
+		"{{ .Image }}", image,
+		"{{ .ControlPlaneTaintKey }}", controlPlaneTaintKey,
+		"{{ .Replicas }}", strconv.Itoa(int(replicas)),
+	).Replace(CoreDNSDeployment))
+}
+
+// coreDNSConfigMapManifest fills the Corefile; the cache options exist only with a DNS domain.
+func coreDNSConfigMapManifest(dnsDomain string) []byte {
+	cacheOptions := ""
+	if dnsDomain != "" {
+		cacheOptions = fmt.Sprintf(" {\n           disable success %[1]s\n           disable denial %[1]s\n        }", dnsDomain)
+	}
+	return []byte(strings.NewReplacer("{{ .DNSDomain }}", dnsDomain, "{{ .CacheOptions }}", cacheOptions).Replace(CoreDNSConfigMap))
+}
+
+func coreDNSServiceManifest(dnsIP string) []byte {
+	return []byte(strings.ReplaceAll(CoreDNSService, "{{ .DNSIP }}", dnsIP))
 }

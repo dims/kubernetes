@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/lithammer/dedent"
@@ -37,47 +38,9 @@ import (
 	core "k8s.io/client-go/testing"
 
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
-	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
+	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	configutil "k8s.io/kubernetes/cmd/kubeadm/app/util/config"
 )
-
-func TestCompileManifests(t *testing.T) {
-	var tests = []struct {
-		name     string
-		manifest string
-		data     interface{}
-	}{
-		{
-			name:     "KubeProxyConfigMap19",
-			manifest: KubeProxyConfigMap19,
-			data: struct {
-				ControlPlaneEndpoint, ProxyConfig, ProxyConfigMap, ProxyConfigMapKey string
-			}{
-				ControlPlaneEndpoint: "foo",
-				ProxyConfig:          "  bindAddress: 0.0.0.0\n  clusterCIDR: 192.168.1.1\n  enableProfiling: false",
-				ProxyConfigMap:       "bar",
-				ProxyConfigMapKey:    "baz",
-			},
-		},
-		{
-			name:     "KubeProxyDaemonSet19",
-			manifest: KubeProxyDaemonSet19,
-			data: struct{ Image, ProxyConfigMap, ProxyConfigMapKey string }{
-				Image:             "foo",
-				ProxyConfigMap:    "bar",
-				ProxyConfigMapKey: "baz",
-			},
-		},
-	}
-	for _, rt := range tests {
-		t.Run(rt.name, func(t *testing.T) {
-			_, err := kubeadmutil.ParseTemplate(rt.manifest, rt.data)
-			if err != nil {
-				t.Errorf("unexpected ParseTemplate failure: %+v", err)
-			}
-		})
-	}
-}
 
 func TestEnsureProxyAddon(t *testing.T) {
 	type SimulatedError int
@@ -180,14 +143,7 @@ func TestEnsureProxyAddon(t *testing.T) {
 }
 
 func TestApplyKubeProxyDaemonSetPatches(t *testing.T) {
-	daemonSetBytes, err := kubeadmutil.ParseTemplate(KubeProxyDaemonSet19, struct{ Image, ProxyConfigMap, ProxyConfigMapKey string }{
-		Image:             "foo",
-		ProxyConfigMap:    "bar",
-		ProxyConfigMapKey: "baz",
-	})
-	if err != nil {
-		t.Fatalf("unexpected ParseTemplate failure: %v", err)
-	}
+	daemonSetBytes := kubeProxyDaemonSetManifest("foo")
 
 	tmpDir := t.TempDir()
 	patchFile := filepath.Join(tmpDir, "kubeproxydaemonset+strategic.yaml")
@@ -217,25 +173,15 @@ func TestApplyKubeProxyDaemonSetPatches(t *testing.T) {
 
 func TestDaemonSetsHaveSystemNodeCriticalPriorityClassName(t *testing.T) {
 	testCases := []struct {
-		name     string
-		manifest string
-		data     interface{}
+		name           string
+		daemonSetBytes []byte
 	}{
-		{
-			name:     "KubeProxyDaemonSet19",
-			manifest: KubeProxyDaemonSet19,
-			data: struct{ Image, ProxyConfigMap, ProxyConfigMapKey string }{
-				Image:             "foo",
-				ProxyConfigMap:    "foo",
-				ProxyConfigMapKey: "foo",
-			},
-		},
+		{name: "KubeProxyDaemonSet19", daemonSetBytes: kubeProxyDaemonSetManifest("foo")},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			daemonSetBytes, _ := kubeadmutil.ParseTemplate(testCase.manifest, testCase.data)
 			daemonSet := &apps.DaemonSet{}
-			if err := runtime.DecodeInto(clientsetscheme.Codecs.UniversalDecoder(), daemonSetBytes, daemonSet); err != nil {
+			if err := runtime.DecodeInto(clientsetscheme.Codecs.UniversalDecoder(), testCase.daemonSetBytes, daemonSet); err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
 			if daemonSet.Spec.Template.Spec.PriorityClassName != "system-node-critical" {
@@ -355,4 +301,33 @@ func newMockClientForTest(t *testing.T) *clientsetfake.Clientset {
 	}
 
 	return client
+}
+
+// TestManifestsMatchTemplates renders the manifests with text/template, the previous renderer, and compares.
+func TestManifestsMatchTemplates(t *testing.T) {
+	render := func(text string, data any) string {
+		var b strings.Builder
+		if err := template.Must(template.New("").Parse(text)).Execute(&b, data); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	proxyConfig := "    bindAddress: 0.0.0.0\n    clusterCIDR: 10.0.0.0/8\n"
+	for name, tc := range map[string]struct{ want, got string }{
+		"configmap": {
+			want: render(KubeProxyConfigMap19, struct{ ControlPlaneEndpoint, ProxyConfig, ProxyConfigMap, ProxyConfigMapKey string }{"https://lb:6443", proxyConfig, constants.KubeProxyConfigMap, constants.KubeProxyConfigMapKey}),
+			got:  string(kubeProxyConfigMapManifest("https://lb:6443", proxyConfig)),
+		},
+		"daemonset": {
+			want: render(KubeProxyDaemonSet19, struct{ Image, ProxyConfigMap, ProxyConfigMapKey string }{"registry.k8s.io/kube-proxy:v1.38.0", constants.KubeProxyConfigMap, constants.KubeProxyConfigMapKey}),
+			got:  string(kubeProxyDaemonSetManifest("registry.k8s.io/kube-proxy:v1.38.0")),
+		},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: got\n%s\nwant\n%s", name, tc.got, tc.want)
+		}
+		if strings.Contains(tc.got, "{{") {
+			t.Errorf("%s: placeholder left in\n%s", name, tc.got)
+		}
+	}
 }

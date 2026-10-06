@@ -183,12 +183,7 @@ data:
         forward . /etc/resolv.conf {
            max_concurrent 1000
         }
-        cache 30
-        {{- if .DNSDomain }} {
-           disable success {{ .DNSDomain }}
-           disable denial {{ .DNSDomain }}
-        }
-        {{- end }}
+        cache 30{{ .CacheOptions }}
         loop
         reload
         loadbalance
