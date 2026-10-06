@@ -19,8 +19,8 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"strings"
-	"text/template"
 	"unicode"
 
 	"github.com/spf13/cobra"
@@ -39,8 +39,6 @@ func ActsAsRootCommand(cmd *cobra.Command, filters []string, groups ...CommandGr
 	}
 	templater := &templater{
 		RootCmd:       cmd,
-		UsageTemplate: MainUsageTemplate(),
-		HelpTemplate:  MainHelpTemplate(),
 		CommandGroups: groups,
 		Filtered:      filters,
 	}
@@ -51,19 +49,21 @@ func ActsAsRootCommand(cmd *cobra.Command, filters []string, groups ...CommandGr
 	return templater
 }
 
+// UseOptionsTemplates makes a command print only the flags every command accepts.
 func UseOptionsTemplates(cmd *cobra.Command) {
-	templater := &templater{
-		UsageTemplate: OptionsUsageTemplate(),
-		HelpTemplate:  OptionsHelpTemplate(),
-	}
-	cmd.SetUsageFunc(templater.UsageFunc())
-	cmd.SetHelpFunc(templater.HelpFunc())
+	cmd.SetUsageFunc(func(c *cobra.Command) error {
+		if !c.HasInheritedFlags() {
+			return nil
+		}
+		out := term.NewResponsiveWriter(c.OutOrStderr())
+		_, err := io.WriteString(out, "The following options can be passed to any command:\n\n"+flagsUsages(c.InheritedFlags()))
+		return err
+	})
+	cmd.SetHelpFunc(func(*cobra.Command, []string) {})
 }
 
 type templater struct {
-	UsageTemplate string
-	HelpTemplate  string
-	RootCmd       *cobra.Command
+	RootCmd *cobra.Command
 	CommandGroups
 	Filtered []string
 }
@@ -87,12 +87,8 @@ func (templater *templater) ExposeFlags(cmd *cobra.Command, flags ...string) Fla
 
 func (templater *templater) HelpFunc() func(*cobra.Command, []string) {
 	return func(c *cobra.Command, s []string) {
-		t := template.New("help")
-		t.Funcs(templater.templateFuncs())
-		template.Must(t.Parse(templater.HelpTemplate))
 		out := term.NewResponsiveWriter(c.OutOrStdout())
-		err := t.Execute(out, c)
-		if err != nil {
+		if _, err := io.WriteString(out, templater.help(c)); err != nil {
 			c.Println(err)
 		}
 	}
@@ -100,46 +96,78 @@ func (templater *templater) HelpFunc() func(*cobra.Command, []string) {
 
 func (templater *templater) UsageFunc(exposedFlags ...string) func(*cobra.Command) error {
 	return func(c *cobra.Command) error {
-		t := template.New("usage")
-		t.Funcs(templater.templateFuncs(exposedFlags...))
-		template.Must(t.Parse(templater.UsageTemplate))
 		out := term.NewResponsiveWriter(c.OutOrStderr())
-		return t.Execute(out, c)
+		_, err := io.WriteString(out, templater.usage(c, exposedFlags))
+		return err
 	}
 }
 
-func (templater *templater) templateFuncs(exposedFlags ...string) template.FuncMap {
-	return template.FuncMap{
-		"trim":                strings.TrimSpace,
-		"trimRight":           func(s string) string { return strings.TrimRightFunc(s, unicode.IsSpace) },
-		"trimLeft":            func(s string) string { return strings.TrimLeftFunc(s, unicode.IsSpace) },
-		"gt":                  cobra.Gt,
-		"eq":                  cobra.Eq,
-		"rpad":                rpad,
-		"appendIfNotPresent":  appendIfNotPresent,
-		"flagsNotIntersected": flagsNotIntersected,
-		"visibleFlags":        visibleFlags,
-		"flagsUsages":         flagsUsages,
-		"cmdGroups":           templater.cmdGroups,
-		"cmdGroupsString":     templater.cmdGroupsString,
-		"rootCmd":             templater.rootCmdName,
-		"isRootCmd":           templater.isRootCmd,
-		"optionsCmdFor":       templater.optionsCmdFor,
-		"usageLine":           templater.usageLine,
-		"reverseParentsNames": templater.reverseParentsNames,
-		"exposed": func(c *cobra.Command) *flag.FlagSet {
-			exposed := flag.NewFlagSet("exposed", flag.ContinueOnError)
-			if len(exposedFlags) > 0 {
-				for _, name := range exposedFlags {
-					if flag := c.Flags().Lookup(name); flag != nil {
-						exposed.AddFlag(flag)
-					}
-				}
-			}
-			return exposed
-		},
+// help is the long description, or the short one, followed by the usage.
+func (templater *templater) help(c *cobra.Command) string {
+	var b strings.Builder
+	if text := c.Long; text != "" || c.Short != "" {
+		if text == "" {
+			text = c.Short
+		}
+		b.WriteString(strings.TrimSpace(text))
 	}
+	if c.Runnable() || c.HasSubCommands() {
+		b.WriteString(c.UsageString())
+	}
+	return b.String()
 }
+
+// usage renders aliases, examples, subcommands, options, the usage line and the help hints.
+func (templater *templater) usage(c *cobra.Command, exposedFlags []string) string {
+	visible := visibleFlags(flagsNotIntersected(c.LocalFlags(), c.PersistentFlags()))
+	exposed := flag.NewFlagSet("exposed", flag.ContinueOnError)
+	for _, name := range exposedFlags {
+		if f := c.Flags().Lookup(name); f != nil {
+			exposed.AddFlag(f)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("\n\n")
+	if len(c.Aliases) > 0 {
+		b.WriteString("Aliases:\n" + c.NameAndAliases() + "\n\n")
+	}
+	if c.HasExample() {
+		b.WriteString("Examples:\n" + trimRight(c.Example) + "\n\n")
+	}
+	if c.HasAvailableSubCommands() {
+		b.WriteString(templater.cmdGroupsString(c) + "\n\n")
+	}
+	if visible.HasFlags() || exposed.HasFlags() {
+		b.WriteString("Options:\n")
+		if visible.HasFlags() {
+			b.WriteString(trimRight(flagsUsages(visible)))
+		}
+		if exposed.HasFlags() {
+			if visible.HasFlags() {
+				b.WriteString("\n")
+			}
+			b.WriteString(trimRight(flagsUsages(exposed)))
+		}
+		b.WriteString("\n\n")
+	}
+	if useLine := c.UseLine(); c.Runnable() && useLine != "" && useLine != templater.rootCmdName(c) {
+		b.WriteString("Usage:\n  " + templater.usageLine(c) + "\n\n")
+	}
+	if c.HasSubCommands() {
+		b.WriteString("Use \"")
+		for _, name := range templater.reverseParentsNames(c) {
+			b.WriteString(name + " ")
+		}
+		b.WriteString("<command> --help\" for more information about a given command.\n")
+	}
+	if optionsCmd := templater.optionsCmdFor(c); optionsCmd != "" {
+		b.WriteString("Use \"" + optionsCmd + "\" for a list of global command-line options (applies to all commands).\n")
+	}
+	return b.String()
+}
+
+func trimRight(s string) string { return strings.TrimRightFunc(s, unicode.IsSpace) }
 
 func (templater *templater) cmdGroups(c *cobra.Command, all []*cobra.Command) []CommandGroup {
 	if len(templater.CommandGroups) > 0 && c == templater.RootCmd {
@@ -161,7 +189,7 @@ func (t *templater) cmdGroupsString(c *cobra.Command) string {
 		cmds := []string{cmdGroup.Message}
 		for _, cmd := range cmdGroup.Commands {
 			if cmd.IsAvailableCommand() {
-				cmds = append(cmds, "  "+rpad(cmd.Name(), cmd.NamePadding())+"   "+cmd.Short)
+				cmds = append(cmds, fmt.Sprintf("  %-*s   %s", cmd.NamePadding(), cmd.Name(), cmd.Short))
 			}
 		}
 		groups = append(groups, strings.Join(cmds, "\n"))
@@ -229,7 +257,7 @@ func (t *templater) usageLine(c *cobra.Command) string {
 }
 
 // flagsUsages will print out the kubectl help flags
-func flagsUsages(f *flag.FlagSet) (string, error) {
+func flagsUsages(f *flag.FlagSet) string {
 	flagBuf := new(bytes.Buffer)
 	wrapLimit, err := term.GetWordWrapperLimit()
 	if err != nil {
@@ -244,7 +272,7 @@ func flagsUsages(f *flag.FlagSet) (string, error) {
 		printer.PrintHelpFlag(flag)
 	})
 
-	return flagBuf.String(), nil
+	return flagBuf.String()
 }
 
 // getFlagFormat will output the flag format
@@ -262,18 +290,6 @@ func getFlagFormat(f *flag.Flag) string {
 	}
 
 	return format
-}
-
-func rpad(s string, padding int) string {
-	template := fmt.Sprintf("%%-%ds", padding)
-	return fmt.Sprintf(template, s)
-}
-
-func appendIfNotPresent(s, stringToAppend string) string {
-	if strings.Contains(s, stringToAppend) {
-		return s
-	}
-	return s + " " + stringToAppend
 }
 
 func flagsNotIntersected(l *flag.FlagSet, r *flag.FlagSet) *flag.FlagSet {
