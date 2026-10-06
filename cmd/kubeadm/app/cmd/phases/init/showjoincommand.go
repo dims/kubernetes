@@ -17,8 +17,8 @@ limitations under the License.
 package phases
 
 import (
+	"fmt"
 	"io"
-	"text/template"
 
 	"github.com/lithammer/dedent"
 
@@ -28,13 +28,13 @@ import (
 )
 
 var (
-	initDoneTempl = template.Must(template.New("init").Parse(dedent.Dedent(`
+	initDoneMsg = dedent.Dedent(`
 		Your Kubernetes control-plane has initialized successfully!
 
 		To start using your cluster, you need to run the following as a regular user:
 
 		  mkdir -p $HOME/.kube
-		  sudo cp -i {{.KubeConfigPath}} $HOME/.kube/config
+		  sudo cp -i %s $HOME/.kube/config
 		  sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 		Alternatively, if you are the root user, you can run:
@@ -44,27 +44,27 @@ var (
 		You should now deploy a pod network to the cluster.
 		Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
 		  https://kubernetes.io/docs/concepts/cluster-administration/addons/
-
-		{{if .ControlPlaneEndpoint -}}
-		{{if .UploadCerts -}}
+		`)
+	joinControlPlaneUploadCertsMsg = dedent.Dedent(`
 		You can now join any number of control-plane nodes running the following command on each as root:
 
-		  {{.joinControlPlaneCommand}}
+		  %s
 
 		Please note that the certificate-key gives access to cluster sensitive data, keep it secret!
 		As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you can use
 		"kubeadm init phase upload-certs --upload-certs" to reload certs afterward.
-
-		{{else -}}
+		`)
+	joinControlPlaneMsg = dedent.Dedent(`
 		You can now join any number of control-plane nodes by copying certificate authorities
 		and service account keys on each node and then running the following as root:
 
-		  {{.joinControlPlaneCommand}}
+		  %s
+		`)
+	joinWorkerMsg = dedent.Dedent(`
+		Then you can join any number of worker nodes by running the following on each as root:
 
-		{{end}}{{end}}Then you can join any number of worker nodes by running the following on each as root:
-
-		{{.joinWorkerCommand}}
-		`)))
+		%s
+		`)
 )
 
 // NewShowJoinCommandPhase creates a kubeadm workflow phase that implements showing the join command.
@@ -107,13 +107,23 @@ func printJoinCommand(out io.Writer, adminKubeConfigPath, token string, i InitDa
 		return err
 	}
 
-	ctx := map[string]interface{}{
-		"KubeConfigPath":          adminKubeConfigPath,
-		"ControlPlaneEndpoint":    i.Cfg().ControlPlaneEndpoint,
-		"UploadCerts":             i.UploadCerts(),
-		"joinControlPlaneCommand": joinControlPlaneCommand,
-		"joinWorkerCommand":       joinWorkerCommand,
-	}
+	return writeInitDoneMessage(out, adminKubeConfigPath, i.Cfg().ControlPlaneEndpoint != "", i.UploadCerts(), joinControlPlaneCommand, joinWorkerCommand)
+}
 
-	return initDoneTempl.Execute(out, ctx)
+// writeInitDoneMessage writes the init success message; a control plane endpoint adds the control plane join section.
+func writeInitDoneMessage(out io.Writer, kubeConfigPath string, controlPlaneEndpoint, uploadCerts bool, joinControlPlaneCommand, joinWorkerCommand string) error {
+	if _, err := fmt.Fprintf(out, initDoneMsg, kubeConfigPath); err != nil {
+		return err
+	}
+	if controlPlaneEndpoint {
+		msg := joinControlPlaneMsg
+		if uploadCerts {
+			msg = joinControlPlaneUploadCertsMsg
+		}
+		if _, err := fmt.Fprintf(out, msg, joinControlPlaneCommand); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintf(out, joinWorkerMsg, joinWorkerCommand)
+	return err
 }

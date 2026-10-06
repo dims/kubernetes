@@ -17,9 +17,8 @@ limitations under the License.
 package util
 
 import (
-	"bytes"
 	"crypto/x509"
-	"html/template" //nolint:depguard
+	"fmt"
 	"strings"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -29,12 +28,6 @@ import (
 	kubeconfigutil "k8s.io/kubernetes/cmd/kubeadm/app/util/kubeconfig"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/pubkeypin"
 )
-
-var joinCommandTemplate = template.Must(template.New("join").Parse(`` +
-	`kubeadm join {{.ControlPlaneHostPort}} --token {{.Token}} \
-	{{range $h := .CAPubKeyPins}}--discovery-token-ca-cert-hash {{$h}} {{end}}{{if .ControlPlane}}\
-	--control-plane {{if .CertificateKey}}--certificate-key {{.CertificateKey}}{{end}}{{end}}`,
-))
 
 // GetJoinWorkerCommand returns the kubeadm join command for a given token and
 // Kubernetes cluster (the current cluster in the kubeconfig file)
@@ -83,25 +76,27 @@ func getJoinCommand(kubeConfigFile, token, key string, controlPlane, skipTokenPr
 		publicKeyPins = append(publicKeyPins, pubkeypin.Hash(caCert))
 	}
 
-	ctx := map[string]interface{}{
-		"Token":                token,
-		"CAPubKeyPins":         publicKeyPins,
-		"ControlPlaneHostPort": strings.Replace(clusterConfig.Server, "https://", "", -1),
-		"CertificateKey":       key,
-		"ControlPlane":         controlPlane,
-	}
-
 	if skipTokenPrint {
-		ctx["Token"] = template.HTML("<value withheld>")
+		token = "<value withheld>"
 	}
 	if skipCertificateKeyPrint {
-		ctx["CertificateKey"] = template.HTML("<value withheld>")
+		key = "<value withheld>"
 	}
+	return joinCommand(strings.Replace(clusterConfig.Server, "https://", "", -1), token, publicKeyPins, controlPlane, key), nil
+}
 
-	var out bytes.Buffer
-	err = joinCommandTemplate.Execute(&out, ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to render join command template")
+// joinCommand formats the kubeadm join command line.
+func joinCommand(hostPort, token string, caCertHashes []string, controlPlane bool, certificateKey string) string {
+	var out strings.Builder
+	fmt.Fprintf(&out, "kubeadm join %s --token %s \\\n\t", hostPort, token)
+	for _, hash := range caCertHashes {
+		fmt.Fprintf(&out, "--discovery-token-ca-cert-hash %s ", hash)
 	}
-	return out.String(), nil
+	if controlPlane {
+		out.WriteString("\\\n\t--control-plane ")
+		if certificateKey != "" {
+			fmt.Fprintf(&out, "--certificate-key %s", certificateKey)
+		}
+	}
+	return out.String()
 }

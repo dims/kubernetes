@@ -17,9 +17,7 @@ limitations under the License.
 package phases
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
 
 	"github.com/lithammer/dedent"
 
@@ -41,16 +39,16 @@ var (
 		kubeadm join phase preflight --config kubeadm-config.yaml
 		`)
 
-	notReadyToJoinControlPlaneTemp = template.Must(template.New("join").Parse(dedent.Dedent(`
+	notReadyToJoinControlPlaneMsg = dedent.Dedent(`
 		One or more conditions for hosting a new control plane instance is not satisfied.
 
-		{{.Error}}
+		%s
 
 		Please ensure that:
 		* The cluster has a stable controlPlaneEndpoint address.
 		* The certificates that must be shared among control plane instances are provided.
 
-		`)))
+		`)
 )
 
 // NewPreflightPhase creates a kubeadm workflow phase that implements preflight checks for a new node join
@@ -112,13 +110,7 @@ func runPreflight(c workflow.RunData) error {
 		hasCertificateKey := len(j.CertificateKey()) > 0
 		if err := checkIfReadyForAdditionalControlPlane(&initCfg.ClusterConfiguration, hasCertificateKey); err != nil {
 			// outputs the not ready for hosting a new control plane instance message
-			ctx := map[string]string{
-				"Error": err.Error(),
-			}
-
-			var msg bytes.Buffer
-			notReadyToJoinControlPlaneTemp.Execute(&msg, ctx)
-			return errors.New(msg.String())
+			return errors.Errorf(notReadyToJoinControlPlaneMsg, err)
 		}
 
 		// run kubeadm init preflight checks for checking all the prerequisites

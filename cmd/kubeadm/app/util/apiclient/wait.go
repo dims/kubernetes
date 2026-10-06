@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/lithammer/dedent"
@@ -57,14 +56,14 @@ const (
 )
 
 var (
-	controlPlaneFailTempl = template.Must(template.New("init").Parse(dedent.Dedent(`
+	controlPlaneFailMsg = dedent.Dedent(`
 	A control plane component may have crashed or exited when started by the container runtime.
 	To troubleshoot, list all containers using your preferred container runtimes CLI.
 	Here is one example how you may list all running Kubernetes containers by using crictl:
-		- 'crictl --runtime-endpoint {{ .Socket }} ps -a | grep kube | grep -v pause'
+		- 'crictl --runtime-endpoint %s ps -a | grep kube | grep -v pause'
 		Once you have found the failing container, you can inspect its logs with:
-		- 'crictl --runtime-endpoint {{ .Socket }} logs CONTAINERID'
-`)))
+		- 'crictl --runtime-endpoint %s logs CONTAINERID'
+`)
 
 	kubeletFailMsg = dedent.Dedent(`
 	Unfortunately, an error has occurred, likely caused by:
@@ -510,12 +509,7 @@ func getStaticPodSingleHash(client clientset.Interface, nodeName string, compone
 
 // PrintControlPlaneErrorHelpScreen prints help text on wait ControlPlane components errors.
 func PrintControlPlaneErrorHelpScreen(outputWriter io.Writer, criSocket string) {
-	context := struct {
-		Socket string
-	}{
-		Socket: criSocket,
-	}
-	_ = controlPlaneFailTempl.Execute(outputWriter, context)
+	_, _ = fmt.Fprintf(outputWriter, controlPlaneFailMsg, criSocket, criSocket)
 	_, _ = fmt.Fprintln(outputWriter, "")
 }
 

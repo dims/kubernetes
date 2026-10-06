@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/lithammer/dedent"
 	"github.com/spf13/cobra"
@@ -63,24 +62,24 @@ var (
 
 		`)
 
-	joinControlPlaneDoneTemp = template.Must(template.New("join").Parse(dedent.Dedent(`
+	joinControlPlaneDoneMsg = dedent.Dedent(`
 		This node has joined the cluster and a new control plane instance was created:
 
 		* Certificate signing request was sent to apiserver and approval was received.
 		* The Kubelet was informed of the new secure connection details.
 		* Control plane label and taint were applied to the new node.
 		* The Kubernetes control plane instances scaled up.
-		{{.etcdMessage}}
+		%s
 
 		To start administering your cluster from this node, you need to run the following as a regular user:
 
 			mkdir -p $HOME/.kube
-			sudo cp -i {{.KubeConfigPath}} $HOME/.kube/config
+			sudo cp -i %s $HOME/.kube/config
 			sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 		Run 'kubectl get nodes' to see this node join the cluster.
 
-		`)))
+		`)
 
 	joinLongDescription = dedent.Dedent(`
 		When joining a kubeadm initialized cluster, we need to establish
@@ -196,11 +195,7 @@ func newCmdJoin(out io.Writer, joinOptions *joinOptions) *cobra.Command {
 					etcdMessage = "* A new etcd member was added to the local/stacked etcd cluster."
 				}
 
-				ctx := map[string]string{
-					"KubeConfigPath": kubeadmconstants.GetAdminKubeConfigPath(),
-					"etcdMessage":    etcdMessage,
-				}
-				if err := joinControlPlaneDoneTemp.Execute(data.outputWriter, ctx); err != nil {
+				if _, err := fmt.Fprintf(data.outputWriter, joinControlPlaneDoneMsg, etcdMessage, kubeadmconstants.GetAdminKubeConfigPath()); err != nil {
 					return err
 				}
 
