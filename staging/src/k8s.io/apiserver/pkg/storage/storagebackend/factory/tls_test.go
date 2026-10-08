@@ -23,8 +23,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/server/v3/embed"
 	noopoteltrace "go.opentelemetry.io/otel/trace/noop"
 
 	apitesting "k8s.io/apimachinery/pkg/api/apitesting"
@@ -55,19 +53,8 @@ func TestTLSConnection(t *testing.T) {
 	certFile, keyFile, caFile := configureTLSCerts(t)
 	defer os.RemoveAll(filepath.Dir(certFile))
 
-	client := testserver.RunEtcd(t, func(etcdConfig *embed.Config) {
-		// override server config to be TLS-enabled
-		etcdConfig.ClientTLSInfo = transport.TLSInfo{
-			CertFile:      certFile,
-			KeyFile:       keyFile,
-			TrustedCAFile: caFile,
-		}
-		for i := range etcdConfig.ListenClientUrls {
-			etcdConfig.ListenClientUrls[i].Scheme = "https"
-		}
-		for i := range etcdConfig.AdvertiseClientUrls {
-			etcdConfig.AdvertiseClientUrls[i].Scheme = "https"
-		}
+	client := testserver.RunEtcd(t, func(cfg *testserver.Config) {
+		cfg.ClientCertFile, cfg.ClientKeyFile, cfg.ClientTrustedCAFile = certFile, keyFile, caFile
 	})
 	cfg := storagebackend.Config{
 		Type: storagebackend.StorageTypeETCD3,

@@ -109,5 +109,8 @@ for repo in $(kube::util::list_staging_repos); do
   popd >/dev/null 2>&1
 done
 
+# hack/etcd-testserver is its own module; update-vendor.sh tidies it.
+(cd hack/etcd-testserver && GOWORK=off go mod edit -require "${dep}@${rev}")
+
 echo ""
 echo "Run hack/update-vendor.sh to rebuild the vendor directory"

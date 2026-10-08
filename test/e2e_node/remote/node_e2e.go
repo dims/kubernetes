@@ -99,6 +99,15 @@ func (n *NodeE2ERemote) SetupTestPackage(tardir, systemSpecName string) error {
 		}
 	}
 
+	// The e2e services start etcd through hack/etcd-testserver, a separate
+	// module that the test binary looks for next to itself.
+	build := exec.Command("go", "build", "-o", filepath.Join(tardir, "etcd-testserver"), ".")
+	build.Dir = filepath.Join(rootDir, "hack/etcd-testserver")
+	build.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod", "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+builder.GetTargetBuildArch())
+	if out, err := build.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to build etcd-testserver: %v Output: %q", err, out)
+	}
+
 	// When e2e_node.test is invoked through these symlinks, it behaves like these
 	// separate binaries.
 	e2eNodeBinary := "e2e_node.test"

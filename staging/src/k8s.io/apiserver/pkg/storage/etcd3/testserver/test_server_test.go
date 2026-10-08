@@ -21,8 +21,6 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	"go.etcd.io/etcd/server/v3/embed"
 )
 
 // TestRunEtcdRecoversFromTakenPort claims a port that was selected for etcd
@@ -33,14 +31,14 @@ import (
 func TestRunEtcdRecoversFromTakenPort(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		addr func(cfg *embed.Config) string
+		addr func(cfg *Config) string
 	}{
-		{name: "client", addr: func(cfg *embed.Config) string { return cfg.ListenClientUrls[0].Host }},
-		{name: "peer", addr: func(cfg *embed.Config) string { return cfg.ListenPeerUrls[0].Host }},
+		{name: "client", addr: func(cfg *Config) string { return hostOf(cfg.ClientURL) }},
+		{name: "peer", addr: func(cfg *Config) string { return hostOf(cfg.PeerURL) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			called := int64(0)
-			client := RunEtcd(t, func(cfg *embed.Config) {
+			client := RunEtcd(t, func(cfg *Config) {
 				if called == 0 {
 					// grab the allocated port on the first attempt
 					taken := tc.addr(cfg)

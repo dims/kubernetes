@@ -28,7 +28,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/server/v3/embed"
 	"google.golang.org/grpc"
 	grpccodes "google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -45,6 +44,7 @@ import (
 	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/etcd3/metrics"
+	"k8s.io/apiserver/pkg/storage/etcd3/testserver"
 	etcdfeature "k8s.io/apiserver/pkg/storage/feature"
 	storagetesting "k8s.io/apiserver/pkg/storage/testing"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -104,7 +104,7 @@ func TestWatch(t *testing.T) {
 		storagetesting.RunTestWatchInitializationSignal(ctx, t, store)
 	})
 	t.Run("ProgressNotify", func(t *testing.T) {
-		ctx, store, client := testSetup(t, withClientConfig(func(clusterConfig *embed.Config) {
+		ctx, store, client := testSetup(t, withClientConfig(func(clusterConfig *testserver.Config) {
 			clusterConfig.WatchProgressNotifyInterval = time.Second
 		}))
 
@@ -117,7 +117,7 @@ func TestWatch(t *testing.T) {
 		storagetesting.RunTestWatchWithUnsafeDelete(ctx, t, &storeWithTransformerOverride{Interface: store, store: store}, corruptErr)
 	})
 	t.Run("WatchDispatchBookmarkEvents", func(t *testing.T) {
-		ctx, store, _ := testSetup(t, withClientConfig(func(clusterConfig *embed.Config) {
+		ctx, store, _ := testSetup(t, withClientConfig(func(clusterConfig *testserver.Config) {
 			clusterConfig.WatchProgressNotifyInterval = time.Second
 		}))
 

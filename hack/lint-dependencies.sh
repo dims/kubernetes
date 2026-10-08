@@ -45,6 +45,19 @@ export GOFLAGS=-mod=mod
 # let us log all errors before we exit
 rc=0
 
+# hack/etcd-testserver must agree with the root on every shared module.
+drift=$(cd hack/etcd-testserver && go mod edit -json | jq -r '.Require[] | "\(.Path) \(.Version)"' | while read -r mod ver; do
+  root=$(go mod edit -json ../../go.mod | jq -r --arg m "${mod}" '.Require[] | select(.Path == $m) | .Version')
+  if [[ -n "${root}" && "${root}" != "${ver}" ]]; then
+    echo "  ${mod}: hack/etcd-testserver ${ver}, root ${root}"
+  fi
+done)
+if [[ -n "${drift}" ]]; then
+  echo "hack/etcd-testserver/go.mod disagrees with the root; run hack/update-vendor.sh:"
+  echo "${drift}"
+  rc=1
+fi
+
 # List of dependencies we need to avoid dragging back into kubernetes/kubernetes
 # Check if unwanted dependencies are removed
 # The array and map in `unwanted-dependencies.json` are in alphabetical order.

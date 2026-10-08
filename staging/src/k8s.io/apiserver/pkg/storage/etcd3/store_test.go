@@ -34,7 +34,6 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/kubernetes"
-	"go.etcd.io/etcd/server/v3/embed"
 	"google.golang.org/grpc/grpclog"
 
 	corev1 "k8s.io/api/core/v1"
@@ -1051,7 +1050,7 @@ type setupOptions struct {
 
 type setupOption func(*setupOptions)
 
-func withClientConfig(f func(config *embed.Config)) setupOption {
+func withClientConfig(f func(config *testserver.Config)) setupOption {
 	return func(options *setupOptions) {
 		options.client = func(t testing.TB) *kubernetes.Client {
 			return testserver.RunEtcd(t, f)
@@ -1112,7 +1111,7 @@ func withDefaults(options *setupOptions) {
 var _ setupOption = withDefaults
 
 func benchmarkSetup(b *testing.B) (context.Context, *store) {
-	client := testserver.RunEtcd(b, func(cfg *embed.Config) {
+	client := testserver.RunEtcd(b, func(cfg *testserver.Config) {
 		cfg.QuotaBackendBytes = 4 << 30 // 4 GiB (default 2 GiB is too small for 150k pods)
 	})
 	config := storagetesting.StoreConfigForBenchmarks()

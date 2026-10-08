@@ -372,6 +372,9 @@ checkFDs() {
 
 checkFDs
 
+# Tests that need etcd exec hack/etcd-testserver; build it once up front.
+"${KUBE_ROOT}/hack/build-etcd-testserver.sh"
+
 runTests "$@"
 
 # We might run the tests for multiple versions, but we want to report only

@@ -270,6 +270,23 @@ xargs -L 100 go mod edit -fmt
 group_directives
 
 # === Add generated comments to go.mod files
+kube::log::status "go.mod: sync hack/etcd-testserver" >&11
+# The etcd test server is a separate module (keeps etcd/server out of the main
+# graph). Pin every module it shares with the root to the root's version, then tidy.
+(
+  cd hack/etcd-testserver
+  # Two passes: raising a version can pull new indirect requirements in.
+  for _ in 1 2; do
+    go mod edit -json | jq -r '.Require[].Path' | while read -r mod; do
+      ver=$(go mod edit -json ../../go.mod | jq -r --arg m "${mod}" '.Require[] | select(.Path == $m) | .Version')
+      if [[ -n "${ver}" ]]; then
+        go mod edit -require "${mod}@${ver}"
+      fi
+    done
+    go mod tidy >>"${LOG_FILE}" 2>&1
+  done
+)
+
 kube::log::status "go.mod: adding generated comments" >&11
 add_generated_comments "
 // This is a generated file. Do not edit directly.
