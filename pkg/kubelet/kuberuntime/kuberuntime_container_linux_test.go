@@ -2350,6 +2350,9 @@ func TestGenerateUpdatePodSandboxResourcesRequest(t *testing.T) {
 	podLimitMemory := resource.MustParse("256Mi")
 	podOverheadCPU := resource.MustParse("100m")
 	podOverheadMemory := resource.MustParse("64Mi")
+	podHugepages2Mi := resource.MustParse("4Mi")
+	podHugepages1Gi := resource.MustParse("2Gi")
+	podOverheadHugepages1Gi := resource.MustParse("1Gi")
 	enforceCPULimits := true
 	m.cpuCFSQuota = true
 
@@ -2720,6 +2723,40 @@ func TestGenerateUpdatePodSandboxResourcesRequest(t *testing.T) {
 					Overhead: v1.ResourceList{
 						v1.ResourceCPU:    podOverheadCPU,
 						v1.ResourceMemory: podOverheadMemory,
+					},
+				},
+			},
+		},
+		{
+			name:             "Guaranteed with hugepages and hugepage overhead",
+			qosClass:         v1.PodQOSGuaranteed,
+			enforceCPULimits: enforceCPULimits,
+			sandboxID:        "7",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name: "foo",
+							Resources: v1.ResourceRequirements{
+								Requests: v1.ResourceList{
+									v1.ResourceCPU:    podLimitCPU,
+									v1.ResourceMemory: podLimitMemory,
+									"hugepages-2Mi":   podHugepages2Mi,
+									"hugepages-1Gi":   podHugepages1Gi,
+								},
+								Limits: v1.ResourceList{
+									v1.ResourceCPU:    podLimitCPU,
+									v1.ResourceMemory: podLimitMemory,
+									"hugepages-2Mi":   podHugepages2Mi,
+									"hugepages-1Gi":   podHugepages1Gi,
+								},
+							},
+						},
+					},
+					Overhead: v1.ResourceList{
+						v1.ResourceCPU:    podOverheadCPU,
+						v1.ResourceMemory: podOverheadMemory,
+						"hugepages-1Gi":   podOverheadHugepages1Gi,
 					},
 				},
 			},

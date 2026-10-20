@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -30,6 +32,7 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/klog/v2"
+	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -454,7 +457,25 @@ func convertResourceConfigToLinuxContainerResources(rc *cm.ResourceConfig) *runt
 		}
 	}
 
+	lcr.HugepageLimits = toCRIHugepageLimits(rc.HugePageLimit)
+
 	return lcr
+}
+
+// toCRIHugepageLimits converts hugepage limits keyed by page size in bytes
+// into CRI entries, smallest page size first. Sandbox entries are pod
+// aggregates that let VM-based runtimes size the sandbox. They are not cgroup
+// limits, so page sizes the pod does not use are left out.
+func toCRIHugepageLimits(limits map[int64]int64) []*runtimeapi.HugepageLimit {
+	var out []*runtimeapi.HugepageLimit
+	for _, pageSize := range slices.Sorted(maps.Keys(limits)) {
+		name, err := v1helper.HugePageUnitSizeFromByteSize(pageSize)
+		if err != nil || limits[pageSize] <= 0 {
+			continue
+		}
+		out = append(out, &runtimeapi.HugepageLimit{PageSize: name, Limit: uint64(limits[pageSize])})
+	}
+	return out
 }
 
 var signalNameToRuntimeEnum = map[string]runtimeapi.Signal{

@@ -19,6 +19,8 @@ limitations under the License.
 package kuberuntime
 
 import (
+	"maps"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 )
@@ -54,6 +56,15 @@ func subtractOverheadFromResourceConfig(resCfg *cm.ResourceConfig, pod *v1.Pod) 
 				}
 
 				rc.Memory = &currMemory
+			}
+		}
+
+		if overhead := cm.HugePageLimits(pod.Spec.Overhead); len(overhead) > 0 && rc.HugePageLimit != nil {
+			rc.HugePageLimit = maps.Clone(rc.HugePageLimit)
+			for pageSize, quantity := range overhead {
+				if limit, ok := rc.HugePageLimit[pageSize]; ok {
+					rc.HugePageLimit[pageSize] = limit - quantity
+				}
 			}
 		}
 	}

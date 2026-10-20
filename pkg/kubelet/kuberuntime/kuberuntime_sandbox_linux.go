@@ -27,6 +27,7 @@ import (
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/pkg/kubelet/cm"
 
 	resourcehelper "k8s.io/component-helpers/resource"
 )
@@ -40,6 +41,7 @@ func (m *kubeGenericRuntimeManager) convertOverheadToLinuxResources(pod *v1.Pod)
 		// For overhead, we do not differentiate between requests and limits. Treat this overhead
 		// as "guaranteed", with requests == limits
 		resources = m.calculateLinuxResources(cpu, cpu, memory, false)
+		resources.HugepageLimits = toCRIHugepageLimits(cm.HugePageLimits(pod.Spec.Overhead))
 	}
 
 	return resources
@@ -63,7 +65,10 @@ func (m *kubeGenericRuntimeManager) calculateSandboxResources(ctx context.Contex
 	hasExclusiveCPUs := m.containerManager.PodHasExclusiveCPUs(logger, pod)
 
 	logger.V(5).Info("Enforcing CFS quota", "pod", klog.KObj(pod), "unlimited", hasExclusiveCPUs)
-	return m.calculateLinuxResources(cpuRequest, lim.Cpu(), lim.Memory(), hasExclusiveCPUs)
+	resources := m.calculateLinuxResources(cpuRequest, lim.Cpu(), lim.Memory(), hasExclusiveCPUs)
+	// Lets VM-based runtimes size the sandbox before any container exists.
+	resources.HugepageLimits = toCRIHugepageLimits(cm.HugePageLimits(lim))
+	return resources
 }
 
 func (m *kubeGenericRuntimeManager) applySandboxResources(ctx context.Context, pod *v1.Pod, config *runtimeapi.PodSandboxConfig) error {

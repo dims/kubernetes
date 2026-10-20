@@ -410,6 +410,53 @@ func TestApplySandboxResources(t *testing.T) {
 			expectedOverhead: &runtimeapi.LinuxContainerResources{},
 			cgroupVersion:    cgroupV2,
 		},
+		{
+			description: "pod with hugepages and hugepage overhead",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					InitContainers: []v1.Container{
+						{
+							Name: "init",
+							Resources: v1.ResourceRequirements{
+								Requests: v1.ResourceList{"hugepages-1Gi": resource.MustParse("2Gi")},
+								Limits:   v1.ResourceList{"hugepages-1Gi": resource.MustParse("2Gi")},
+							},
+						},
+					},
+					Containers: []v1.Container{
+						{
+							Name: "c1",
+							Resources: v1.ResourceRequirements{
+								Requests: v1.ResourceList{v1.ResourceMemory: resource.MustParse("256Mi"), "hugepages-2Mi": resource.MustParse("4Mi"), "hugepages-1Gi": resource.MustParse("1Gi")},
+								Limits:   v1.ResourceList{v1.ResourceMemory: resource.MustParse("256Mi"), "hugepages-2Mi": resource.MustParse("4Mi"), "hugepages-1Gi": resource.MustParse("1Gi")},
+							},
+						},
+						{
+							Name: "c2",
+							Resources: v1.ResourceRequirements{
+								Requests: v1.ResourceList{v1.ResourceMemory: resource.MustParse("256Mi"), "hugepages-2Mi": resource.MustParse("6Mi")},
+								Limits:   v1.ResourceList{v1.ResourceMemory: resource.MustParse("256Mi"), "hugepages-2Mi": resource.MustParse("6Mi")},
+							},
+						},
+					},
+					Overhead: v1.ResourceList{v1.ResourceMemory: resource.MustParse("64Mi"), "hugepages-1Gi": resource.MustParse("1Gi")},
+				},
+			},
+			expectedResource: &runtimeapi.LinuxContainerResources{
+				MemoryLimitInBytes: 536870912,
+				CpuPeriod:          100000,
+				CpuShares:          2,
+				// 2Mi: c1 4Mi + c2 6Mi. 1Gi: init container peak 2Gi beats c1 1Gi. Overhead excluded.
+				HugepageLimits: []*runtimeapi.HugepageLimit{{PageSize: "2MB", Limit: 10 << 20}, {PageSize: "1GB", Limit: 2 << 30}},
+			},
+			expectedOverhead: &runtimeapi.LinuxContainerResources{
+				MemoryLimitInBytes: 67108864,
+				CpuPeriod:          100000,
+				CpuShares:          2,
+				HugepageLimits:     []*runtimeapi.HugepageLimit{{PageSize: "1GB", Limit: 1 << 30}},
+			},
+			cgroupVersion: cgroupV1,
+		},
 	}
 
 	for i, test := range tests {
