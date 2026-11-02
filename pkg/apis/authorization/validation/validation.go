@@ -63,7 +63,7 @@ func ValidateSubjectAccessReviewCreate(ctx context.Context, scheme *runtime.Sche
 
 	errs := apiservervalidation.ValidateSubjectAccessReview(versionedSAR)
 	dv := rest.DeclarativeValidation{Scheme: scheme}
-	return dv.ValidateDeclaratively(ctx, sar, nil, errs, operation.Create, apiservervalidation.DeclarativeValidationConfig())
+	return dv.ValidateDeclaratively(ctx, sar, nil, errs, operation.Create, rest.DeclarativeValidationConfig{Options: apiservervalidation.DeclarativeValidationOptions()})
 }
 
 // ValidateSelfSubjectAccessReviewCreate is the single composition of handwritten and declarative
@@ -81,7 +81,7 @@ func ValidateSelfSubjectAccessReviewCreate(ctx context.Context, scheme *runtime.
 
 	errs := apiservervalidation.ValidateSelfSubjectAccessReview(versionedSAR)
 	dv := rest.DeclarativeValidation{Scheme: scheme}
-	return dv.ValidateDeclaratively(ctx, sar, nil, errs, operation.Create, apiservervalidation.DeclarativeValidationConfig())
+	return dv.ValidateDeclaratively(ctx, sar, nil, errs, operation.Create, rest.DeclarativeValidationConfig{Options: apiservervalidation.DeclarativeValidationOptions()})
 }
 
 // ValidateLocalSubjectAccessReviewCreate is the single composition of handwritten and declarative
@@ -99,7 +99,7 @@ func ValidateLocalSubjectAccessReviewCreate(ctx context.Context, scheme *runtime
 
 	errs := apiservervalidation.ValidateLocalSubjectAccessReview(versionedSAR)
 	dv := rest.DeclarativeValidation{Scheme: scheme}
-	return dv.ValidateDeclaratively(ctx, sar, nil, errs, operation.Create, apiservervalidation.DeclarativeValidationConfig())
+	return dv.ValidateDeclaratively(ctx, sar, nil, errs, operation.Create, rest.DeclarativeValidationConfig{Options: apiservervalidation.DeclarativeValidationOptions()})
 }
 
 // ValidateAuthorizationConditionsReviewCreate is the single composition of handwritten and declarative
@@ -114,5 +114,5 @@ func ValidateAuthorizationConditionsReviewCreate(ctx context.Context, scheme *ru
 
 	errs := apiservervalidation.ValidateAuthorizationConditionsReview(versionedACR)
 	dv := rest.DeclarativeValidation{Scheme: scheme}
-	return dv.ValidateDeclaratively(ctx, acr, nil, errs, operation.Create, apiservervalidation.DeclarativeValidationConfig())
+	return dv.ValidateDeclaratively(ctx, acr, nil, errs, operation.Create, rest.DeclarativeValidationConfig{Options: apiservervalidation.DeclarativeValidationOptions()})
 }

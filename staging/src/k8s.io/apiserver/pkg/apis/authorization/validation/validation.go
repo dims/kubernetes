@@ -28,7 +28,6 @@ import (
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericfeatures "k8s.io/apiserver/pkg/features"
-	"k8s.io/apiserver/pkg/registry/rest"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
@@ -304,14 +303,11 @@ func ValidateAuthorizationConditionsResponse(resp *authorizationv1alpha1.Authori
 	return allErrs
 }
 
-// GetDeclarativeValidationOptions returns the options used in the authorization.k8s.io API group
-// DeclarativeValidationConfig returns the declarative validation config for the
+// DeclarativeValidationOptions returns the declarative validation options for the
 // authorization.k8s.io API group.
-func DeclarativeValidationConfig() rest.DeclarativeValidationConfig {
-	return rest.DeclarativeValidationConfig{
-		Options: map[string]bool{
-			string(genericfeatures.ConditionalAuthorization): utilfeature.DefaultFeatureGate.Enabled(genericfeatures.ConditionalAuthorization),
-		},
+func DeclarativeValidationOptions() map[string]bool {
+	return map[string]bool{
+		string(genericfeatures.ConditionalAuthorization): utilfeature.DefaultFeatureGate.Enabled(genericfeatures.ConditionalAuthorization),
 	}
 }
 
@@ -326,7 +322,7 @@ func CombinedValidateSubjectAccessReviewCreate(ctx context.Context, sar *authori
 
 	op := operation.Operation{
 		Type:    operation.Create,
-		Options: DeclarativeValidationConfig().Options,
+		Options: DeclarativeValidationOptions(),
 	}
 	declarativeErrs := authorizationv1.Validate_SubjectAccessReview(ctx, op, nil /* fldPath */, sar, nil)
 	errs = append(errs, declarativeErrs...)
@@ -344,7 +340,7 @@ func CombinedValidateAuthorizationConditionsReviewCreate(ctx context.Context, ac
 
 	op := operation.Operation{
 		Type:    operation.Create,
-		Options: DeclarativeValidationConfig().Options,
+		Options: DeclarativeValidationOptions(),
 	}
 	declarativeErrs := authorizationv1alpha1.Validate_AuthorizationConditionsReview(ctx, op, nil /* fldPath */, acr, nil)
 	errs = append(errs, declarativeErrs...)

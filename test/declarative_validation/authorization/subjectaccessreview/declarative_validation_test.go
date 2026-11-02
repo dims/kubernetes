@@ -410,7 +410,7 @@ func testDeclarativeValidate(t *testing.T, apiVersion string) {
 				sar := obj.(*authorization.SubjectAccessReview)
 				return authorizationvalidation.ValidateSubjectAccessReviewCreate(ctx, legacyscheme.Scheme, sar)
 			}, tc.expectedErrs,
-				apitesting.WithOptions(apiserverauthorizationvalidation.DeclarativeValidationConfig().Options),
+				apitesting.WithOptions(apiserverauthorizationvalidation.DeclarativeValidationOptions()),
 				// authorization.k8s.io/v1beta1 has no authorizationOptions or
 				// conditionalDecision, so converting to it drops those fields and that
 				// version cannot report errors under them. Only errors on those paths are
