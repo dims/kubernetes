@@ -6,3 +6,10 @@ rules:
     forbiddenPrefixes:
       - ''
     transitive: true
+  # The kubelet evaluates no CEL expressions. cel-go and its antlr parser used
+  # to arrive through the apiserver admission stack and cost the binary 2.4 MB.
+  - selectorRegexp: ^(cel[.]dev/cel-go|github[.]com/antlr4-go/antlr/v4)(/|$)
+    forbiddenPrefixes:
+      - cel.dev/cel-go
+      - github.com/antlr4-go/antlr/v4
+    transitive: true
