@@ -654,3 +654,65 @@ func TestProbeH2C_H2C_Timeout(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, probe.Failure, result)
 }
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestLimitHosts(t *testing.T) {
+	longest := strings.Repeat("é", maxHostRunes)
+	tooLong := longest + "é"
+	tests := []struct {
+		name       string
+		urlHost    string
+		hostHeader string
+		location   string
+		wantSent   bool
+		wantErr    string
+	}{
+		{name: "longest valid host", urlHost: longest, wantSent: true},
+		{name: "URL host too long", urlHost: tooLong, wantErr: "request host"},
+		{name: "Host header too long", urlHost: "a", hostHeader: tooLong + ":8080", wantErr: "request host"},
+		{name: "redirect to a valid host", urlHost: "a", location: "http://b/", wantSent: true},
+		{name: "redirect to a host that is too long", urlHost: "a", location: "http://" + tooLong + "/", wantSent: true, wantErr: "redirect host"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sent := false
+			rt := LimitHosts(roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				sent = true
+				resp := &http.Response{StatusCode: http.StatusFound, Header: http.Header{}, Body: http.NoBody, Request: req}
+				if tt.location != "" {
+					resp.Header.Set("Location", tt.location)
+				}
+				return resp, nil
+			}))
+			req, err := http.NewRequest(http.MethodGet, (&url.URL{Scheme: "http", Host: tt.urlHost, Path: "/"}).String(), nil)
+			require.NoError(t, err)
+			req.Host = tt.hostHeader
+
+			_, err = rt.RoundTrip(req)
+			assert.Equal(t, tt.wantSent, sent, "request sent")
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestHTTPProbeChecker_RedirectToLongHost(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://"+strings.Repeat("é", maxHostRunes+1)+"/", http.StatusFound)
+	}))
+	defer server.Close()
+
+	target, err := url.Parse(server.URL)
+	require.NoError(t, err)
+	req, err := NewProbeRequest(target, nil)
+	require.NoError(t, err)
+	result, _, err := New(false).Probe(req, wait.ForeverTestTimeout)
+	require.NoError(t, err)
+	assert.Equal(t, probe.Failure, result)
+}

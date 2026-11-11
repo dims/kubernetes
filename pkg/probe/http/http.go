@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
+	"unicode/utf8"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/probe"
@@ -32,6 +34,10 @@ import (
 
 const (
 	maxRespBodyLength = 10 * 1 << 10 // 10KB
+
+	// A DNS name has at most 253 octets and every rune takes at least one in
+	// its ASCII form, so a longer host is never valid.
+	maxHostRunes = 253
 )
 
 // New creates Prober that will skip TLS verification while probing.
@@ -72,7 +78,43 @@ func NewWithTLSConfig(config *tls.Config, followNonLocalRedirects bool) Prober {
 	h2cTransport.Protocols = new(http.Protocols)
 	h2cTransport.Protocols.SetUnencryptedHTTP2(true)
 
-	return httpProber{transport, h2cTransport, followNonLocalRedirects}
+	return httpProber{LimitHosts(transport), LimitHosts(h2cTransport), followNonLocalRedirects}
+}
+
+// LimitHosts wraps rt to fail requests to, and redirects towards, a host
+// longer than a DNS name can be. net/http converts such a host to ASCII before
+// it rejects it, at a cost quadratic in its length that no timeout bounds.
+// The host of a request and the Host header come from the pod spec; the host
+// of a redirect comes from the container.
+func LimitHosts(rt http.RoundTripper) http.RoundTripper {
+	return hostLimiter{rt}
+}
+
+type hostLimiter struct {
+	rt http.RoundTripper
+}
+
+func (h hostLimiter) RoundTrip(req *http.Request) (*http.Response, error) {
+	// req.Host may carry a port.
+	if hostTooLong(req.URL.Hostname()) || hostTooLong((&url.URL{Host: req.Host}).Hostname()) {
+		if req.Body != nil {
+			req.Body.Close()
+		}
+		return nil, fmt.Errorf("request host exceeds the %d characters of a DNS name", maxHostRunes)
+	}
+	resp, err := h.rt.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	if loc, err := resp.Location(); err == nil && hostTooLong(loc.Hostname()) {
+		resp.Body.Close()
+		return nil, fmt.Errorf("redirect host exceeds the %d characters of a DNS name", maxHostRunes)
+	}
+	return resp, nil
+}
+
+func hostTooLong(host string) bool {
+	return utf8.RuneCountInString(host) > maxHostRunes
 }
 
 // Prober is an interface that defines the Probe function for doing HTTP readiness/liveness checks.
@@ -82,8 +124,8 @@ type Prober interface {
 }
 
 type httpProber struct {
-	transport               *http.Transport
-	h2cTransport            *http.Transport
+	transport               http.RoundTripper
+	h2cTransport            http.RoundTripper
 	followNonLocalRedirects bool
 }
 
