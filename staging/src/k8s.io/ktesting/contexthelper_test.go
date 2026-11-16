@@ -173,14 +173,18 @@ func TestCause(t *testing.T) {
 			timeout:        time.Minute,
 			expectDeadline: time.Minute,
 		},
+		// The cancel cases need a timeout that cannot expire before the
+		// explicit cancel. A zero timeout fires at once and races with it.
 		"cancelCause": {
 			parentCtx:   contextBackground,
+			timeout:     time.Minute,
 			cancelCause: &cancelCause,
 			expectErr:   context.Canceled,
 			expectCause: cancelCause,
 		},
 		"cancelText": {
 			parentCtx:   contextBackground,
+			timeout:     time.Minute,
 			cancelText:  &cancelText,
 			expectErr:   context.Canceled,
 			expectCause: cancelCause,
@@ -189,6 +193,7 @@ func TestCause(t *testing.T) {
 			// Canceling with an empty string must preserve the standard
 			// context.Canceled cause, just like context.CancelFunc does.
 			parentCtx:   contextBackground,
+			timeout:     time.Minute,
 			cancelText:  new(string),
 			expectErr:   context.Canceled,
 			expectCause: context.Canceled,
@@ -198,6 +203,7 @@ func TestCause(t *testing.T) {
 			// context.CancelCauseFunc, so nil must also result in the
 			// standard context.Canceled cause.
 			parentCtx:   contextBackground,
+			timeout:     time.Minute,
 			cancelCause: new(error),
 			expectErr:   context.Canceled,
 			expectCause: context.Canceled,
