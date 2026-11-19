@@ -30,9 +30,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/wait"
 	apiserverfeat "k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/server"
 	flagzv1alpha1 "k8s.io/apiserver/pkg/server/flagz/api/v1alpha1"
@@ -842,53 +844,45 @@ users:
 	}
 	client := &http.Client{Transport: tr}
 
-	req, err := http.NewRequest(http.MethodGet, metricsURL, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Token %s", token))
-	r, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("failed to GET /metrics: %v", err)
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		t.Fatalf("failed to read response body: %v", err)
-	}
-	if err = r.Body.Close(); err != nil {
-		t.Fatalf("failed to close response body: %v", err)
-	}
-
-	if r.StatusCode != http.StatusOK {
-		t.Fatalf("want status %d, got %d: %s", http.StatusOK, r.StatusCode, string(body))
-	}
-
-	// Parse metrics using testutil
-	metrics := testutil.NewMetrics()
-	if err := testutil.ParseMetrics(string(body), &metrics); err != nil {
-		t.Fatalf("failed to parse metrics: %v", err)
-	}
-
-	// Verify that informer_queued_items metric exists
+	// The informers start after the secure server does, so /healthz can be ok
+	// before the metric exists. Poll until a sample with the
+	// kube-controller-manager name shows up.
 	wantMetricName := "informer_queued_items"
-	samples, found := metrics[wantMetricName]
-	if !found {
-		t.Fatalf("expected metrics to contain %q, but it was not found", wantMetricName)
-	}
-
-	// Verify that at least one sample has the kube-controller-manager name label
 	wantLabelValue := testutil.LabelValue("kube-controller-manager")
-	foundKCM := false
-	for _, sample := range samples {
-		if nameLabel, ok := sample.Metric["name"]; ok && nameLabel == wantLabelValue {
-			foundKCM = true
-			t.Logf("Found expected metric: %s", sample.String())
-			break
+	err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, wait.ForeverTestTimeout, true, func(ctx context.Context) (bool, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, metricsURL, nil)
+		if err != nil {
+			return false, err
 		}
-	}
-	if !foundKCM {
-		t.Errorf("expected to find informer_queued_items metric with name=\"kube-controller-manager\" label")
+		req.Header.Add("Authorization", fmt.Sprintf("Token %s", token))
+		r, err := client.Do(req)
+		if err != nil {
+			return false, fmt.Errorf("failed to GET /metrics: %w", err)
+		}
+		body, err := io.ReadAll(r.Body)
+		if closeErr := r.Body.Close(); err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			return false, fmt.Errorf("failed to read response body: %w", err)
+		}
+		if r.StatusCode != http.StatusOK {
+			return false, fmt.Errorf("want status %d, got %d: %s", http.StatusOK, r.StatusCode, string(body))
+		}
+		metrics := testutil.NewMetrics()
+		if err := testutil.ParseMetrics(string(body), &metrics); err != nil {
+			return false, fmt.Errorf("failed to parse metrics: %w", err)
+		}
+		for _, sample := range metrics[wantMetricName] {
+			if nameLabel, ok := sample.Metric["name"]; ok && nameLabel == wantLabelValue {
+				t.Logf("Found expected metric: %s", sample.String())
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Fatalf("expected a %s sample with name=%q: %v", wantMetricName, "kube-controller-manager", err)
 	}
 }
 
