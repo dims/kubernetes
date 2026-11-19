@@ -57,6 +57,7 @@ import (
 	e2eresource "k8s.io/kubernetes/test/e2e/framework/resource"
 	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	"k8s.io/kubernetes/test/e2e/scheduling"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 	admissionapi "k8s.io/pod-security-admission/api"
 	"k8s.io/utils/ptr"
 
@@ -260,27 +261,21 @@ var _ = SIGDescribe("Job", func() {
 	/*
 		Release: v1.31
 		Testname: Verify Pod Failure policy allows to fail job early on exit code.
-		Description: Create a job with pod failure policy, and exactly one
-		pod failing. The exit code of the failed pod matches the pod failure
-		policy triggering the Job failure.
+		Description: Create a job with pod failure policy, and pods that
+		always fail. The exit code of the failed pod matches the pod failure
+		policy triggering the Job failure, with the PodFailurePolicy reason,
+		before the backoffLimit is reached.
 	*/
 	framework.ConformanceIt("should allow to use the pod failure policy on exit code to fail the job early", func(ctx context.Context) {
 
-		// We fail the Job's pod only once to ensure the backoffLimit is not
-		// reached and thus the job is failed due to the pod failure policy
-		// with FailJob action.
-		// In order to ensure a Job's pod fails once before succeeding we force
-		// the Job's Pods to be scheduled to a single Node and use a hostPath
-		// volume to persist data across new Pods.
-		ginkgo.By("Looking for a node to schedule job pod")
-		node, err := e2enode.GetRandomReadySchedulableNode(ctx, f.ClientSet)
-		framework.ExpectNoError(err, "select a ready schedulable node")
-
+		// Every pod fails, so the Job fails with or without the pod failure
+		// policy. The reason of the Failed condition tells the FailJob action
+		// apart from the backoffLimit, which the first failures do not reach.
 		parallelism := int32(2)
 		completions := int32(4)
 		backoffLimit := int32(6) // default value
 		ginkgo.By("Creating a job")
-		job := e2ejob.NewTestJobOnNode("failOnce", "pod-failure-failjob", v1.RestartPolicyNever, parallelism, completions, nil, backoffLimit, node.Name)
+		job := e2ejob.NewTestJob("fail", "pod-failure-failjob", v1.RestartPolicyNever, parallelism, completions, nil, backoffLimit)
 		job.Spec.PodFailurePolicy = &batchv1.PodFailurePolicy{
 			Rules: []batchv1.PodFailurePolicyRule{
 				{
@@ -292,12 +287,16 @@ var _ = SIGDescribe("Job", func() {
 				},
 			},
 		}
-		job, err = e2ejob.CreateJob(ctx, f.ClientSet, f.Namespace.Name, job)
+		job, err := e2ejob.CreateJob(ctx, f.ClientSet, f.Namespace.Name, job)
 		framework.ExpectNoError(err, "create job in namespace: %s", f.Namespace.Name)
 
 		ginkgo.By("Ensuring job fails")
 		err = e2ejob.WaitForJobFailed(ctx, f.ClientSet, f.Namespace.Name, job.Name)
 		framework.ExpectNoError(err, "ensure job failure in namespace: %s", f.Namespace.Name)
+
+		ginkgo.By("Ensuring the job failed due to the pod failure policy")
+		err = e2ejob.WaitForJobCondition(ctx, f.ClientSet, f.Namespace.Name, job.Name, batchv1.JobFailed, ptr.To(batchv1.JobReasonPodFailurePolicy))
+		framework.ExpectNoError(err, "ensure job failed with the %s reason in namespace: %s", batchv1.JobReasonPodFailurePolicy, f.Namespace.Name)
 	})
 
 	/*
@@ -347,11 +346,11 @@ var _ = SIGDescribe("Job", func() {
 		Release: v1.32
 		Testname: Ensure pod failure policy allows to ignore failure matching on the DisruptionTarget condition
 		Description: This test is using an indexed job. The pod corresponding to each index
-		creates a marker file on the host and runs 'forever' until evicted. Once
-		the marker file is created the pod succeeds seeing it on restart. Thus,
-		we trigger one failure per index due to eviction (DisruptionTarget
+		reads a ConfigMap when it starts and runs 'forever' until evicted. Before
+		the eviction the ConfigMap is updated, so that the replacement pod succeeds.
+		Thus, we trigger one failure per index due to eviction (DisruptionTarget
 		condition is added in the process). The Job would be marked as failed,
-		if not for the ignore rule matching on exit codes.
+		if not for the ignore rule matching on the DisruptionTarget condition.
 	*/
 	framework.ConformanceIt("should allow to use a pod failure policy to ignore failure matching on DisruptionTarget condition", func(ctx context.Context) {
 		// We set the backoffLimit = numPods-1 so that we can tolerate random
@@ -362,13 +361,54 @@ var _ = SIGDescribe("Job", func() {
 		completions := int32(numPods)
 		backoffLimit := int32(numPods) - 1
 
-		ginkgo.By("Looking for a node to schedule job pods")
-		node, err := e2enode.GetRandomReadySchedulableNode(ctx, f.ClientSet)
-		framework.ExpectNoError(err, "select a ready schedulable node")
+		// The ConfigMap tells a starting pod whether to run until evicted or
+		// to succeed. It replaces a marker file on the node, so the pods need
+		// neither a hostPath volume nor a fixed node.
+		ginkgo.By("Creating a ConfigMap that makes the pods run until evicted")
+		configMap := &v1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "evicted-pod-ignore-on-disruption-condition"},
+			Data:       map[string]string{"succeed": "false"},
+		}
+		configMap, err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, configMap, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "create configmap in namespace: %s", f.Namespace.Name)
 
 		ginkgo.By("Creating a job")
-		job := e2ejob.NewTestJobOnNode("notTerminateOncePerIndex", "evicted-pod-ignore-on-disruption-condition", v1.RestartPolicyNever, parallelism, completions, nil, backoffLimit, node.Name)
+		job := e2ejob.NewTestJob("notTerminate", "evicted-pod-ignore-on-disruption-condition", v1.RestartPolicyNever, parallelism, completions, nil, backoffLimit)
 		job.Spec.CompletionMode = ptr.To(batchv1.IndexedCompletion)
+		job.Spec.Template.Spec.TerminationGracePeriodSeconds = ptr.To(int64(1))
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, v1.Volume{
+			Name: "state",
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{Name: configMap.Name},
+				},
+			},
+		})
+		container := &job.Spec.Template.Spec.Containers[0]
+		container.Image = imageutils.GetE2EImage(imageutils.BusyBox)
+		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{Name: "state", MountPath: "/state"})
+		// The ConfigMap is read only once, so that a running pod does not
+		// terminate when the update reaches its volume.
+		container.Command = []string{"/bin/sh", "-c"}
+		container.Args = []string{`
+			if [[ "$(cat /state/succeed)" == "true" ]]
+			then
+				exit 0
+			else
+				touch /data/started
+				sleep 1000000
+			fi
+		`}
+		// The pod is ready once it decided to run until evicted. The test
+		// must not update the ConfigMap before that.
+		container.ReadinessProbe = &v1.Probe{
+			PeriodSeconds: 1,
+			ProbeHandler: v1.ProbeHandler{
+				Exec: &v1.ExecAction{
+					Command: []string{"/bin/sh", "-c", "cat /data/started"},
+				},
+			},
+		}
 		job.Spec.PodFailurePolicy = &batchv1.PodFailurePolicy{
 			Rules: []batchv1.PodFailurePolicyRule{
 				{
@@ -395,6 +435,11 @@ var _ = SIGDescribe("Job", func() {
 		pods, err := e2ejob.GetAllRunningJobPods(ctx, f.ClientSet, f.Namespace.Name, job.Name)
 		framework.ExpectNoError(err, "get running pods for the job: %s/%s", job.Name, job.Namespace)
 		gomega.Expect(pods).To(gomega.HaveLen(numPods), "Number of running pods doesn't match parallelism")
+
+		ginkgo.By("Updating the ConfigMap to make the replacement pods succeed")
+		configMap.Data["succeed"] = "true"
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(ctx, configMap, metav1.UpdateOptions{})
+		framework.ExpectNoError(err, "update configmap in namespace: %s", f.Namespace.Name)
 
 		ginkgo.By("Evict all the Pods")
 		workqueue.ParallelizeUntil(ctx, numPods, numPods, func(index int) {
