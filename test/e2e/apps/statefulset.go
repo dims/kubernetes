@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/resourceversion"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	clientset "k8s.io/client-go/kubernetes"
@@ -873,41 +874,20 @@ var _ = SIGDescribe("StatefulSet", func() {
 		   Description: StatefulSet MUST delete and recreate Pods it owns that go into a Failed state, such as when they are rejected or evicted by a Node. This test does not depend on a preexisting default StorageClass or a dynamic provisioner.
 		*/
 		framework.ConformanceIt("Should recreate evicted statefulset", func(ctx context.Context) {
-			podName := "test-pod"
 			statefulPodName := ssName + "-0"
-			ginkgo.By("Looking for a node to schedule stateful set and pod")
+			ginkgo.By("Looking for a node to schedule stateful set")
 			node, err := e2enode.GetRandomReadySchedulableNode(ctx, f.ClientSet)
 			framework.ExpectNoError(err, "select a ready schedulable node")
 
-			ginkgo.By("Creating pod with conflicting port in namespace " + f.Namespace.Name)
-			conflictingPort := v1.ContainerPort{HostPort: 21017, ContainerPort: 21017, Name: "conflict"}
-			pod := &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: podName,
-				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Name:  "agnhost",
-							Image: imageutils.GetE2EImage(imageutils.Agnhost),
-							Ports: []v1.ContainerPort{conflictingPort},
-						},
-					},
-					NodeName: node.Name,
-				},
-			}
-			pod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(ctx, pod, metav1.CreateOptions{})
-			framework.ExpectNoError(err, "create Pod in namespace %q", f.Namespace.Name)
-			ginkgo.By("Waiting until pod " + podName + " will start running in namespace " + f.Namespace.Name)
-			if err := e2epod.WaitForPodNameRunningInNamespace(ctx, f.ClientSet, podName, f.Namespace.Name); err != nil {
-				framework.Failf("Pod %v did not start running: %v", podName, err)
-			}
+			// nodeName skips the scheduler, so it is the kubelet that sees the
+			// unmatched node selector and rejects the pod.
+			labelKey := fmt.Sprintf("kubernetes.io/e2e-%s", string(uuid.NewUUID()))
+			labelValue := "42"
 
-			ginkgo.By("Creating statefulset with conflicting port in namespace " + f.Namespace.Name)
+			ginkgo.By("Creating statefulset with a node selector that node " + node.Name + " does not match in namespace " + f.Namespace.Name)
 			ss := e2estatefulset.NewStatefulSet(ssName, f.Namespace.Name, headlessSvcName, 1, nil, nil, labels)
-			statefulPodContainer := &ss.Spec.Template.Spec.Containers[0]
-			statefulPodContainer.Ports = append(statefulPodContainer.Ports, conflictingPort)
 			ss.Spec.Template.Spec.NodeName = node.Name
+			ss.Spec.Template.Spec.NodeSelector = map[string]string{labelKey: labelValue}
 			_, err = f.ClientSet.AppsV1().StatefulSets(f.Namespace.Name).Create(ctx, ss, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "create StatefulSet %q in namespace %q", ss.Name, f.Namespace.Name)
 
@@ -954,9 +934,10 @@ var _ = SIGDescribe("StatefulSet", func() {
 				framework.Failf("Pod %v expected to be re-created at least once", statefulPodName)
 			}
 
-			ginkgo.By("Removing pod with conflicting port in namespace " + f.Namespace.Name)
-			err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(ctx, pod.Name, *metav1.NewDeleteOptions(0))
-			framework.ExpectNoError(err, "delete Pod %q in namespace %q", pod.Name, f.Namespace.Name)
+			ginkgo.By("Adding the label the stateful pod selects to node " + node.Name)
+			e2enode.AddOrUpdateLabelOnNode(f.ClientSet, node.Name, labelKey, labelValue)
+			e2enode.ExpectNodeHasLabel(ctx, f.ClientSet, node.Name, labelKey, labelValue)
+			defer e2enode.RemoveLabelOffNode(f.ClientSet, node.Name, labelKey)
 
 			ginkgo.By("Waiting when stateful pod " + statefulPodName + " will be recreated in namespace " + f.Namespace.Name + " and will be in running state")
 			// we may catch delete event, that's why we are waiting for running phase like this, and not with watchtools.UntilWithoutRetry
