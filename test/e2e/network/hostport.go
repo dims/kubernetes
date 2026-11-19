@@ -52,15 +52,11 @@ var _ = common.SIGDescribe("HostPort", func() {
 
 	})
 
-	/*
-		Release: v1.16, v1.21
-		Testname: Scheduling, HostPort matching and HostIP and Protocol not-matching
-		Description: Pods with the same HostPort value MUST be able to be scheduled to the same node
-		if the HostIP or Protocol is different. This test is marked LinuxOnly since hostNetwork is not supported on
-		Windows.
-	*/
-
-	framework.ConformanceIt("validates that there is no conflict between pods with same hostPort but different hostIP and protocol [LinuxOnly]", func(ctx context.Context) {
+	// The pod bound to the loopback address of the node can only be reached from
+	// the network namespace of the node, so it is only checked when the client
+	// pod is on the host network. Each caller needs its own port, the pods of
+	// one test may still hold the port on the node while the other one runs.
+	testNoConflict := func(ctx context.Context, port int32, hostNetwork bool) {
 
 		localhost := "127.0.0.1"
 		family := v1.IPv4Protocol
@@ -85,7 +81,6 @@ var _ = common.SIGDescribe("HostPort", func() {
 			framework.Failf("Failed to get NodeIP")
 		}
 		hostIP := ips[0]
-		port := int32(54323)
 
 		// Create pods with the same HostPort
 		ginkgo.By(fmt.Sprintf("Trying to create a pod(pod1) with hostport %v and hostIP %s and expect scheduled", port, localhost))
@@ -98,14 +93,14 @@ var _ = common.SIGDescribe("HostPort", func() {
 		createHostPortPodOnNode(ctx, f, "pod3", ns, hostIP, port, v1.ProtocolUDP, randomNode.Name)
 
 		// check that the port is being actually exposed to each container
-		// create a pod on the host network in the same node
+		// create a client pod in the same node, so a single node cluster is enough
 		hostExecPod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "e2e-host-exec",
 				Namespace: f.Namespace.Name,
 			},
 			Spec: v1.PodSpec{
-				HostNetwork: true,
+				HostNetwork: hostNetwork,
 				NodeName:    randomNode.Name,
 				Containers: []v1.Container{
 					{
@@ -126,11 +121,14 @@ var _ = common.SIGDescribe("HostPort", func() {
 		// try 5 times to connect to the exposed ports
 		for range 5 {
 			// check pod1
-			ginkgo.By(fmt.Sprintf("checking connectivity from pod %s to serverIP: %s, port: %d", hostExecPod.Name, localhost, port))
-			hostname1, _, err := e2epod.ExecCommandInContainerWithFullOutput(f, hostExecPod.Name, "e2e-host-exec", cmdPod1...)
-			if err != nil {
-				framework.Logf("Can not connect from %s to pod(pod1) to serverIP: %s, port: %d", hostExecPod.Name, localhost, port)
-				continue
+			var hostname1 string
+			if hostNetwork {
+				ginkgo.By(fmt.Sprintf("checking connectivity from pod %s to serverIP: %s, port: %d", hostExecPod.Name, localhost, port))
+				hostname1, _, err = e2epod.ExecCommandInContainerWithFullOutput(f, hostExecPod.Name, "e2e-host-exec", cmdPod1...)
+				if err != nil {
+					framework.Logf("Can not connect from %s to pod(pod1) to serverIP: %s, port: %d", hostExecPod.Name, localhost, port)
+					continue
+				}
 			}
 			// check pod2
 			ginkgo.By(fmt.Sprintf("checking connectivity from pod %s to serverIP: %s, port: %d", hostExecPod.Name, hostIP, port))
@@ -151,6 +149,11 @@ var _ = common.SIGDescribe("HostPort", func() {
 				framework.Logf("Can not connect from %s to pod(pod2) to serverIP: %s, port: %d", hostExecPod.Name, hostIP, port)
 				continue
 			}
+			// nc exits 0 without output when no UDP reply arrives
+			if hostname3 == "" {
+				framework.Logf("No reply from pod(pod3) to serverIP: %s, port: %d UDP", hostIP, port)
+				continue
+			}
 			if hostname1 == hostname3 {
 				framework.Logf("pods must have different hostname: pod1 has hostname %s, pod3 has hostname %s", hostname1, hostname3)
 				continue
@@ -162,6 +165,22 @@ var _ = common.SIGDescribe("HostPort", func() {
 			return
 		}
 		framework.Failf("Failed to connect to exposed host ports")
+	}
+
+	/*
+		Release: v1.16, v1.21
+		Testname: Scheduling, HostPort matching and HostIP and Protocol not-matching
+		Description: Pods with the same HostPort value MUST be able to be scheduled to the same node
+		if the HostIP or Protocol is different. The Pods that use the node IP as HostIP, one with TCP and
+		one with UDP, MUST each be reachable on the node IP from a Pod on the pod network. This test is
+		marked LinuxOnly.
+	*/
+	framework.ConformanceIt("validates that there is no conflict between pods with same hostPort but different hostIP and protocol [LinuxOnly]", func(ctx context.Context) {
+		testNoConflict(ctx, 54323, false)
+	})
+
+	ginkgo.It("validates that there is no conflict between pods with same hostPort but different hostIP and protocol with hostNetwork [LinuxOnly]", func(ctx context.Context) {
+		testNoConflict(ctx, 54324, true)
 	})
 })
 
