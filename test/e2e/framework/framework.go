@@ -568,6 +568,10 @@ func (f *Framework) CreateNamespace(ctx context.Context, baseName string, labels
 	}
 
 	labels[admissionapi.EnforceLevelLabel] = firstNonEmptyPSaLevelOrRestricted(f.NamespacePodSecurityEnforceLevel, f.NamespacePodSecurityLevel)
+	// Experiment: never enforce more than baseline permits.
+	if labels[admissionapi.EnforceLevelLabel] == string(admissionapi.LevelPrivileged) {
+		labels[admissionapi.EnforceLevelLabel] = string(admissionapi.LevelBaseline)
+	}
 	labels[admissionapi.WarnLevelLabel] = firstNonEmptyPSaLevelOrRestricted(f.NamespacePodSecurityWarnLevel, f.NamespacePodSecurityLevel)
 	labels[admissionapi.AuditLevelLabel] = firstNonEmptyPSaLevelOrRestricted(f.NamespacePodSecurityAuditLevel, f.NamespacePodSecurityLevel)
 
