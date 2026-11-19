@@ -38,6 +38,11 @@ const (
 	etcHostsPathWindows         = `C:\Windows\System32\drivers\etc\hosts`
 	etcHostsOriginalPathLinux   = "/etc/hosts-original"
 	etcHostsOriginalPathWindows = `C:\Windows\System32\drivers\etc\hosts-original`
+	etcHostsConfigMapName       = "etc-hosts"
+	etcHostsConfigMapKey        = "hosts"
+	// Must not start with etcHostsPartialContent, or a container that mounts
+	// this file could not be told apart from one with a kubelet-managed file.
+	etcHostsConfigMapContent = "# hosts file from a ConfigMap.\n127.0.0.1\tlocalhost\n"
 )
 
 // KubeletManagedHostConfig defines the types for running managed etc hosts test cases
@@ -57,42 +62,44 @@ var _ = SIGDescribe("KubeletManagedEtcHosts", func() {
 	/*
 		Release: v1.9
 		Testname: Kubelet, managed etc hosts
-		Description: Create a Pod with containers with hostNetwork set to false, one of the containers mounts the /etc/hosts file form the host. Create a second Pod with hostNetwork set to true.
+		Description: Create a Pod with containers with hostNetwork set to false, one of the containers mounts its own /etc/hosts file from a ConfigMap volume.
 			1. The Pod with hostNetwork=false MUST have /etc/hosts of containers managed by the Kubelet.
-			2. The Pod with hostNetwork=false but the container mounts /etc/hosts file from the host. The /etc/hosts file MUST not be managed by the Kubelet.
-			3. The Pod with hostNetwork=true , /etc/hosts file MUST not be managed by the Kubelet.
+			2. The Pod with hostNetwork=false but the container mounts its own /etc/hosts file. The /etc/hosts file MUST not be managed by the Kubelet.
 	*/
 	framework.ConformanceIt("should test kubelet managed /etc/hosts file", f.WithNodeConformance(), func(ctx context.Context) {
-		ginkgo.By("Setting up the test")
-		config.setup(ctx)
+		ginkgo.By("Creating hostNetwork=false pod")
+		config.createPodWithoutHostNetwork(ctx)
 
-		ginkgo.By("Running the test")
-		config.verifyEtcHosts()
+		ginkgo.By("Verifying /etc/hosts of container is kubelet-managed for pod with hostNetwork=false")
+		assertManagedStatus(config, etcHostsPodName, true, "busybox-1")
+		assertManagedStatus(config, etcHostsPodName, true, "busybox-2")
+
+		ginkgo.By("Verifying /etc/hosts of container is not kubelet-managed since container specifies /etc/hosts mount")
+		assertManagedStatus(config, etcHostsPodName, false, "busybox-3")
+	})
+
+	framework.It("should test kubelet managed /etc/hosts file with hostNetwork", f.WithNodeConformance(), func(ctx context.Context) {
+		ginkgo.By("Creating hostNetwork=true pod")
+		config.createPodWithHostNetwork(ctx)
+
+		ginkgo.By("Verifying /etc/hosts content of container is not kubelet-managed for pod with hostNetwork=true")
+		assertManagedStatus(config, etcHostsHostNetworkPodName, false, "busybox-1")
+		assertManagedStatus(config, etcHostsHostNetworkPodName, false, "busybox-2")
 	})
 })
 
-func (config *KubeletManagedHostConfig) verifyEtcHosts() {
-	ginkgo.By("Verifying /etc/hosts of container is kubelet-managed for pod with hostNetwork=false")
-	assertManagedStatus(config, etcHostsPodName, true, "busybox-1")
-	assertManagedStatus(config, etcHostsPodName, true, "busybox-2")
-
-	ginkgo.By("Verifying /etc/hosts of container is not kubelet-managed since container specifies /etc/hosts mount")
-	assertManagedStatus(config, etcHostsPodName, false, "busybox-3")
-
-	ginkgo.By("Verifying /etc/hosts content of container is not kubelet-managed for pod with hostNetwork=true")
-	assertManagedStatus(config, etcHostsHostNetworkPodName, false, "busybox-1")
-	assertManagedStatus(config, etcHostsHostNetworkPodName, false, "busybox-2")
-}
-
-func (config *KubeletManagedHostConfig) setup(ctx context.Context) {
-	ginkgo.By("Creating hostNetwork=false pod")
-	config.createPodWithoutHostNetwork(ctx)
-
-	ginkgo.By("Creating hostNetwork=true pod")
-	config.createPodWithHostNetwork(ctx)
-}
-
 func (config *KubeletManagedHostConfig) createPodWithoutHostNetwork(ctx context.Context) {
+	configMap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: etcHostsConfigMapName,
+		},
+		Data: map[string]string{
+			etcHostsConfigMapKey: etcHostsConfigMapContent,
+		},
+	}
+	_, err := config.f.ClientSet.CoreV1().ConfigMaps(config.f.Namespace.Name).Create(ctx, configMap, metav1.CreateOptions{})
+	framework.ExpectNoError(err, "creating ConfigMap %s", etcHostsConfigMapName)
+
 	podSpec := config.createPodSpec(etcHostsPodName)
 	config.pod = e2epod.NewPodClient(config.f).CreateSync(ctx, podSpec)
 }
@@ -155,20 +162,20 @@ func (config *KubeletManagedHostConfig) getFileContents(podName, containerName, 
 }
 
 func (config *KubeletManagedHostConfig) createPodSpec(podName string) *v1.Pod {
-	hostPathType := new(v1.HostPathType)
-	*hostPathType = v1.HostPathType(string(v1.HostPathFileOrCreate))
 	etcHostsPath, etcHostsOriginalPath := getEtcHostsPath()
 	mounts := []v1.VolumeMount{
 		{
-			Name:      "host-etc-hosts",
+			Name:      "etc-hosts",
 			MountPath: etcHostsOriginalPath,
+			SubPath:   etcHostsConfigMapKey,
 		},
 	}
 	multipleMounts := []v1.VolumeMount{
 		mounts[0],
 		{
-			Name:      "host-etc-hosts",
+			Name:      "etc-hosts",
 			MountPath: etcHostsPath,
+			SubPath:   etcHostsConfigMapKey,
 		},
 	}
 	pod := &v1.Pod{
@@ -183,11 +190,10 @@ func (config *KubeletManagedHostConfig) createPodSpec(podName string) *v1.Pod {
 			},
 			Volumes: []v1.Volume{
 				{
-					Name: "host-etc-hosts",
+					Name: "etc-hosts",
 					VolumeSource: v1.VolumeSource{
-						HostPath: &v1.HostPathVolumeSource{
-							Path: etcHostsPath,
-							Type: hostPathType,
+						ConfigMap: &v1.ConfigMapVolumeSource{
+							LocalObjectReference: v1.LocalObjectReference{Name: etcHostsConfigMapName},
 						},
 					},
 				},
