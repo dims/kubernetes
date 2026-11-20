@@ -67,7 +67,7 @@ import (
 
 const (
 	// how long to wait for a resource quota update to occur
-	resourceQuotaTimeout = time.Minute
+	resourceQuotaTimeout = 2 * time.Minute
 	podName              = "pfpod"
 )
 
@@ -664,7 +664,9 @@ var _ = SIGDescribe("ResourceQuota", func() {
 		framework.ExpectNoError(err)
 		ginkgo.DeferCleanup(testcrd.CleanUp)
 		countResourceName := "count/" + testcrd.Crd.Spec.Names.Plural + "." + testcrd.Crd.Spec.Group
-		// resourcequota controller needs to take 30 seconds at most to detect the new custom resource.
+		// resourcequota controller looks for new resources every 30 seconds, and one such pass can wait
+		// another 30 seconds for the informer of some other new resource to sync, so it can take more
+		// than a minute to detect the new custom resource.
 		// in order to make sure the resourcequota controller knows this resource, we create one test
 		// resourcequota object, and triggering updates on it until the status is updated.
 		quotaName := "quota-for-" + testcrd.Crd.Spec.Names.Plural
