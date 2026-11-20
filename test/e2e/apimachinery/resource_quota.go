@@ -2504,7 +2504,11 @@ func countResourceQuota(ctx context.Context, c clientset.Interface, namespace st
 // Other resources are ignored.
 func waitForResourceQuota(ctx context.Context, c clientset.Interface, ns, quotaName string, used v1.ResourceList) error {
 	var lastResourceQuota *v1.ResourceQuota
-	err := framework.Gomega().Eventually(ctx, framework.GetObject(c.CoreV1().ResourceQuotas(ns).Get, quotaName, metav1.GetOptions{})).Should(haveUsedResources(used, &lastResourceQuota))
+	// A full resync of the resource quota controller that runs while an object is created can overwrite
+	// the usage that admission just charged for it, and only the next full resync corrects that. Full
+	// resyncs are 5 minutes apart by default, so wait one minute more.
+	// Ref: https://issues.k8s.io/132248
+	err := framework.Gomega().Eventually(ctx, framework.GetObject(c.CoreV1().ResourceQuotas(ns).Get, quotaName, metav1.GetOptions{})).WithTimeout(6 * time.Minute).Should(haveUsedResources(used, &lastResourceQuota))
 	if lastResourceQuota != nil && err == nil {
 		framework.Logf("Got expected ResourceQuota:\n%s", format.Object(lastResourceQuota, 1))
 	}
