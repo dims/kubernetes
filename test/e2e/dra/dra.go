@@ -4260,12 +4260,13 @@ var _ = framework.SIGDescribe("node")(framework.WithLabel("DRA"), func() {
 			//
 			// If creating a claim erroneously succeeds, we don't want to immediately fail on the next try
 			// with an "already exists" error, so use a new name each time.
+			// Such a claim can raise "used" in the message to 2, so do not match it.
 			claim.GenerateName = "claim-1-"
 			claim.Name = ""
 			gomega.Eventually(ctx, func(ctx context.Context) error {
 				_, err := f.ClientSet.ResourceV1().ResourceClaims(f.Namespace.Name).Create(ctx, claim, metav1.CreateOptions{})
 				return err
-			}).Should(gomega.MatchError(gomega.ContainSubstring("exceeded quota: object-count, requested: count/resourceclaims.resource.k8s.io=1, used: count/resourceclaims.resource.k8s.io=1, limited: count/resourceclaims.resource.k8s.io=1")), "creating second claim not allowed")
+			}).Should(gomega.MatchError(gomega.ContainSubstring("exceeded quota: object-count, requested: count/resourceclaims.resource.k8s.io=1,")), "creating second claim not allowed")
 		})
 
 		f.It("must be impossible for a node ServiceAccount to update the non-node ResourceClaim.Status.Devices once allocated", f.WithFeatureGate(features.DRAResourceClaimDeviceStatus), func(ctx context.Context) {
