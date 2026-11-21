@@ -1375,7 +1375,10 @@ var _ = SIGDescribe("ResourceQuota", framework.WithFeatureGate(features.VolumeAt
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Updating the desired volume attributes class of the pvc to silver")
-		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// A conflict can leave quotaSilver charged until its next full resync (5m), so retry on forbidden for 6m.
+		err = retry.OnError(wait.Backoff{Duration: 5 * time.Second, Factor: 1, Steps: 72}, func(err error) bool {
+			return apierrors.IsConflict(err) || apierrors.IsForbidden(err)
+		}, func() error {
 			gotPVC, err := f.ClientSet.CoreV1().PersistentVolumeClaims(f.Namespace.Name).Get(ctx, pvcName, metav1.GetOptions{})
 			if err != nil {
 				return err
