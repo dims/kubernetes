@@ -949,8 +949,8 @@ func (config *NetworkingTestConfig) DeleteNetProxyPod(ctx context.Context) {
 	if err != nil {
 		framework.Failf("Failed to remove endpoint from service: %s", nodePortServiceName)
 	}
-	// wait for kube-proxy to catch up with the pod being deleted.
-	time.Sleep(5 * time.Second)
+	// wait for kube-proxy to catch up with the pod being deleted; kube-up syncs at most every 10s.
+	time.Sleep(15 * time.Second)
 }
 
 func (config *NetworkingTestConfig) createPod(ctx context.Context, pod *v1.Pod) *v1.Pod {
