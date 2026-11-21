@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	imageutils "k8s.io/kubernetes/test/utils/image"
@@ -139,7 +140,7 @@ func getPodCgroupPath(f *framework.Framework, pod *v1.Pod, podOnCgroupv2 bool, s
 	// search path for both systemd driver and cgroupfs driver
 	cmd := fmt.Sprintf("find %s -name '*%s*' -o -name '*%s*'", rootPath, strings.ReplaceAll(string(pod.UID), "-", "_"), string(pod.UID))
 	framework.Logf("Namespace %s Pod %s - looking for Pod cgroup directory path: %q", f.Namespace, pod.Name, cmd)
-	podCgPath, stderr, err := e2epod.ExecCommandInContainerWithFullOutput(f, pod.Name, pod.Spec.Containers[0].Name, []string{"/bin/sh", "-c", cmd}...)
+	podCgPath, stderr, err := ExecIdempotent(f, pod.Name, pod.Spec.Containers[0].Name, []string{"/bin/sh", "-c", cmd}...)
 	if podCgPath == "" {
 		// This command may hit 'No such file or directory' for another cgroup if another test running in parallel has deleted a pod.
 		// We ignore errors if podCgPath is found.
@@ -476,6 +477,19 @@ func VerifyOomScoreAdjValue(f *framework.Framework, pod *v1.Pod, cName, expected
 	return nil
 }
 
+// ExecIdempotent runs cmd again when the connection is reset before the exit status arrives.
+// A 20m CPU limit makes an exec last about 5s, the period of the client's ping, see https://issues.k8s.io/142376.
+func ExecIdempotent(f *framework.Framework, podName, containerName string, cmd ...string) (stdout, stderr string, err error) {
+	for range 3 {
+		stdout, stderr, err = e2epod.ExecCommandInContainerWithFullOutput(f, podName, containerName, cmd...)
+		if !utilnet.IsConnectionReset(err) {
+			break
+		}
+		framework.Logf("exec in pod %s was reset, running %v again: %v", podName, cmd, err)
+	}
+	return stdout, stderr, err
+}
+
 // IsPodOnCgroupv2Node checks whether the pod is running on cgroupv2 node.
 // Successful results are cached per node name because nodes in one cluster may
 // use different cgroup versions. Probe failures are returned as errors and are
@@ -485,7 +499,7 @@ func VerifyOomScoreAdjValue(f *framework.Framework, pod *v1.Pod, cName, expected
 // https://github.com/kubernetes/kubernetes/blob/2049360379bcc5d6467769cef112e6e492d3d2f0/test/e2e/node/node_problem_detector.go#L369
 func IsPodOnCgroupv2Node(f *framework.Framework, pod *v1.Pod, containerName string) (bool, error) {
 	onCgroupV2, err := isPodOnCgroupv2Node(&cgroupv2ByNode, pod.Spec.NodeName, func() (string, string, error) {
-		return e2epod.ExecCommandInContainerWithFullOutput(f, pod.Name, containerName, "/bin/sh", "-c", "mount -t cgroup2")
+		return ExecIdempotent(f, pod.Name, containerName, "/bin/sh", "-c", "mount -t cgroup2")
 	})
 	if err != nil {
 		return false, fmt.Errorf("detect cgroup version for pod %s/%s container %s: %w", pod.Namespace, pod.Name, containerName, err)

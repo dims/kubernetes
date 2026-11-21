@@ -883,7 +883,7 @@ func doPodResizeMemoryVolumeTests(f *framework.Framework) {
 			podresize.VerifyPodResources(newPod, originalContainers, nil)
 
 			ginkgo.By("verifying initial volume mount size via df inside the container")
-			stdout, _, err := e2epod.ExecCommandInContainerWithFullOutput(f, newPod.Name, "c1", "df", "-m", "/cache")
+			stdout, _, err := cgroups.ExecIdempotent(f, newPod.Name, "c1", "df", "-m", "/cache")
 			framework.ExpectNoError(err, "run df inside container")
 			origMB := calculateExpectedVolumeSizeLimit(origSizeLimit, origMem)
 			gomega.Expect(stdout).To(gomega.ContainSubstring(strconv.FormatInt(origMB, 10)))
@@ -923,7 +923,7 @@ func doPodResizeMemoryVolumeTests(f *framework.Framework) {
 			resizedPod := podresize.WaitForPodResizeActuation(ctx, f, podClient, patchedPod, expected)
 
 			ginkgo.By("verifying new volume mount size via df inside the container")
-			stdout, _, err = e2epod.ExecCommandInContainerWithFullOutput(f, resizedPod.Name, "c1", "df", "-m", "/cache")
+			stdout, _, err = cgroups.ExecIdempotent(f, resizedPod.Name, "c1", "df", "-m", "/cache")
 			framework.ExpectNoError(err, "run df inside container after resize")
 			desiredMB := calculateExpectedVolumeSizeLimit(desiredSizeLimit, desiredMem)
 			gomega.Expect(stdout).To(gomega.ContainSubstring(strconv.FormatInt(desiredMB, 10)))
@@ -961,7 +961,7 @@ func doPodResizeMemoryVolumeTests(f *framework.Framework) {
 			expectedRollback := podresize.UpdateExpectedContainerRestarts(ctx, rolledBackPod, originalContainers)
 			finalPod := podresize.WaitForPodResizeActuation(ctx, f, podClient, rolledBackPod, expectedRollback)
 
-			stdout, _, err = e2epod.ExecCommandInContainerWithFullOutput(f, finalPod.Name, "c1", "df", "-m", "/cache")
+			stdout, _, err = cgroups.ExecIdempotent(f, finalPod.Name, "c1", "df", "-m", "/cache")
 			framework.ExpectNoError(err, "run df after rollback")
 			gomega.Expect(stdout).To(gomega.ContainSubstring(strconv.FormatInt(origMB, 10)))
 
@@ -1035,12 +1035,12 @@ func doPodResizeMemoryVolumeSizeLimitDecreaseTest(f *framework.Framework) {
 		podresize.VerifyPodResources(newPod, original, nil)
 
 		ginkgo.By("verifying new volume mount size via df inside the container")
-		stdout, _, err := e2epod.ExecCommandInContainerWithFullOutput(f, newPod.Name, "c1", "df", "-m", "/cache")
+		stdout, _, err := cgroups.ExecIdempotent(f, newPod.Name, "c1", "df", "-m", "/cache")
 		framework.ExpectNoError(err, "run df inside container")
 		gomega.Expect(stdout).To(gomega.ContainSubstring(strconv.FormatInt(qty128Mi.Value()/(1024*1024), 10)))
 
 		ginkgo.By(fmt.Sprintf("writing a %s file to the volume to ensure active usage", qty100Mi.String()))
-		_, _, err = e2epod.ExecCommandInContainerWithFullOutput(f, newPod.Name, "c1", "dd", "if=/dev/zero", "of=/cache/largefile", "bs=1M", fmt.Sprintf("count=%d", qty100Mi.Value()/(1024*1024)))
+		_, _, err = cgroups.ExecIdempotent(f, newPod.Name, "c1", "dd", "if=/dev/zero", "of=/cache/largefile", "bs=1M", fmt.Sprintf("count=%d", qty100Mi.Value()/(1024*1024)))
 		framework.ExpectNoError(err, "write large file inside container")
 
 		ginkgo.By(fmt.Sprintf("patching pod spec's emptyDir sizeLimit down to %s", qty50Mi.String()))
@@ -1088,7 +1088,7 @@ func doPodResizeMemoryVolumeSizeLimitDecreaseTest(f *framework.Framework) {
 		)
 
 		ginkgo.By("verifying the volume still holds the original size and c1 didn't restart")
-		stdout, _, err = e2epod.ExecCommandInContainerWithFullOutput(f, newPod.Name, "c1", "df", "-m", "/cache")
+		stdout, _, err = cgroups.ExecIdempotent(f, newPod.Name, "c1", "df", "-m", "/cache")
 		framework.ExpectNoError(err, "run df inside container")
 		gomega.Expect(stdout).To(gomega.ContainSubstring(strconv.FormatInt(qty128Mi.Value()/(1024*1024), 10)))
 
@@ -1140,7 +1140,7 @@ func doPodResizeMemoryVolumeSizeLimitDecreaseTest(f *framework.Framework) {
 		podresize.VerifyPodResources(newPod, original, nil)
 
 		ginkgo.By(fmt.Sprintf("writing a %s file to the volume to ensure active usage", qty100Mi.String()))
-		_, _, err := e2epod.ExecCommandInContainerWithFullOutput(f, newPod.Name, "c1", "dd", "if=/dev/zero", "of=/cache/largefile", "bs=1M", fmt.Sprintf("count=%d", qty100Mi.Value()/(1024*1024)))
+		_, _, err := cgroups.ExecIdempotent(f, newPod.Name, "c1", "dd", "if=/dev/zero", "of=/cache/largefile", "bs=1M", fmt.Sprintf("count=%d", qty100Mi.Value()/(1024*1024)))
 		framework.ExpectNoError(err, "failed to write large file inside container")
 
 		ginkgo.By("waiting for stats scraping to reflect memory-backed volume usage")
@@ -1246,7 +1246,7 @@ func doPodResizeMemoryVolumeSizeLimitDecreaseTest(f *framework.Framework) {
 			podresize.VerifyPodResources(newPod, containers, originalPLR)
 
 			ginkgo.By(fmt.Sprintf("writing a %s file to the volume to ensure active usage", qty100Mi.String()))
-			_, _, err := e2epod.ExecCommandInContainerWithFullOutput(f, newPod.Name, "c1", "dd", "if=/dev/zero", "of=/cache/largefile", "bs=1M", fmt.Sprintf("count=%d", qty100Mi.Value()/(1024*1024)))
+			_, _, err := cgroups.ExecIdempotent(f, newPod.Name, "c1", "dd", "if=/dev/zero", "of=/cache/largefile", "bs=1M", fmt.Sprintf("count=%d", qty100Mi.Value()/(1024*1024)))
 			framework.ExpectNoError(err, "failed to write large file inside container")
 
 			ginkgo.By("waiting for stats scraping to reflect memory-backed volume usage")
