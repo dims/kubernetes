@@ -25,7 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"sync/atomic"
+	"net/http/httptrace"
 	"testing"
 	"time"
 
@@ -631,7 +631,13 @@ func TestUnauthenticatedHTTP2ClientConnectionClose(t *testing.T) {
 				ctx := t.Context()
 				featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.UnauthenticatedHTTP2DOSMitigation, !tc.skipHTTP2DOSMitigation)
 
-				var localAddrs atomic.Uint64 // indicates how many TCP connection set up
+				// localAddrs holds the connections that carried a request; net/http can dial one more than it uses
+				localAddrs := map[string]bool{}
+				ctx = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+					GotConn: func(info httptrace.GotConnInfo) {
+						localAddrs[info.Conn.LocalAddr().String()] = true
+					},
+				})
 
 				tlsConfig := &tls.Config{
 					RootCAs:    rootCAs,
@@ -650,8 +656,6 @@ func TestUnauthenticatedHTTP2ClientConnectionClose(t *testing.T) {
 						if err != nil {
 							return nil, err
 						}
-
-						localAddrs.Add(1)
 
 						return conn, nil
 					},
@@ -683,8 +687,8 @@ func TestUnauthenticatedHTTP2ClientConnectionClose(t *testing.T) {
 					_ = resp.Body.Close()
 				}
 
-				if expectConnections != localAddrs.Load() {
-					t.Fatalf("expect TCP connection: %d, actual: %d", expectConnections, localAddrs.Load())
+				if expectConnections != uint64(len(localAddrs)) {
+					t.Fatalf("expect TCP connection: %d, actual: %d", expectConnections, len(localAddrs))
 				}
 			}
 
