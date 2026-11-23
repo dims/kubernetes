@@ -2073,6 +2073,9 @@ func TestPrepareCandidateAsyncGatesPreemptorUntilAssumeVictim(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.DRAPreemption, tc.draPreemption)
 			metrics.Register()
+			testRegistry := componentmetrics.NewKubeRegistry()
+			testRegistry.MustRegister(metrics.PreemptionExecutionDuration)
+			durationBefore := captureExecutionDurationMetric(testRegistry, fwk.PodKeyType, metrics.OperationToLabel(false), metrics.GoroutineResultSuccess)
 			logger, ctx := ktesting.NewTestContext(t)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -2172,6 +2175,12 @@ func TestPrepareCandidateAsyncGatesPreemptorUntilAssumeVictim(t *testing.T) {
 				return len(executor.preempting) == 0, nil
 			}); err != nil {
 				t.Fatalf("Timed out waiting for async preemption to finish: %v", err)
+			}
+			// The goroutine records this metric last; a later test must not see it arrive.
+			if err := wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, wait.ForeverTestTimeout, true /* immediate */, func(context.Context) (bool, error) {
+				return captureExecutionDurationMetric(testRegistry, fwk.PodKeyType, metrics.OperationToLabel(false), metrics.GoroutineResultSuccess).count > durationBefore.count, nil
+			}); err != nil {
+				t.Fatalf("Timed out waiting for the preemption goroutine to exit: %v", err)
 			}
 
 			mu.RLock()
@@ -2571,9 +2580,8 @@ func TestPreemptionExecutionDurationMetric(t *testing.T) {
 						executor.prepareCandidateAsync(candidate, execPreemptor, "test-plugin")
 						// Wait for async preemption to complete
 						err := wait.PollUntilContextTimeout(ctx, time.Millisecond*50, wait.ForeverTestTimeout, false, func(ctx context.Context) (bool, error) {
-							executor.mu.Lock()
-							defer executor.mu.Unlock()
-							return len(executor.preempting) == 0, nil
+							// The goroutine records this metric last, after it leaves executor.preempting.
+							return captureExecutionDurationMetric(testRegistry, preemptorType, operation, tt.expectedResult).count > stateBefore.count, nil
 						})
 						if err != nil {
 							t.Fatal("async preemption did not complete in time")
