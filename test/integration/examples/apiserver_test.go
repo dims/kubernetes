@@ -456,6 +456,20 @@ func testAggregatedAPIServer(t *testing.T, setWardleFeatureGate, banFlunder bool
 		t.Error("expected non-empty resource version for fischer list")
 	}
 
+	if banFlunder {
+		// The BanFlunder plugin reads fischers from an informer, which can be behind the list above.
+		err = wait.PollImmediate(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
+			_, err := wardleClient.Flunders(metav1.NamespaceSystem).Create(ctx, &wardlev1alpha1.Flunder{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "badname",
+				},
+			}, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}})
+			return apierrors.IsForbidden(err), nil
+		})
+		if err != nil {
+			t.Fatalf("flunder:badname is still admitted after fischer:panda banned it: %v", err)
+		}
+	}
 	_, err = wardleClient.Flunders(metav1.NamespaceSystem).Create(ctx, &wardlev1alpha1.Flunder{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "badname",
