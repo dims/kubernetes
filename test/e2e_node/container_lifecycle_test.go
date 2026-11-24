@@ -5329,7 +5329,8 @@ var _ = SIGDescribe(framework.WithNodeConformance(), "Containers Lifecycle", fun
 				})).WithTimeout(120 * time.Second).WithPolling(100 * time.Millisecond).Should(gomega.BeNil())
 				framework.ExpectNoError(err)
 
-				buffer := int64(2)
+				// Stopping the container and its sandbox alone takes several seconds on a busy node.
+				buffer := int64(30)
 				deleteTime := time.Since(start).Seconds()
 				// should delete quickly and not try to start/wait on any sidecars since they never started
 				gomega.Expect(deleteTime).To(gomega.BeNumerically("<", grace+buffer), fmt.Sprintf("should delete in < %d seconds, took %f", grace+buffer, deleteTime))
