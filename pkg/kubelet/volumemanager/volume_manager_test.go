@@ -1258,6 +1258,12 @@ func TestWaitForAttachAndMount_DynamicVolumes(t *testing.T) {
 	shortCtx6, cancel6 := context.WithTimeout(tCtx, 50*time.Millisecond)
 	defer cancel6()
 	require.Error(t, vm.WaitForAttachAndMount(shortCtx6, podWithImageVol), "Image volume must not be skipped before actualStateOfWorld has its entry")
+
+	// A sync that still holds the pod from before a volume left the allocated pod does not wait for that volume.
+	podManager.SetPods([]*v1.Pod{pod})
+	shortCtx7, cancel7 := context.WithTimeout(tCtx, 50*time.Millisecond)
+	defer cancel7()
+	require.NoError(t, vm.WaitForAttachAndMount(shortCtx7, podWithImageVol))
 }
 
 func podWithUID(p *v1.Pod, uid kubetypes.UID) *v1.Pod {

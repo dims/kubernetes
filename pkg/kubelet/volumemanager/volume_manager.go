@@ -228,6 +228,7 @@ func NewVolumeManager(
 			blockVolumePathHandler)),
 		actuatedState:    actuatedState,
 		podStateProvider: podStateProvider,
+		podManager:       podManager,
 	}
 	if triggerPodSync != nil {
 		onDynamicVolumeRemoved := func(podUID k8stypes.UID) {
@@ -337,6 +338,9 @@ type volumeManager struct {
 
 	// podStateProvider reports whether a pod's runtime and volumes are being torn down.
 	podStateProvider PodStateProvider
+
+	// podManager returns the allocated pods that desiredStateOfWorldPopulator reads.
+	podManager PodManager
 }
 
 type VolumeAttachLimitExceededError struct {
@@ -483,8 +487,13 @@ func (vm *volumeManager) WaitForAttachAndMount(ctx context.Context, pod *v1.Pod)
 	// (e.g. an ephemeral container referencing a rejected or unallocated dynamic volume,
 	// including across a feature-gate rollback or before actuatedState is populated), since
 	// DSWP will never populate them from pod.Spec.Volumes.
+	// A sync can hold a pod from before a volume left the allocated pod, so ask for the one DSWP reads.
+	allocatedPod := pod
+	if p, ok := vm.podManager.GetPodByUID(pod.UID); ok {
+		allocatedPod = p
+	}
 	expectedVolumes = slices.DeleteFunc(expectedVolumes, func(volName string) bool {
-		if findVolumeInPodSpec(pod, volName) != nil {
+		if findVolumeInPodSpec(allocatedPod, volName) != nil {
 			return false
 		}
 		if actuatedPod != nil && (hasPodVolume(actuatedPod, volName) || isVolumeMountedInPod(&actuatedPod.Spec, volName)) {
