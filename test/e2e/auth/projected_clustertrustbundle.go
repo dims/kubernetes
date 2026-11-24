@@ -43,6 +43,7 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2econformance "k8s.io/kubernetes/test/e2e/framework/conformance"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	e2epodoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 	imageutils "k8s.io/kubernetes/test/utils/image"
 	admissionapi "k8s.io/pod-security-admission/api"
@@ -254,6 +255,11 @@ var _ = SIGDescribe(framework.WithFeatureGate(features.ClusterTrustBundle), fram
 				if err != nil {
 					framework.Failf("failed to create a testing container: %v", err)
 				}
+
+				// The kubelet's first status write can come later than the 10s below, seen 27s after the bind.
+				framework.ExpectNoError(e2epod.WaitForPodCondition(ctx, f.ClientSet, pod.Namespace, pod.Name, "reported by the kubelet", f.Timeouts.PodStartShort, func(pod *v1.Pod) (bool, error) {
+					return podutil.GetPodReadyCondition(pod.Status) != nil, nil
+				}))
 
 				volumeNotReady := false
 				var latestReadyStatus *v1.PodCondition
