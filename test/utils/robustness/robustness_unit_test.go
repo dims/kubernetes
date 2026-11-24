@@ -32,6 +32,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/ktesting"
 	clientset "k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
@@ -482,6 +483,28 @@ func TestBlockingFaultIsRecordedBeforeBlocking(t *testing.T) {
 	<-done
 	if elapsed := time.Since(start); elapsed < stall {
 		t.Errorf("block released after %v; want at least %v", elapsed, stall)
+	}
+}
+
+// TestWaitUntilSettledWaitsOutStall verifies the quiet window is not counted
+// while a stall is in progress.
+func TestWaitUntilSettledWaitsOutStall(t *testing.T) {
+	const stall, quiet = 500 * time.Millisecond, 200 * time.Millisecond
+	reg := NewFaultRegistry()
+	reg.Register(FaultRule{Name: "stall", Match: ClientMatch{Verbs: []string{VerbWatch}, Resource: "pods"}, Condition: TriggerAlways(), Action: InjectDelay{Duration: stall}})
+	f := &RobustnessTestFixture{tCtx: ktesting.Init(t), registry: reg, ctx: context.Background(), activity: &activityTracker{}}
+
+	start := time.Now()
+	go reg.ResolveWatchEvent(context.Background(), ClientFacts{Verb: VerbWatch, Resource: "pods", Name: "p"})
+	for reg.GetHitCount("stall") == 0 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	f.activity.recordMutation()
+	if !f.WaitUntilSettled(quiet, 10*time.Second) {
+		t.Fatal("WaitUntilSettled() = false; want true")
+	}
+	if elapsed := time.Since(start); elapsed < stall+quiet {
+		t.Errorf("settled after %v; want at least %v", elapsed, stall+quiet)
 	}
 }
 

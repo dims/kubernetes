@@ -241,6 +241,10 @@ func (f *RobustnessTestFixture) WaitUntilSettled(quietWindow, timeout time.Durat
 				continue
 			}
 			idle := time.Since(time.Unix(0, f.activity.lastMutation.Load()))
+			// A stalled watch keeps the controller from writing, so the quiet window also has to pass after the stall.
+			if sinceStall := time.Since(f.registry.BlockingFaultDeadline()); sinceStall < idle {
+				idle = sinceStall
+			}
 			if idle >= quietWindow {
 				return true
 			}
