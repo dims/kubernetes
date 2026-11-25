@@ -158,11 +158,13 @@ func generateBuilder(crd *apiextensionsv1.CustomResourceDefinition, version stri
 	scale := &v1.Scale{}
 
 	routes := make([]*restful.RouteBuilder, 0)
-	root := fmt.Sprintf("/apis/%s/%s/%s", b.group, b.version, b.plural)
+	// go-restful keeps the compiled regexp of every route path for the life of
+	// the process, so build the routes from templates that all CRDs share.
+	root := "/apis/{group}/{version}/{plural}"
 
 	if b.namespaced {
 		routes = append(routes, b.buildRoute(root, "", "GET", "list", "list", sampleList).Operation("list"+b.kind+"ForAllNamespaces"))
-		root = fmt.Sprintf("/apis/%s/%s/namespaces/{namespace}/%s", b.group, b.version, b.plural)
+		root = "/apis/{group}/{version}/namespaces/{namespace}/{plural}"
 	}
 	routes = append(routes, b.buildRoute(root, "", "GET", "list", "list", sampleList))
 	routes = append(routes, b.buildRoute(root, "", "POST", "post", "create", sample).Reads(sample))
@@ -188,8 +190,11 @@ func generateBuilder(crd *apiextensionsv1.CustomResourceDefinition, version stri
 		routes = append(routes, b.buildRoute(root, "/{name}/scale", "PATCH", "patch", "patch", scale).Reads(patch))
 	}
 
+	path := strings.NewReplacer("{group}", b.group, "{version}", b.version, "{plural}", b.plural)
 	for _, route := range routes {
-		b.ws.Route(route)
+		r := route.Build()
+		r.Path = path.Replace(r.Path)
+		b.routes = append(b.routes, &restfuladapter.RouteAdapter{Route: &r})
 	}
 	return b, nil
 }
@@ -200,7 +205,7 @@ func BuildOpenAPIV3(crd *apiextensionsv1.CustomResourceDefinition, version strin
 		return nil, err
 	}
 
-	return builder3.BuildOpenAPISpecFromRoutes(restfuladapter.AdaptWebServices([]*restful.WebService{b.ws}), b.getOpenAPIV3Config())
+	return builder3.BuildOpenAPISpecFromRoutes([]common.RouteContainer{b.routes}, b.getOpenAPIV3Config())
 }
 
 // BuildOpenAPIV2 builds OpenAPI v2 for the given crd in the given version
@@ -210,7 +215,7 @@ func BuildOpenAPIV2(crd *apiextensionsv1.CustomResourceDefinition, version strin
 		return nil, err
 	}
 
-	return openapibuilder.BuildOpenAPISpecFromRoutes(restfuladapter.AdaptWebServices([]*restful.WebService{b.ws}), b.getOpenAPIConfig())
+	return openapibuilder.BuildOpenAPISpecFromRoutes([]common.RouteContainer{b.routes}, b.getOpenAPIConfig())
 }
 
 // Implements CanonicalTypeNamer
@@ -236,6 +241,7 @@ type builder struct {
 	schema     *spec.Schema
 	listSchema *spec.Schema
 	ws         *restful.WebService
+	routes     routeContainer
 
 	group    string
 	version  string
@@ -245,6 +251,13 @@ type builder struct {
 
 	namespaced bool
 }
+
+// routeContainer hands the routes of a CRD to kube-openapi.
+type routeContainer []common.Route
+
+func (c routeContainer) RootPath() string                   { return "" }
+func (c routeContainer) PathParameters() []common.Parameter { return nil }
+func (c routeContainer) Routes() []common.Route             { return c }
 
 // subresource is a handy method to get subresource name. Valid inputs are:
 //
